@@ -1,0 +1,59 @@
+markdown: redcarpet
+name: Unit testing in Node.js
+exclude:
+- CONTRIBUTING.md
+- Gemfile
+- Gemfile.lock
+- LICENSE.md
+- README.md
+- go
+- vendor
+
+permalink: pretty
+highlighter: rouge
+incremental: true
+
+sass:
+  style: :compressed
+
+# Author/Organization info to be displayed in the templates
+author:
+  name: 18F
+  url: https://18f.gsa.gov
+
+# Point the logo URL at a file in your repo or hosted elsewhere by your organization
+logourl: /assets/img/18f-logo.png
+logoalt: 18F logo
+
+# Navigation
+# List links that should appear in the site sidebar here
+navigation:
+- text: Introduction
+  url: index.html
+  internal: true
+- text: Setup
+  url: setup/
+  internal: true
+- text: Designing the application
+  url: designing-the-application/
+  internal: true
+- text: Designing the core logic module
+  url: core-logic/
+  internal: true
+
+repos:
+- name: Unit testing in Node.js
+  description: Main repository
+  url: https://github.com/18F/unit-testing-node
+
+back_link:
+  url: "https://pages.18f.gov/guides/"
+  text: Read more 18F Guides
+
+google_analytics_ua: UA-48605964-19
+
+defaults:
+- scope:
+    path: ""
+  values:
+    layout: "guides_style_18f_default"
