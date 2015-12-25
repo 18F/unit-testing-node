@@ -34,11 +34,37 @@ navigation:
 - text: Setup
   url: setup/
   internal: true
+  children:
+  - text: Adding the tools to your own project
+    url: tools/
+    internal: true
 - text: Designing the application
   url: designing-the-application/
   internal: true
 - text: Designing the core logic module
   url: core-logic/
+  internal: true
+- text: Concepts
+  url: concepts/
+  internal: true
+  children:
+  - text: Code reuse
+    url: code-reuse/
+    internal: true
+  - text: Dependency injection
+    url: dependency-injection/
+    internal: true
+  - text: Exploration, vision, and settlement
+    url: exploration-vision-and-settlement/
+    internal: true
+  - text: Seams
+    url: seams/
+    internal: true
+  - text: Testability
+    url: testability/
+    internal: true
+- text: Further reading
+  url: further-reading/
   internal: true
 
 repos:

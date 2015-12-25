@@ -31,66 +31,25 @@ $ npm test
 [15:25:41] Finished 'test' after 18 ms
 ```
 
-### Adding this exercise's tools and frameworks to a project
+## Offline viewing
 
-To add the testing frameworks from this exercise to your own project, run:
-
-```sh
-$ npm install chai chai-as-promised mocha --save-dev
-```
-
-If you wish to use [Gulp](https://www.npmjs.com/package/gulp) as your build
-tool, as in this tutorial: 
+With this repository cloned to your local machine, you can view the website
+locally if you prefer. Run the following command in a new terminal window:
 
 ```sh
-$ npm install gulp gulp-mocha --save-dev
+$ ./go serve
+
+Configuration file: /.../unit-testing-node/_config.yml
+            Source: /.../unit-testing-node
+       Destination: /.../unit-testing-node/_site
+ Incremental build: enabled
+      Generating...
+                    done in 0.69 seconds.
+ Auto-regeneration: enabled for '/.../unit-testing-node'
+Configuration file: /.../unit-testing-node/_config.yml
+    Server address: http://127.0.0.1:4000/
+  Server running... press ctrl-c to stop.
 ```
 
-It's also good practice to apply a linting tool such as
-[JSHint](https://www.npmjs.com/package/jshint):
-
-```sh
-$ npm install jshint gulp-jshint --save-dev
-```
-
-This project's `gulpfile.js` can be the starting point for your own:
-
-```js
-/* jshint node: true */
-
-var gulp = require('gulp');
-var mocha = require('gulp-mocha');
-var jshint = require('gulp-jshint');
-
-gulp.task('test', function() {
-  return gulp.src('./test/*.js', {read: false})
-    // Reporters:
-    // https://github.com/mochajs/mocha/blob/master/lib/reporters/index.js
-    .pipe(mocha({reporter: 'spec'}));
-});
-
-gulp.task('lint', function() {
-  return gulp.src(['*.js', 'lib/**/*.js', 'test/**/*.js'])
-    .pipe(jshint())
-    .pipe(jshint.reporter('default'));
-});
-```
-
-Finally, add this [`scripts:` stanza to your
-`package.json`](https://docs.npmjs.com/files/package.json#scripts):
-
-```json
-{
-  "scripts": {
-    "test": "gulp test",
-    "lint": "gulp lint"
-  }
-}
-```
-
-Now you're ready to run your tests and linter via:
-
-```sh
-$ npm test
-$ npm run-script lint
-```
+You can now view the website at
+[`http://localhost:4000/`](http://localhost:4000/).
