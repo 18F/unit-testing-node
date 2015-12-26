@@ -57,22 +57,3 @@ In the above sample code, we see the first
 [seam]({{ site.baseurl }}/concepts/seams/) of the application, between the
 `robot.receiveMiddleware()` call and the `Middleware` class. This is the point
 at which our application-specific logic plugs into the Hubot system.
-
-## Testing strategy
-
-Most of the tests we will write will not exercise the code at this level. We
-will write a system integration test that makes sure that basic success and
-failure cases propagate through the entire system as expected. However,
-attempting to validate every success and failure case by running the entire
-system would prove complicated, tedious, slow, and brittle, even for an
-application as small as this.
-
-Testing the `Middleware` class in isolation requires a less complex testing
-setup that is easier to configure and control. We will also find seams within
-the `Middleware` class itself, extract several other discrete components, and
-test those thoroughly and independently from the `Middleware` class. We can
-then use an integration test to validate that the `Middleware` class interacts
-with these components as expected.
-
-In the next chapter, we'll begin to think about how to compose the
-`Middleware` class based on the functions outlined above.

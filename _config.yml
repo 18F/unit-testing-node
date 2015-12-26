@@ -7,6 +7,7 @@ exclude:
 - LICENSE.md
 - README.md
 - go
+- node_modules
 - vendor
 
 permalink: pretty
@@ -41,8 +42,42 @@ navigation:
 - text: Designing the application
   url: designing-the-application/
   internal: true
+- text: Testing strategy
+  url: testing-strategy/
+  internal: true
 - text: Designing the core logic module
   url: core-logic/
+  internal: true
+- text: Designing and testing the components
+  url: components/
+  internal: true
+  children:
+  - text: Config class
+    url: config/
+    internal: true
+  - text: Rule class
+    url: rule/
+    internal: true
+  - text: SlackClient class
+    url: slack-client/
+    internal: true
+  - text: GitHubClient class
+    url: github-client/
+    internal: true
+  - text: Log module
+    url: log/
+    internal: true
+  - text: Middleware class
+    url: middleware/
+    internal: true
+- text: Testing component integration
+  url: testing-component-integration/
+  internal: true
+- text: Testing system integration
+  url: testing-system-integration/
+  internal: true
+- text: Conclusion
+  url: conclusion/
   internal: true
 - text: Concepts
   url: concepts/
@@ -56,6 +91,18 @@ navigation:
     internal: true
   - text: Exploration, vision, and settlement
     url: exploration-vision-and-settlement/
+    internal: true
+  - text: Minimizing dependencies
+    url: minimizing-dependencies/
+    internal: true
+  - text: Object composition vs. inheritance
+    url: object-composition-vs-inheritance/
+    internal: true
+  - text: Repetition in tests
+    url: repetition-in-tests/
+    internal: true
+  - text: Schema validation
+    url: schema-validation/
     internal: true
   - text: Seams
     url: seams/

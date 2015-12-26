@@ -27,7 +27,7 @@ end
 require 'guides_style_18f'
 
 extend GoScript
-check_ruby_version '2.1.5'
+check_ruby_version '2.2.3'
 
 command_group :dev, 'Development commands'
 
@@ -49,6 +49,14 @@ end
 
 def_command :build, 'Build the site' do |args|
   build_jekyll args
+end
+
+def_command :ci_build, 'Run all continuous integration checks' do
+  exec_cmd 'npm run lint-all'
+  exec_cmd 'npm test'
+  exec_cmd 'npm run test-solution'
+  exec_cmd 'solution/test/hubot-smoke-test.bash'
+  build
 end
 
 execute_command ARGV

@@ -49,18 +49,3 @@ In this way, we are able to build the complete application via the
 _composition_ of multiple distinct objects. This makes it easier to test each
 individual application function thoroughly, while making the overall structure
 and flow of the application easier to understand.
-
-### Where to begin?
-
-There is no one right place to start. For the sake of the exercise, we will
-begin with the `Config` class. It is straightforward to test yet provides
-insight into the rest of the program.
-
-In your own programs, however, feel free to start at whichever point seems
-most clear to you. Bear in mind that this exercise was written well after the
-[settlement phase]({{ site.baseurl }}/concepts/exploration-vision-and-settlement/)
-of the original program.
-
-That said, each component was developed with tests at every step, after [the
-initial outline of the entire application was sketched
-out](https://github.com/18F/hubot-slack-github-issues/tree/work-in-progress).

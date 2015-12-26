@@ -26,7 +26,11 @@ $ npm test
 [15:25:41] Starting 'test'...
 
 
-  0 passing (1ms)
+  Config
+    ✓ should validate a valid configuration
+
+
+  1 passing (4ms)
 
 [15:25:41] Finished 'test' after 18 ms
 ```

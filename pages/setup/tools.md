@@ -23,7 +23,7 @@ It's also good practice to apply a linting tool such as
 $ npm install jshint gulp-jshint --save-dev
 ```
 
-This project's `gulpfile.js` can be the starting point for your own:
+This `gulpfile.js` can be the starting point for your own:
 
 ```js
 /* jshint node: true */
@@ -62,5 +62,5 @@ Now you're ready to run your tests and linter via:
 
 ```sh
 $ npm test
-$ npm run-script lint
+$ npm run lint
 ```

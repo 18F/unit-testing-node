@@ -9,7 +9,7 @@ details about the automated testing tools and techniques available for
 different languages.
 
 Several of the posts at [The Node Way](http://thenodeway.io/) also strongly
-influenced the design of this guide's application, specifically:
+influenced the design of the application, specifically:
 
 - [Understanding Error-First
   Callbacks](http://thenodeway.io/posts/understanding-error-first-callbacks/)
