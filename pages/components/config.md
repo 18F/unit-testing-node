@@ -4,14 +4,20 @@ parent: Designing and testing the components
 title: Config class
 ---
 The first object we'll develop is the `Config` class. You can find it in the
-[`exercise/lib/config.js`]({{ site.baseurl }}/exericse/lib/config.js) file.
+[`exercise/lib/config.js`]({{ site.baseurl }}/exercise/lib/config.js) file.
 The purpose of the `Config` class is to read the configuration file
 and validate the contents. The example configuration file is
 [`exercise/config/slack-github-issues.json`]({{ site.baseurl }}/exercise/config/slack-github-issues.json).
 
-If you're completely unfamiliar with unit testing, or unfamiliar with Mocha
-and Chai, the `Config` class is a great object to get you acquainted. If
-you're looking for more of a challenge, move on to the next chapter.
+If you're completely unfamiliar with unit testing, or unfamiliar with
+[Mocha](https://mochajs.org/) and [Chai](http://chaijs.com/), the `Config`
+class is a great object to get you acquainted. If you're looking for more of a
+challenge, run the following commands, then move on to the next chapter:
+
+```sh
+$ cp solutions/00-config/lib/config.js exercise/lib
+$ cp solutions/00-config/test/config-test.js exercise/test/config-test.js
+```
 
 ## What to expect
 
@@ -267,9 +273,12 @@ called `'should validate a rule specifying a channel'`. Copy the
 implementation from  `'should validate a valid configuration'`, but update the
 `configData` variable in one of two ways:
 
-- update the existing `rules` member to have a `channelNames` field
+- directly update the existing `rules` member to have a `channelNames` field
 - call `configData.rules.push()` to add a new member with `channelNames` field
   defined
+
+Do not worry about the duplicated code and data for now. We will address this
+in a later step.
 
 ## Testing and implementing the remaining functions
 
@@ -303,6 +312,9 @@ properties'` starting with this template:
   });
 ```
 
+Again, do not worry that several of the tests contain duplicate logic and
+data. We will address this in a later step.
+
 ### `checkRequiredRulesFields()`
 
 This function is very similar to `checkRequiredTopLevelFields()`, except that
@@ -318,7 +330,8 @@ just because `rules` is not present.
 
 To test, create a new test case called `'should raise errors for missing
 required rules fields'`. Use the same template from
-`checkForUnknownFieldNames()` to start.
+`checkForUnknownFieldNames()` to start. Just copy and paste; we'll address the
+duplication later.
 
 ### `checkForUnknownRuleNames()`
 
@@ -347,13 +360,17 @@ The tests for this function need only validate that the `Config` object reads
 the file properly. All of the success and failure cases have been covered by
 the other tests, using data defined in the test itself.
 
+**Don't forget to `require('fs')` and `require('path')` as needed.**
+
 The tricky part is managing the presence of
 `HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH`. We want to ensure that this variable
 is defined for this test, but not for any other. Add the following
 [`before() and afterEach()` hooks](https://mochajs.org/#hooks) to the top of
-the fixture, just below `describe('Config', function() {`:
+the fixture:
 
 ```js
+describe('Config', function() {
+
   before(function() {
     delete process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH;
   });
@@ -368,24 +385,28 @@ cleared after each of the tests run.
 
 Now define the following test cases:
 
-- `'should load from HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH'`: this should
-  assign a path to a real config file using:
-  ```js
-    process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH = path.join(
-      path.dirname(__dirname), 'config', 'slack-github-issues.json');
-  ```
+- `'should load from HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH'`
 - `'should load from config/slack-github-issues.json by default'`
 
 Both tests should load the test data directly into the test case using:
 
 ```js
-    var testConfig = require('../config/slack-github-issues.json')
+    var testConfig = require('../config/slack-github-issues.json'),
+        config;
+```
+
+`'should load from HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH'` should assign a
+path to the config file using:
+
+```js
+    process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH = path.join(
+      path.dirname(__dirname), 'config', 'slack-github-issues.json');
 ```
 
 Both tests should use the `JSON.stringify()` method of comparing the original
 data to the validated `Config` object.
 
-Note that at the moment, both tests are using the same source file. Though two
+Note that at the moment, both tests are using the same data file. Though two
 different code paths are exercised, the test assertions are the same. This
 means that the environment variable-based test will still pass even if that
 code path is removed. However, we will fix this issue in the next step.
@@ -425,7 +446,7 @@ exports = module.exports = {
 };
 ```
 
-Add this line to the top of the file:
+Add this line to the top of the `exercises/test/config-test.js` file:
 
 ```js
 var helpers = require('./helpers');
@@ -435,6 +456,8 @@ Now replace most of your test data definitions with calls to
 `helpers.baseConfig()`, and then update the resulting data structure as needed
 for each specific test. The specific conditions examined by each test should
 become easier to see.
+
+## Updating `HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH` test
 
 Also, you can now update `'should load from
 HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH'` to read:
@@ -448,8 +471,11 @@ HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH'` to read:
     config = new Config();
 ```
 
+Notice in particular that `path.dirname(__dirname)` has become just
+`__dirname`.
+
 Since the data in `test-config.json` is different from the data in
-`slack-github-issues.json`, you can be sure that the two tests are testing
+`slack-github-issues.json`, you can now be sure that the tests are testing
 different code paths.
 
 We will build up the `test/helpers` module with more data helpers
@@ -460,9 +486,11 @@ common data structures propagate throughout the application as expected.
 ## Check your work
 
 Now that you're all finished, compare your solutions to the code in
-[`solution/lib/config.js`]({{ site.baseurl }}/solution/lib/config.js)
+[`solutions/00-config/lib/config.js`]({{ site.baseurl }}/solutions/00-config/lib/config.js)
 and
-[`solution/test/config-test.js`]({{ site.baseurl
-}}/solution/test/config-test.js). (The `LogHelper` class and the log
-message assertions will come up in the [`Log` module chapter]({{ site.baseurl
-}}/components/log/).)
+[`solutions/00-config/test/config-test.js`]({{ site.baseurl }}/solutions/00-config/test/config-test.js).
+
+You may wish to `git commit` your work to your local repo at this point. After
+doing so, try copying the `config.js` file from `solutions/00-config` into
+`exercises` to see if it passes the test you wrote. Then run `git reset --hard
+HEAD` and copy the test files instead to see if your implementation passes.
