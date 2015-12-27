@@ -60,7 +60,8 @@ function Config(configuration) {
 
 When the `Config` object is constructed, it takes configuration data either as
 a parameter or it gets the path from an environment variable. It then assigns
-every property from the `config` object to itself. The `hasOwnProperty()`
+every property from the `config` object to itself. The
+[`hasOwnProperty()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/hasOwnProperty)
 check ensures only properties defined by the configuration file itself are
 copied.
 
@@ -141,7 +142,7 @@ var chai = require('chai');
 var expect = chai.expect;
 ```
 
-Then add an implementation to the `'it should validate a valid configuration'`
+Then add an implementation to the `'should validate a valid configuration'`
 test.  Pass an empty data object into the `Config` constructor, and verify
 that the new `Config` object contains the same data as the original JSON
 object.
@@ -149,10 +150,10 @@ object.
 The most expedient comparison is to use
 [`JSON.stringify()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify)
 on both objects and to compare the result. It's a blunt instrument, but for
-our small case, it getst the job done. In this test, we'll use the `expect`
+our small case, it gets the job done. In this test, we'll use the `expect`
 form of [Chai BDD-style assertions](http://chaijs.com/api/bdd/).
 
-The test should looks something like:
+The test should look something like:
 
 ```js
   it('should validate a valid configuration', function() {
@@ -167,13 +168,13 @@ The test should looks something like:
 
 Good tests fail when they should, so at this point, verify that the test
 fails by running `npm test`. To limit the output to just the `Config` tests,
-run it as `npm test -- --grep Config`:
+run it as `npm test -- --grep '^Config '`:
 
 ```sh
-$ npm test -- --grep Config
+$ npm test -- --grep '^Config '
 
 > 18f-unit-testing-node@0.0.0 test .../unit-testing-node
-> gulp test "--grep" "Config"
+> gulp test "--grep" "^Config "
 
 [12:39:51] Using gulpfile .../unit-testing-node/gulpfile.js
 [12:39:51] Starting 'test'...
