@@ -12,7 +12,6 @@ var FakeSlackClientImpl = require('./helpers/fake-slack-client-impl');
 var chai = require('chai');
 
 var expect = chai.expect;
-chai.should();
 
 describe('Rule', function() {
   it('should contain all the fields from the configuration', function() {
