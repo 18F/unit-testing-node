@@ -166,14 +166,14 @@ The test should looks something like:
 ```
 
 Good tests fail when they should, so at this point, verify that the test
-fails:
+fails by running `npm test`. To limit the output to just the `Config` tests,
+run it as `npm test -- --grep Config`:
 
 ```sh
-$ npm test
+$ npm test -- --grep Config
 
-> 18f-unit-testing-node@0.0.0 test
-> .../unit-testing-node
-> gulp test
+> 18f-unit-testing-node@0.0.0 test .../unit-testing-node
+> gulp test "--grep" "Config"
 
 [12:39:51] Using gulpfile .../unit-testing-node/gulpfile.js
 [12:39:51] Starting 'test'...
@@ -212,11 +212,11 @@ from [`exercise/config/slack-github-issues.json`]({{ site.baseurl }}/exercise/co
 Now when you run `npm test`, you should see something like this:
 
 ```sh
-$ npm test
+$ npm test -- --grep Config
 
-> 18f-unit-testing-node@0.0.0 test
-> .../unit-testing-node
-> gulp test
+> 18f-unit-testing-node@0.0.0 test .../unit-testing-node
+> gulp test "--grep" "Config"
+
 
 [12:29:20] Using gulpfile .../unit-testing-node/gulpfile.js
 [12:29:20] Starting 'test'...
