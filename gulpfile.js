@@ -6,14 +6,16 @@ var jshint = require('gulp-jshint');
 require('coffee-script/register');
 
 gulp.task('test', function() {
-  return gulp.src('./exercise/test/*.js', {read: false})
+  process.chdir('./exercise');
+  return gulp.src('./test/*.js', {read: false})
     // Reporters:
     // https://github.com/mochajs/mocha/blob/master/lib/reporters/index.js
     .pipe(mocha({reporter: 'spec'}));
 });
 
 gulp.task('test-solution', function() {
-  return gulp.src('./solution/test/*.js', {read: false})
+  process.chdir('./solution');
+  return gulp.src('./test/*.js', {read: false})
     .pipe(mocha({reporter: 'spec'}));
 });
 

@@ -137,7 +137,7 @@ describe('Config', function() {
     expect(JSON.stringify(config)).to.eql(JSON.stringify(defaultConfig));
     expect(logHelper.messages).to.eql([
       scriptName + ': loading config from ' +
-        'solution/config/slack-github-issues.json'
+        'config/slack-github-issues.json'
     ]);
   });
 });

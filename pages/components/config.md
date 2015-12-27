@@ -338,8 +338,8 @@ level, so feel free to make a new test if you wish.
 This function should read `HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH` from
 [`process.env`](https://nodejs.org/api/process.html#process_process_env)
 to discover the location of the configuration file. If that variable is not
-defined, it should attempt to read `exercise/config/slack-github-issues.json`.
-It should return the JSON object parsed from the file, using
+defined, it should attempt to read `config/slack-github-issues.json`. It
+should return the JSON object parsed from the file, using
 [`fs.ReadFileSync()`](https://nodejs.org/api/fs.html#fs_fs_readfilesync_file_options)
 to read the contents.
 
@@ -400,7 +400,7 @@ data could be shared, with each individual test altering it as necessary to
 exercise a different code path.
 
 To that end, there is a
-[`exercise/test/helpers/test-config.json`]({{ site.baseurl }}/exercise/test/helpers/test-config.json)
+[`test/helpers/test-config.json`]({{ site.baseurl }}/exercise/test/helpers/test-config.json)
 file containing a valid configuration. However, using `require()` to import
 this file directly will cause all of the tests to manipulate the same single
 object. This sharing of state leads to interdependencies between test cases,
@@ -408,7 +408,7 @@ which is the opposite of what we want. Each test should be able to pass or
 fail independently of state changes from other tests.
 
 For that reason, the
-[`exercise/test/helpers` module]({{ site.baseurl }}/exercise/test/helpers/index.js)
+[`test/helpers` module]({{ site.baseurl }}/exercise/test/helpers/index.js)
 module provides a `baseConfig()` method that makes a fresh copy of this data:
 
 ```js
@@ -452,7 +452,7 @@ Since the data in `test-config.json` is different from the data in
 `slack-github-issues.json`, you can be sure that the two tests are testing
 different code paths.
 
-We will build up the `exercise/test/helpers` module with more data helpers
+We will build up the `test/helpers` module with more data helpers
 throughout the course of the exercise. Sharing common test data in this way
 makes it easier to write tests for other components. It also helps verify that
 common data structures propagate throughout the application as expected.
