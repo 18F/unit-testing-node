@@ -9,14 +9,14 @@ the advance of modern web development. It is far more compact than previously
 popular formats such as XML, and requires no special tools to produce.
 
 However, this lack of tooling also puts the burden on application developers
-to ensure that the data their applications sends and receives are well-formed.
+to ensure that the data their applications send and receive are well-formed.
 
 ## Structural validation
 
-Structural validation is the process of ensuring that the types of individual
-data members of a JSON object are of the correct type. For example, a property
-that contains a number type when a nested JSON object was expected would
-produce a structural validation error.
+Structural validation is the process of ensuring that the individual data
+members of a JSON object are of the correct type. For example, a property that
+contains a number type when a nested JSON object was expected would produce a
+structural validation error.
 
 Structural validation is only a necessary first step towards deeper types of
 validation, specifically [semantic](#semantic-validation),

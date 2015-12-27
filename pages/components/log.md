@@ -6,6 +6,6 @@ title: Log module
 If you skipped over the `Config` chapter, run the following commands first:
 
 ```sh
-$ cp solution/lib/config.js exercise/lib/
-$ cp solution/test/config-test.js exercise/test/
+$ cp solutions/00-config/lib/config.js exercise/lib/config.js
+$ cp solutions/00-config/test/config-test.js exercise/test/config-test.js
 ```

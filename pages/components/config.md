@@ -15,7 +15,7 @@ class is a great object to get you acquainted. If you're looking for more of a
 challenge, run the following commands, then move on to the next chapter:
 
 ```sh
-$ cp solutions/00-config/lib/config.js exercise/lib
+$ cp solutions/00-config/lib/config.js exercise/lib/config.js
 $ cp solutions/00-config/test/config-test.js exercise/test/config-test.js
 ```
 
@@ -457,7 +457,7 @@ Now replace most of your test data definitions with calls to
 for each specific test. The specific conditions examined by each test should
 become easier to see.
 
-## Updating `HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH` test
+## Updating the `HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH` test
 
 Also, you can now update `'should load from
 HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH'` to read:
