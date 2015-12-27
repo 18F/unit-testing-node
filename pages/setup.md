@@ -29,10 +29,31 @@ $ npm test
   Config
     ✓ should validate a valid configuration
 
+  GitHubClient
+    ✓ should successfully file an issue
 
-  1 passing (4ms)
+  Integration test
+    an evergreen_tree reaction to a message
+      ✓ should create a GitHub issue
 
-[15:25:41] Finished 'test' after 18 ms
+  Middleware
+    parseMetadata
+      ✓ should parse GitHub request metadata from a message
+    findMatchingRule
+      ✓ should find the rule matching the message
+    execute
+      ✓ should successfully parse a message and file an issue
+
+  Rule
+    ✓ should contain all the fields from the configuration
+
+  SlackClient
+    ✓ should validate a valid configuration
+
+
+  8 passing (9ms)
+
+[16:20:15] Finished 'test' after 37 ms
 ```
 
 ## Offline viewing
