@@ -3,7 +3,7 @@
 # Hack per:
 # http://stackoverflow.com/questions/4774054/reliable-way-for-a-bash-script-to-get-the-full-path-to-itself
 pushd $(dirname $0) >/dev/null
-PACKAGE_ROOT=$(dirname $(dirname $(pwd -P)))
+PACKAGE_ROOT="$(dirname $(pwd -P))/../.."
 popd >/dev/null
 cd ${PACKAGE_ROOT}
 

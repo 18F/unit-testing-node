@@ -5,7 +5,7 @@
 'use strict';
 
 var Config = require('../lib/config');
-var scriptName = require('../../package.json').name;
+var scriptName = require('../../../package.json').name;
 var helpers = require('./helpers');
 var LogHelper = require('./helpers/log-helper');
 var chai = require('chai');

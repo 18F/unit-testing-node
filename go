@@ -54,8 +54,8 @@ end
 def_command :ci_build, 'Run all continuous integration checks' do
   exec_cmd 'npm run lint-all'
   exec_cmd 'npm test'
-  exec_cmd 'npm run test-solution'
-  exec_cmd 'solution/test/hubot-smoke-test.bash'
+  exec_cmd 'npm run test-solutions'
+  exec_cmd 'solutions/complete/test/hubot-smoke-test.bash'
   build
 end
 
