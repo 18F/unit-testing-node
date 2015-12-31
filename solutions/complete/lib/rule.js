@@ -11,7 +11,6 @@ function Rule(configRule) {
   }
 }
 
-// This expects just the rawMessage from a SlackTextMessage.
 Rule.prototype.match = function(message, slackClient) {
   return (this.reactionMatches(message) &&
     this.channelMatches(message, slackClient));

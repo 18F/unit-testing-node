@@ -20,7 +20,7 @@ describe('Rule', function() {
     expect(JSON.stringify(rule)).to.eql(JSON.stringify(configRule));
   });
 
-  it('should match a channel-specific message', function() {
+  it('should match a message from one of the channelNames', function() {
     var rule = new Rule(helpers.configRule()),
         message = helpers.reactionAddedMessage().rawMessage,
         client = new FakeSlackClientImpl('hub');
@@ -28,7 +28,7 @@ describe('Rule', function() {
     expect(client.channelId).to.eql(helpers.CHANNEL_ID);
   });
 
-  it('should match a non-channel-specific message', function() {
+  it('should match a message from any channel', function() {
     var rule = new Rule(helpers.configRule()),
         message = helpers.reactionAddedMessage().rawMessage,
         client = new FakeSlackClientImpl('not-the-hub');
@@ -46,7 +46,7 @@ describe('Rule', function() {
     expect(client.channelId).to.be.undefined;
   });
 
-  it('should ignore a message if the channel doesn\'t match', function() {
+  it('should ignore a message if its channel doesn\'t match', function() {
     var rule = new Rule(helpers.configRule()),
         message = helpers.reactionAddedMessage().rawMessage,
         client = new FakeSlackClientImpl('not-the-hub');

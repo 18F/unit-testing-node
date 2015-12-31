@@ -16,8 +16,12 @@ Rule.prototype.match = function(message, slackClient) {
     this.channelMatches(message, slackClient));
 };
 
-Rule.prototype.reactionMatches = function() {
+Rule.prototype.reactionMatches = function(message) {
+  return message.reaction === this.reactionName;
 };
 
-Rule.prototype.channelMatches = function() {
+Rule.prototype.channelMatches = function(message, slackClient) {
+  var channels = this.channelNames;
+  return channels === undefined ||
+    channels.indexOf(slackClient.getChannelByID(message.item.channel)) !== -1;
 };
