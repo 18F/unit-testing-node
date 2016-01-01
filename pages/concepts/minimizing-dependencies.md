@@ -18,5 +18,5 @@ benefit, the following packages might prove suitable:
   configuration file
 - [github](https://www.npmjs.com/package/github) for accessing the GitHub API
 - [slack](https://www.npmjs.com/package/slack) for accessing the Slack Web API
-  (note that the Slack Real Time Messaging API is handled via
-  [hubot-slack](https://www.npmjs.com/package/hubot-slack))
+  (note that the [hubot-slack](https://www.npmjs.com/package/hubot-slack)
+  encapsulates the Slack Real Time Messaging API)

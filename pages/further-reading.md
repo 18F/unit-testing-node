@@ -15,3 +15,10 @@ influenced the design of the application, specifically:
   Callbacks](http://thenodeway.io/posts/understanding-error-first-callbacks/)
 - [Testing Essentials](http://thenodeway.io/posts/testing-essentials/)
 - [Designing Custom Types](http://thenodeway.io/posts/designing-custom-types/)
+
+For examples of why automated testing is an important part of the social
+responsibility of software developers, see:
+
+- [Finding More Than One Worm in the Apple](https://mike-bland.com/publications/finding-more-than-one-worm-in-the-apple/)
+- [Goto Fail, Heartbleed, and Unit Testing
+  Culture](http://martinfowler.com/articles/testing-culture.html)
