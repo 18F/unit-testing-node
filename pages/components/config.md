@@ -486,6 +486,33 @@ common data structures propagate throughout the application as expected.
 
 ## Check your work
 
+By this point, all of the `Config` tests should be passing:
+
+```sh
+$ npm test -- --grep '^Config '
+
+> 18f-unit-testing-node@0.0.0 test .../unit-testing-node
+> gulp test "--grep" "^Config "
+
+[12:16:44] Using gulpfile .../unit-testing-node/gulpfile.js
+[12:16:44] Starting 'test'...
+
+
+  Config
+    ✓ should validate a valid configuration
+    ✓ should raise errors for missing required fields
+    ✓ should validate a rule specifying a channel
+    ✓ should raise errors for unknown top-level properties
+    ✓ should raise errors for missing required rules fields
+    ✓ should load from HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH
+    ✓ should load from config/slack-github-issues.json by default
+
+
+  7 passing (10ms)
+
+[12:16:45] Finished 'test' after 83 ms
+```
+
 Now that you're all finished, compare your solutions to the code in
 [`solutions/00-config/lib/config.js`]({{ site.baseurl }}/solutions/00-config/lib/config.js)
 and
