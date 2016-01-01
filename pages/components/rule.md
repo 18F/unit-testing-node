@@ -153,7 +153,7 @@ $ npm test -- --grep '^Rule '
 > 18f-unit-testing-node@0.0.0 test .../unit-testing-node
 > gulp test "--grep" "^Rule "
 
-[17:26:57] Using gulpfile ~/src/18F/unit-testing-node/gulpfile.js
+[17:26:57] Using gulpfile .../unit-testing-node/gulpfile.js
 [17:26:57] Starting 'test'...
 
 
@@ -454,7 +454,7 @@ $ npm test -- --grep '^Rule '
 > 18f-unit-testing-node@0.0.0 test .../unit-testing-node
 > gulp test "--grep" "^Rule "
 
-[17:01:41] Using gulpfile ~/src/18F/unit-testing-node/gulpfile.js
+[17:01:41] Using gulpfile .../unit-testing-node/gulpfile.js
 [17:01:41] Starting 'test'...
 
 
@@ -517,7 +517,7 @@ $ npm test -- --grep '^Rule '
 > 18f-unit-testing-node@0.0.0 test .../unit-testing-node
 > gulp test "--grep" "^Rule "
 
-[17:11:05] Using gulpfile ~/src/18F/unit-testing-node/gulpfile.js
+[17:11:05] Using gulpfile .../unit-testing-node/gulpfile.js
 [17:11:05] Starting 'test'...
 
 
