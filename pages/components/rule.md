@@ -409,11 +409,11 @@ behind test stubs before we use a more complex library like
 `describe('Rule')` declaration:
 
 ```js
-function FakeSlackClient(channelName) {
+function SlackClientStub(channelName) {
   this.channelName = channelName;
 }
 
-FakeSlackClient.prototype.getChannelByID = function(channelId) {
+SlackClientStub.prototype.getChannelByID = function(channelId) {
   this.channelId = channelId;
   return { name: this.channelName };
 };
@@ -422,10 +422,10 @@ FakeSlackClient.prototype.getChannelByID = function(channelId) {
 This stub hardcodes the `channelName` that `getChannelByID` will return.
 The actual slack-client object returns a `Channel` instance that contains a
 `name` property, so we simulate that with a small JavaScript object.
-`FakeSlackClient` also records the `channelId` passed to the stub, so that we
+`SlackClientStub` also records the `channelId` passed to the stub, so that we
 can validate the the argument passed by the code under test.
 
-## Applying the `FakeSlackClient` stub to the test
+## Applying `SlackClientStub` to the test
 
 Equipped with the stub, we can now get the test to pass. Update the test to
 look like this:
@@ -434,7 +434,7 @@ look like this:
   it('should ignore a message if its channel doesn\'t match', function() {
     var rule = new Rule(makeConfigRule()),
         message = makeMessage(),
-        slackClient = new FakeSlackClient('not-the-hub');
+        slackClient = new SlackClientStub('not-the-hub');
 
     expect(rule.match(message, slackClient)).to.be.false;
     expect(slackClient.channelId).to.eql(message.item.channel);
@@ -495,7 +495,7 @@ call `rule.match()` with the following declaration:
 
 ```js
         // previous var declarations...
-        slackClient = new FakeSlackClient('hub');
+        slackClient = new SlackClientStub('hub');
 ```
 
 Then update all of the `rule.match(message)` calls to read

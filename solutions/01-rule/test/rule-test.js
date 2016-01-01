@@ -8,11 +8,11 @@ var Rule = require('../lib/rule');
 var chai = require('chai');
 var expect = chai.expect;
 
-function FakeSlackClient(channelName) {
+function SlackClientStub(channelName) {
   this.channelName = channelName;
 }
 
-FakeSlackClient.prototype.getChannelByID = function(channelId) {
+SlackClientStub.prototype.getChannelByID = function(channelId) {
   this.channelId = channelId;
   return { name: this.channelName };
 };
@@ -49,7 +49,7 @@ describe('Rule', function() {
   it('should match a message from one of the channelNames', function() {
     var rule = new Rule(makeConfigRule()),
         message = makeMessage(),
-        slackClient = new FakeSlackClient('hub');
+        slackClient = new SlackClientStub('hub');
     expect(rule.match(message, slackClient)).to.be.true;
     expect(slackClient.channelId).to.eql(message.item.channel);
   });
@@ -57,7 +57,7 @@ describe('Rule', function() {
   it('should ignore a message if its name does not match', function() {
     var configRule = makeConfigRule(),
         message = makeMessage(),
-        slackClient = new FakeSlackClient('hub'),
+        slackClient = new SlackClientStub('hub'),
         rule;
 
     configRule.reactionName = 'sad-face';
@@ -70,7 +70,7 @@ describe('Rule', function() {
   it('should match a message from any channel', function() {
     var rule = new Rule(makeConfigRule()),
         message = makeMessage(),
-        slackClient = new FakeSlackClient('hub');
+        slackClient = new SlackClientStub('hub');
 
     delete rule.channelNames;
     expect(rule.match(message, slackClient)).to.be.true;
@@ -80,7 +80,7 @@ describe('Rule', function() {
   it('should ignore a message if its channel doesn\'t match', function() {
     var rule = new Rule(makeConfigRule()),
         message = makeMessage(),
-        slackClient = new FakeSlackClient('not-the-hub');
+        slackClient = new SlackClientStub('not-the-hub');
 
     expect(rule.match(message, slackClient)).to.be.false;
     expect(slackClient.channelId).to.eql(message.item.channel);
