@@ -14,7 +14,7 @@ function FakeSlackClient(channelName) {
 
 FakeSlackClient.prototype.getChannelByID = function(channelId) {
   this.channelId = channelId;
-  return this.channelName;
+  return { name: this.channelName };
 };
 
 describe('Rule', function() {

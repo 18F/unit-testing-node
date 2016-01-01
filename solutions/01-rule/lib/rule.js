@@ -21,7 +21,8 @@ Rule.prototype.reactionMatches = function(message) {
 };
 
 Rule.prototype.channelMatches = function(message, slackClient) {
-  var channels = this.channelNames;
+  var channels = this.channelNames,
+      channelId = message.item.channel;
   return channels === undefined ||
-    channels.indexOf(slackClient.getChannelByID(message.item.channel)) !== -1;
+    channels.indexOf(slackClient.getChannelByID(channelId).name) !== -1;
 };

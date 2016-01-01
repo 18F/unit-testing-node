@@ -84,7 +84,7 @@ describe('Rule', function() {
 
 The first thing we want to do is to make sure that the `Rule` constructor
 builds a valid object without errors. We'll also need to import the Chai
-assetion framework. Update the top of the file to reflect the following
+assertion framework. Update the top of the file to reflect the following
 `require` statements:
 
 ```js
@@ -404,8 +404,9 @@ third option.
 
 However, since this is such a small example, we'll create our own stub for
 Slack client for now. This also helps to illustrate some of the concepts
-behind test stubs before we use a more complex library like sinon. Add this to
-the file before the `describe('Rule')` declaration:
+behind test stubs before we use a more complex library like
+[sinon](http://sinonjs.org/). Add this to the file before the
+`describe('Rule')` declaration:
 
 ```js
 function FakeSlackClient(channelName) {
@@ -414,13 +415,15 @@ function FakeSlackClient(channelName) {
 
 FakeSlackClient.prototype.getChannelByID = function(channelId) {
   this.channelId = channelId;
-  return this.channelName;
+  return { name: this.channelName };
 };
 ```
 
-This stub hardcodes the `channelName` that `getChannelByID` will return. It
-also records the `channelId` passed to the stub, so that we can validate the
-the argument passed by the code under test.
+This stub hardcodes the `channelName` that `getChannelByID` will return.
+The actual slack-client object returns a `Channel` instance that contains a
+`name` property, so we simulate that with a small JavaScript object.
+`FakeSlackClient` also records the `channelId` passed to the stub, so that we
+can validate the the argument passed by the code under test.
 
 ## Applying the `FakeSlackClient` stub to the test
 
