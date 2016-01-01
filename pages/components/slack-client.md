@@ -10,12 +10,13 @@ file.
 
 If you don't have experience writing HTTP calls and launching test servers,
 testing the `SlackClient` class is a great way to gain some experience. If
-you're looking for more of a challenge, run the following commands, then move
-on to the next chapter:
+you're looking for more of a challenge, then move on to the next chapter.
+
+If you've skipped to this chapter, you can establish the starting state of the
+`exercise/` files for this chapter by running:
 
 ```sh
-$ cp solutions/02-slack-client/lib/slack-client.js exercise/lib/slack-client.js
-$ cp solutions/02-slack-client/test/slack-client-test.js exercise/test/slack-client-test.js
+$ ./go set-slack-client
 ```
 
 ## What to expect

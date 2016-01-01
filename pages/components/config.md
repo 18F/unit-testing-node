@@ -12,11 +12,13 @@ and validate the contents. The example configuration file is
 If you're completely unfamiliar with unit testing, or unfamiliar with
 [Mocha](https://mochajs.org/) and [Chai](http://chaijs.com/), the `Config`
 class is a great object to get you acquainted. If you're looking for more of a
-challenge, run the following commands, then move on to the next chapter:
+challenge, move on to the next chapter.
+
+If you've skipped to this chapter, you can establish the starting state of the
+`exercise/` files for this chapter by running:
 
 ```sh
-$ cp solutions/00-config/lib/config.js exercise/lib/config.js
-$ cp solutions/00-config/test/config-test.js exercise/test/config-test.js
+$ ./go set-config
 ```
 
 ## What to expect

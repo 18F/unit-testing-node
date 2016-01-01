@@ -10,11 +10,13 @@ package](https://www.npmjs.com/package/slack-client). You can find it in the
 
 If you don't have experience writing or using test doubles, testing the `Rule`
 class is a great way to gain some experience. If you're looking for more of a
-challenge, run the following commands, then move on to the next chapter:
+challenge, then move on to the next chapter.
+
+If you've skipped to this chapter, you can establish the starting state of the
+`exercise/` files for this chapter by running:
 
 ```sh
-$ cp solutions/01-rule/lib/rule.js exercise/lib/rule.js
-$ cp solutions/01-rule/test/rule-test.js exercise/test/rule-test.js
+$ ./go set-rule
 ```
 
 ## What to expect

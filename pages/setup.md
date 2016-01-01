@@ -56,6 +56,16 @@ $ npm test
 [16:20:15] Finished 'test' after 37 ms
 ```
 
+## Create a working branch
+
+It is _strongly_ suggested you create a working branch. This way, you can
+checkpoint your work, compare it against the solution code, and generally
+avoid pushing unintended changes upstream (if you have push access):
+
+```sh
+$ git checkout -b my-working-branch
+```
+
 ## Offline viewing
 
 With this repository cloned to your local machine, you can view the website
