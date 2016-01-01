@@ -8,6 +8,8 @@ var jshint = require('gulp-jshint');
 var fs = require('fs');
 var path = require('path');
 
+var ROOT_DIR = process.cwd();
+
 require('coffee-script/register');
 
 function buildArgs(args) {
@@ -21,13 +23,18 @@ function buildArgs(args) {
   return args;
 }
 
-gulp.task('test', function() {
-  process.chdir('./exercise');
-  return gulp.src('./test/*.js', {read: false})
-    // Reporters:
-    // https://github.com/mochajs/mocha/blob/master/lib/reporters/index.js
-    .pipe(mocha(buildArgs({reporter: 'spec'})));
-});
+function makeTestTargetForDirectory(workDir) {
+  return function() {
+    process.chdir(path.join(ROOT_DIR, workDir));
+    return gulp.src('./test/*.js', {read: false})
+      // Reporters:
+      // https://github.com/mochajs/mocha/blob/master/lib/reporters/index.js
+      .pipe(mocha(buildArgs({reporter: 'spec'})));
+  };
+}
+
+gulp.task('test', makeTestTargetForDirectory('exercise'));
+gulp.task('test-init', makeTestTargetForDirectory('.exercise-init'));
 
 // Lifted from:
 // https://github.com/gulpjs/gulp/blob/master/docs/recipes/running-task-steps-per-folder.md
@@ -40,25 +47,21 @@ function getSubdirs(dir) {
 }
 
 function createTestSolutionsTasks() {
-  var rootDir = process.cwd(),
-      solutionDirs = getSubdirs('./solutions'),
+  var solutionDirs = getSubdirs(path.join(ROOT_DIR, 'solutions')),
       produceTask;
 
   produceTask = function(previousTarget, subdir) {
-    var taskLabel = 'test-solutions-' + subdir;
+    var taskLabel = 'test-solutions-' + subdir,
+        workDir = path.join('solutions', subdir);
 
-    gulp.task(taskLabel, previousTarget, function() {
-      process.chdir(path.join(rootDir, 'solutions', subdir));
-      return gulp.src('./**/test/*.js', {read: false})
-        .pipe(mocha(buildArgs({reporter: 'spec'})));
-    });
+    gulp.task(taskLabel, previousTarget, makeTestTargetForDirectory(workDir));
     return [taskLabel];
   };
 
-  return solutionDirs.reduce(produceTask, []);
+  return solutionDirs.reduce(produceTask, ['test-init']);
 }
 
-gulp.task('test-solutions', createTestSolutionsTasks());
+gulp.task('test-all', createTestSolutionsTasks());
 
 gulp.task('lint', function() {
   return gulp.src(['./exercise/**/*.js'])
@@ -67,7 +70,14 @@ gulp.task('lint', function() {
 });
 
 gulp.task('lint-all', function() {
-  return gulp.src(['**/*.js', '!node_modules/**', '!_site/**'])
+  var filePatterns = [
+    '**/*.js',
+    '.exercise-init/**/*.js',
+    '!node_modules/**',
+    '!_site/**',
+  ];
+
+  return gulp.src(filePatterns)
     .pipe(jshint())
     .pipe(jshint.reporter('default'));
 });

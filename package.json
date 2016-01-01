@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "gulp test",
-    "test-solutions": "gulp test-solutions",
+    "test-all": "gulp test-all",
     "lint": "gulp lint",
     "lint-all": "gulp lint-all"
   },
