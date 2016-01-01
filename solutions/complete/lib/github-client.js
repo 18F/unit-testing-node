@@ -3,7 +3,7 @@
 
 var http = require('http');
 var https = require('https');
-var packageInfo = require('../../../package.json');
+var packageInfo = require('../package.json');
 
 module.exports = GitHubClient;
 

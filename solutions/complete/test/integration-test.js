@@ -6,7 +6,7 @@
 var Helper = require('hubot-test-helper');
 var scriptHelper = new Helper('../scripts/slack-github-issues.js');
 
-var scriptName = require('../../../package.json').name;
+var scriptName = require('../package.json').name;
 var helpers = require('./helpers');
 var testConfig = require('./helpers/test-config.json');
 var LogHelper = require('./helpers/log-helper');

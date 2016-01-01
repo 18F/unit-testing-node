@@ -3,7 +3,7 @@
 'use strict';
 
 var SlackClient = require('../../lib/slack-client');
-var scriptName = require('../../../../package.json').name;
+var scriptName = require('../../package.json').name;
 var testConfig = require('./test-config.json');
 var Hubot = require('hubot');
 var SlackBot = require('hubot-slack');

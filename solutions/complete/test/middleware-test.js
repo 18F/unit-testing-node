@@ -5,7 +5,7 @@
 'use strict';
 
 var Middleware = require('../lib/middleware');
-var scriptName = require('../../../package.json').name;
+var scriptName = require('../package.json').name;
 var GitHubClient = require('../lib/github-client');
 var SlackClient = require('../lib/slack-client');
 var helpers = require('./helpers');
