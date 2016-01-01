@@ -38,10 +38,10 @@ class](https://sourcemaking.com/design_patterns/facade).
 
 This serves multiple purposes:
 
-- When the upstream interface changes, only this class should require any
-  changes.
 - All uses of the external dependency are documented via the methods on the
   facade.
+- When the upstream interface changes, only this class should require any
+  changes, minimizing the cost and risk of upgrades.
 - We can use [dependency injection]({{ site.baseurl }}/concepts/dependency-injection/)
   in our tests _to model and control_ the external behavior.
 
@@ -53,17 +53,18 @@ wrappers for the Slack Web API, but we will write our own code in this case to
 required is relatively small and straightforward, it also provides a good
 example of _how_ to write and test web API wrappers.
 
-## Introducing the `SlackClient`
+## Starting to build `SlackClient`
 
-For now, we're going to implement a very thin [facade
-class](https://sourcemaking.com/design_patterns/facade) over the Slack
-interface that we will call `SlackClient`. We will explore this class in-depth
-and flesh it out further in the next chapter. But for now, let's copy this
+We'll start by defining a very thin wrapper over the Slack interface that we
+used in the [`Rule` class]({{ site.baseurl }}/components/rule/). Copy this
 implementation into `exercise/lib/slack-client.js`:
 
 ```js
 /* jshint node: true */
+
 'use strict';
+
+module.exports = SlackClient;
 
 function SlackClient(robotSlackClient) {
   this.client = robotSlackClient;
@@ -75,63 +76,173 @@ SlackClient.prototype.getChannelName = function(channelId) {
 ```
 
 As the parameter name would suggest, `robotSlackClient` would be the real
-client object that we receive from the live Hubot instance. It has a method
-called `getChannelByID` that does exactly what we need to do to make
-`channelMatches()` work.
+client object that we receive from the live Hubot instance. We're wrapping
+`getChannelByID()`, which is the method required to implement
+`Rule.channelMatches()`. What's more, we're encapsulating the fact that all
+that is required from the `Channel` object returned by the method is its
+`name` property.
 
-## Judgment call
+## Refactoring `Rule.channelMatches()`
 
-Again, we could create a stub for this `SlackClient` class to use in our
-`Rule` test. However, since the class is so small and straightforward, we will
-instead stub the `robotSlackClient` object on which it depends. This increases
-the amount of internal code exercised by the test, when we usually want to
-decrease it at the unit level.
+This facade is so thin that there's little use in writing tests directly for
+it at this point. Instead, let's replace the direct use of the `slack-client`
+interface in our `Rule` class with a call to `SlackClient.getChannelName()`.
+This will both exercise the facade and ensure the `Rule` class is using it
+properly.
 
-However, given how thin the facade is, exercising this code in the `Rule` test
-introduces no extra dependencies and costs very little. Test doubles should
-help to strike the right balance between complexity of test setup and
-confidence that enough code is exercised by each test. Don't use them if you
-don't have to, but don't hold back when you need them.
-
-However, we _do_ still need to create a stub for this `robotSlackClient`.
-
-## Introducing `FakeSlackClientImpl`
-
-In contrast to the `SlackClient` class, we're actually going to use some real
-production objects to implement the `FakeSlackClientImpl` class. Since we'll
-reuse it and build it up further throughout the exercise, start by creating
-the `exercise/test/helpers/fake-slack-client-impl.js` file:
+We'll start by updating our `Rule` test to instantiate a `SlackClient`,
+passing the Slack client stub to the `SlackClient` constructor. Start by
+adding the following line to the `require()` block at the top of the file:
 
 ```js
-/* jshint node: true */
-
-'use strict';
-
-var Channel = require('slack-client/src/channel');
-
-module.exports = FakeSlackClientImpl;
-
-function FakeSlackClientImpl(channelName) {
-  this.channelName = channelName;
-}
-
-FakeSlackClientImpl.prototype.getChannelByID = function(channelId) {
-  this.channelId = channelId;
-  // https://api.slack.com/types/channel
-  return new Channel(this,
-    { id: channelId, name: this.channelName, 'is_channel': true });
-};
+var SlackClient = require('../lib/slack-client');
 ```
 
-Notice that we're depending on the _actual_ `Channel` implementation from the
-`slack-client` package. This class encapsulates data that we need to access
-via our `SlackClient` facade; it does not have any complex behavior or
-dependencies. By tying our `FakeSlackClientImpl` to actual external
-implementation classes, we retain confidence that our fake is a suitable
-facsimile for the real thing. Also, it will _only_ be used to instantiate
-_SlackClient_ classes in our tests.
+Then let's rename `SlackClientStub` to `SlackClientImplStub`. This is to make
+clear that the fake object is for the actual implementation object, not for
+our `SlackClient` facade. You should be able to use your editor's global
+search and replace function for this; then run the tests to ensure everything
+passes.
 
-## A more controlled upgrade path
+In the same fashion, update every test from this:
+
+```js
+        slackClient = new SlackClientImplStub('...')
+```
+
+to this:
+
+```js
+        slackClientImpl = new SlackClientImplStub('...')
+```
+
+Run the tests again. Everywhere `new SlackClientImplStub()` is called, add a
+new declaration after it:
+
+```js
+        slackClient = new SlackClient(slackClientImpl);
+```
+
+Ensure the tests still pass. Now, change every `rule.match()` call from:
+
+```js
+        expect(rule.match(message, slackClientImpl))
+```
+
+to:
+
+```js
+        expect(rule.match(message, slackClient))
+```
+
+Now when you run the tests, you should see the following failures:
+
+```sh
+$ npm test -- --grep '^Rule '
+
+> 18f-unit-testing-node@0.0.0 test .../unit-testing-node
+> gulp test "--grep" "^Rule "
+
+[14:02:27] Using gulpfile .../unit-testing-node/gulpfile.js
+[14:02:27] Starting 'test'...
+
+
+  Rule
+    ✓ should contain all the fields from the configuration
+    1) should match a message from one of the channelNames
+    ✓ should ignore a message if its name does not match
+    ✓ should match a message from any channel
+    2) should ignore a message if its channel doesn't match
+
+
+  3 passing (10ms)
+  2 failing
+
+  1) Rule should match a message from one of the channelNames:
+     TypeError: slackClient.getChannelByID is not a function
+    at Rule.channelMatches (exercise/lib/rule.js:26:34)
+    at Rule.match (exercise/lib/rule.js:16:10)
+    at Context.<anonymous> (exercise/test/rule-test.js:55:17)
+
+
+  2) Rule should ignore a message if its channel doesn't match:
+     TypeError: slackClient.getChannelByID is not a function
+    at Rule.channelMatches (exercise/lib/rule.js:26:34)
+    at Rule.match (exercise/lib/rule.js:16:10)
+    at Context.<anonymous> (exercise/test/rule-test.js:90:17)
+
+
+
+
+[14:02:27] 'test' errored after 66 ms
+[14:02:27] Error in plugin 'gulp-mocha'
+Message:
+    2 tests failed.
+npm ERR! Test failed.  See above for more details.
+```
+
+This is good news! The tests that actually exercise the call to
+`getChannelByID()` fail as they should. Now update the `Rule.channelMatches()`
+implementation to use the new `getChannelName()` method of the `SlackClient`
+facade. Run the tests and ensure that they now pass.
+
+## Gaining a little extra confidence in `SlackClient`
+
+We've done a good job of testing the `Rule` class in complete isolation from
+the `slack-client` library. However, there's an opportunity to gain a little
+extra confidence that our `SlackClient` is conforming to the correct interface.
+We'll do so by updating `SlackClientImplStub.getChannelByID()` to use an
+_actual_ instance of `Channel` from the `slack-client` package.
+
+The real `Channel` implementation encapsulates data that we need to access via
+our `SlackClient` facade. It does not have any complex behavior or
+dependencies. By tying our `SlackClientImplStub` to an actual external
+implementation class, we gain confidence that our fake is a suitable facsimile
+for the real thing. Also, it will _only_ be used to instantiate `SlackClient`
+classes in our tests; the code under test is not affected at all.
+
+Start by adding the following line to the top of the test file:
+
+```js
+var Channel = require('slack-client/src/channel');
+```
+
+Notice that you can inspect the actual implementation of this class by opening
+`node_modules/slack-client/src/channel.js`. This module is actually written in
+CoffeeScript, and is compiled to JavaScript upon publishing the npm. You can
+inspect the original code at
+[https://github.com/slackhq/node-slack-client](https://github.com/slackhq/node-slack-client)
+in the `src/channel.coffee` file.
+
+Now update `SlackClientImplStub.getChannelByID()` to return:
+
+```js
+  return new Channel(this, { name: this.channelName });
+```
+
+Run the tests again to ensure that they continue to pass.
+
+## To isolate or not to isolate?
+
+We could test `SlackClient.getChannelName()` in isolation, using the
+`SlackClientImplStub`, then create a stub for our new `SlackClient` class to
+use in our `Rule` test. However, since `SlackClient` is so small and
+straightforward, testing its behavior via the `Rule` tests proves highly
+convenient. We gain that one extra bit of confidence that we will catch
+incompatible `Channel` interface changes, without having to add a new test.
+
+This does increase the amount of internal code exercised by the test, when we
+usually want to decrease it at the unit level. We've also added a _real_
+dependency on the `Channel` class from the `slack-client` package. Still,
+given how thin the facade is, exercising this code in the `Rule` test
+introduces minimal extra dependencies that cost very little. It also expands
+the scope of the test only very, very slightly.
+
+Consequently, adding an extra test and test double when the existing
+`SlackClientImplStub` and `Rule` tests suffice seems of dubious benefit. Test
+doubles should help to strike the right balance between complexity of test
+setup and confidence that enough code is exercised by each test. Don't hold
+back when you need them, but don't use them if you don't have to.
 
 ## Testing
 
