@@ -76,6 +76,9 @@ navigation:
 - text: Testing system integration
   url: testing-system-integration/
   internal: true
+- text: Tools and automation
+  url: tools-and-automation/
+  internal: true
 - text: Conclusion
   url: conclusion/
   internal: true
