@@ -61,6 +61,11 @@ function Config(configuration) {
 }
 ```
 
+_Note_: Every JavaScript file in this application will begin with
+[jshint option directives](http://jshint.com/docs/options/)
+and the
+['use strict' directive](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Strict_mode).
+
 When the `Config` object is constructed, it takes configuration data either as
 a parameter or it gets the path from an environment variable. It then assigns
 every property from the `config` object to itself. The
