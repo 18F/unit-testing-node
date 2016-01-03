@@ -44,5 +44,46 @@ function makeApiCall(that, method, params) {
   var requestFactory = (that.protocol === 'https:') ? https : http;
 
   return new Promise(function(resolve, reject) {
+    var httpOptions, req;
+
+    params.token = process.env.HUBOT_SLACK_TOKEN;
+    httpOptions = getHttpOptions(that, method, params);
+
+    req = requestFactory.request(httpOptions, function(res) {
+      handleResponse(method, res, resolve, reject);
+    });
+
+    req.setTimeout(that.timeout);
+    req.on('error', function(err) {
+      reject(new Error('failed to make Slack API request for method ' +
+        method + ': ' + err.message));
+    });
+    req.end();
+  });
+}
+
+function handleResponse(method, res, resolve, reject) {
+  var result = '';
+
+  res.setEncoding('utf8');
+  res.on('data', function(chunk) {
+    result = result + chunk;
+  });
+  res.on('end', function() {
+    var parsed;
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      parsed = JSON.parse(result);
+
+      if (parsed.ok) {
+        resolve(parsed);
+      } else {
+        reject(new Error('Slack API method ' + method + ' failed: ' +
+          parsed.error));
+      }
+    } else {
+      reject(new Error('received ' + res.statusCode +
+        ' response from Slack API method ' + method + ': ' + result));
+    }
   });
 }

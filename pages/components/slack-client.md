@@ -309,8 +309,8 @@ first thing to realize about the two calls are their similarities:
   will be `true` on success. When `ok:` is `false`, there will be an `error:`
   property describing the problem.
 - Even when `ok:` is `false`, the [HTTP status
-  code](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html) will still be
-  `200 OK`.
+  code](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2.1) will
+  still be `200 OK`.
 
 Given the similarity between the calls, the corresponding `getReactions()` and
 `addSuccessReaction()` methods we'll add to the `SlackClient` will make use of
@@ -474,6 +474,8 @@ line of `makeApiCall`:
 ```js
 function makeApiCall(that, method, params) {
   var requestFactory = (that.protocol === 'https:') ? https : http;
+
+  // We'll continue with the rest of the implementation here shortly.
 }
 ```
 
@@ -495,11 +497,197 @@ function makeApiCall(that, method, params) {
   var requestFactory = (that.protocol === 'https:') ? https : http;
 
   return new Promise(function(resolve, reject) {
+    // We'll fill in the actual request implementation here shortly.
   });
 }
 ```
 
-## Testing
+The function passed to the `Promise` constructor takes two callbacks as
+parameters:
+
+- `resolve`: called when the `Promise` completes its work successfully,
+  possibly with arguments
+- `reject`: called when the `Promise` fails to complete its work, usually
+  with an [`Error`](https://nodejs.org/api/errors.html) argument
+
+## Making the HTTP request
+
+Let's begin filling in the implementation of the `Promise` to make our HTTP
+(or HTTPS) request:
+
+```js
+  return new Promise(function(resolve, reject) {
+    var httpOptions, req;
+
+    params.token = process.env.HUBOT_SLACK_TOKEN;
+    httpOptions = getHttpOptions(that, method, params);
+
+    req = requestFactory.request(httpOptions, function(res) {
+      handleResponse(method, res, resolve, reject);
+    });
+
+    // We'll add the rest of the request handling here shortly.
+  };
+```
+
+A few things to notice about this new block of code:
+
+- We're adding a `token` property to the parameters passed in by the calling
+  function. This is what grants us permission to the Slack API, automatically
+  added here to every request. The value comes from the `HUBOT_SLACK_TOKEN`
+  environment variable, accessible via
+  [`process.env`](https://nodejs.org/api/process.html#process_process_env).
+- Using `that` ensures that we're accessing our `SlackClient` instance, since
+  `this` in this context is the `makeApiCall` function itself.
+- `requestFactory` will dispatch to either `http.request()` or
+  `https.request()`. The polymorphism afforded by the earlier assignment to
+  `requestFactory` avoids the need for a conditional here, making the
+  algorithm easier to follow. This is related to the
+  [replace conditional with polymorphism refactoring](http://refactoring.com/catalog/replaceConditionalWithPolymorphism.html),
+  except we started with polymorphism instead of refactoring the conditional
+  away.
+- We're passing a callback to `requestFactory.request()` that
+  delegates to a function we've yet to write, `handleResponse`. This function
+  will have access to the `resolve` and `reject` callbacks passed to the
+  outer `Promise` callback.
+
+## `Promise` gotcha #0: not calling `resolve` or `reject`
+
+The first thing to remember about `Promises` is that you _must_ call one of
+`resolve` or `reject` in order to conclude the process. These are analogous to
+`return` or `throw`, respectively. The `Promise` will happily run to
+completion if you do `return` or `throw`, but the code waiting on the
+`Promise` will never see the result.
+
+A less-than-perfect analogy (since Node.js is single threaded) is to think of
+a `Promise` as a new thread, and `resolve` and `reject` the synchronization
+mechanisms. As we see with the call to `handleResponse`, these callbacks can
+be delegated to other functions as arguments. The code launching the `Promise`
+doesn't care when `resolve` or `reject` is called, or by what, only that
+they're called so the process can resume.
+
+## Finishing the HTTP request
+
+We've got just a tiny bit more to do to complete our HTTP(S) request. Add the
+following to finish the `Promise` function:
+
+```js
+    req.setTimeout(that.timeout);
+    req.on('error', function(err) {
+      reject(new Error('failed to make Slack API request for method ' +
+        method + ': ' + err.message));
+    });
+    req.end();
+```
+
+`req` is a
+[http.ClientRequest](https://nodejs.org/api/http.html#http_class_http_clientrequest),
+which implements the
+[`WritableStream` interface](https://nodejs.org/api/stream.html#stream_class_stream_writable),
+itself derived from
+[`EventEmitter`](https://nodejs.org/api/events.html#events_class_events_eventemitter).
+Here we're setting a timeout (in milliseconds) defined by our `Config`
+instance. Then we set up an error handler in case the request never reaches the
+server, or the response never arrives prior to `that.timeout`. Notice that
+this handler creates an `Error` object and passes it as an argument to the
+`Promise` function's `reject`callback. Finally, we send the request with
+`req.end()`.
+
+## Delegating to `handleResponse`
+
+All that's left now is to implement the `handleResponse` delegate. Let's start
+by adding this to our module:
+
+```js
+function handleResponse(method, res, resolve, reject) {
+  var result = '';
+
+  res.setEncoding('utf8');
+  res.on('data', function(chunk) {
+    result = result + chunk;
+  });
+  res.on('end', function() {
+    // We'll fill this in shortly.
+  });
+}
+```
+
+The `res` parameter is an instance of
+[http.ServerResponse](https://nodejs.org/api/http.html#http_class_http_serverresponse), also a `WritableStream`.
+The
+[`setEncoding` method](https://nodejs.org/api/stream.html#stream_readable_setencoding_encoding)
+comes from `WritableStream` ensures each chunk of the JSON payload is passed as a UTF-8 string to the
+[`'data'` event](https://nodejs.org/api/stream.html#stream_event_data).
+The `'data'` event handler builds up our `result` string a piece at a time.
+
+## Handling the completed HTTP response
+
+The `'end'` event happens when we've finished receiving the entire server
+response. This is the last piece we need to finish the `SlackClient`:
+
+```js
+  res.on('end', function() {
+    var parsed;
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      parsed = JSON.parse(result);
+
+      if (parsed.ok) {
+        resolve(parsed);
+      } else {
+        reject(new Error('Slack API method ' + method + ' failed: ' +
+          parsed.error));
+      }
+    } else {
+      reject(new Error('received ' + res.statusCode +
+        ' response from Slack API method ' + method + ': ' + result));
+    }
+  });
+```
+
+A few things to notice about this handler:
+
+- We _only_ accept [200 class HTTP status
+  codes](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2). In
+  practice, it should always be 200, but it shouldn't hurt to be slightly
+  flexible here.
+- If the status code isn't in the 200 class, we call `reject` with an `Error`
+  that contains the unparsed body of the request.
+- We have to call
+  [`JSON.parse()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/parse)
+  on the body, then inspect the `ok:` parameter of the result to determine
+  success or failure of the request.
+- If `ok:` is `true`, we pass the parsed object to `resolve`. Otherwise we
+  pass a new `Error` to `reject` containing the parsed object's `error:`
+  message.
+
+## Testing the API interaction with a local HTTP server
+
+Now for the moment of truth! First, run `npm test` to ensure all the tests
+still pass. (`npm run lint` would be a good idea, too.) Now run just the
+`SlackClient` tests:
+
+```sh
+$ npm test -- --grep '^SlackClient '
+
+> 18f-unit-testing-node@0.0.0 test .../unit-testing-node
+> gulp test "--grep" "^SlackClient "
+
+[13:46:11] Using gulpfile .../unit-testing-node/gulpfile.js
+[13:46:11] Starting 'test'...
+
+
+  SlackClient
+    getReactions
+      ✓ should make a successful request
+
+
+  1 passing (5ms)
+
+[13:46:11] Finished 'test' after 91 ms
+```
+
+## `Promise` gotcha #1: not returning the `Promise`
 
 ## Rolling our own until we upgrade
 
