@@ -95,6 +95,9 @@ navigation:
   - text: Exploration, vision, and settlement
     url: exploration-vision-and-settlement/
     internal: true
+  - text: Forking and contributing upstream
+    url: forking-and-contributing-upstream/
+    internal: true
   - text: Minimizing dependencies
     url: minimizing-dependencies/
     internal: true

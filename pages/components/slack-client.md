@@ -479,7 +479,7 @@ function makeApiCall(that, method, params) {
 
 ## Promises, Promises
 
-[`Promise`s](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
+[`Promises`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
 represent asynchronous operations that will either _resolve_ to a value or be
 _rejected_ with an error. A series of `Promise` objects may be chained
 together to execute asynchronous operations in a way that resembles a series
@@ -500,6 +500,19 @@ function makeApiCall(that, method, params) {
 ```
 
 ## Testing
+
+## Rolling our own until we upgrade
+
+As mentioned at the beginning of this chapter, most of what we've written here
+may be replaced eventually by methods added to slack-client and hubot-slack.
+It's also possible we could've added support directly to these official
+packages first, since the code for both is open source.
+
+Even so, the important thing is that our use of these external interfaces is
+largely contained within this single module. Read the
+[forking and contributing upstream]({{ site.baseurl }}/concepts/forking-and-contributing-upstream/)
+chapter for a more thorough discussion of the factors regarding the decision
+to write `SlackClient` this way.
 
 ## Check your work
 

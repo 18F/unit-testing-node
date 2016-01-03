@@ -12,6 +12,17 @@ tested at every step.
 
 ## Forking npm packages to add `reaction_added` support
 
+The core feature of the application is processing `reaction_added` messages.
+However, at the time we wrote the first version of the application, neither
+the slack-client nor the hubot-slack packages supported this message type.
+Fortunately, since both are open source and published on GitHub, we could work
+around the problem by forking the packages and adding rudimentary
+`reaction_added` support.
+
+See the
+[forking and contributing upstream]({{ site.baseurl }}/concepts/forking-and-contributing-upstream)
+chapter for all of the details.
+
 ## Unexpected API
 
 Once the initial version was launched, new insights prompted significant
