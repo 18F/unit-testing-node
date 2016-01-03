@@ -7,6 +7,7 @@
 var Rule = require('../lib/rule');
 var SlackClient = require('../lib/slack-client');
 var Channel = require('slack-client/src/channel');
+var config = require('./helpers/test-config.json');
 var chai = require('chai');
 var expect = chai.expect;
 
@@ -52,7 +53,7 @@ describe('Rule', function() {
     var rule = new Rule(makeConfigRule()),
         message = makeMessage(),
         slackClientImpl = new SlackClientImplStub('hub'),
-        slackClient = new SlackClient(slackClientImpl);
+        slackClient = new SlackClient(slackClientImpl, config);
     expect(rule.match(message, slackClient)).to.be.true;
     expect(slackClientImpl.channelId).to.eql(message.item.channel);
   });
@@ -61,7 +62,7 @@ describe('Rule', function() {
     var configRule = makeConfigRule(),
         message = makeMessage(),
         slackClientImpl = new SlackClientImplStub('hub'),
-        slackClient = new SlackClient(slackClientImpl),
+        slackClient = new SlackClient(slackClientImpl, config),
         rule;
 
     configRule.reactionName = 'sad-face';
@@ -75,7 +76,7 @@ describe('Rule', function() {
     var rule = new Rule(makeConfigRule()),
         message = makeMessage(),
         slackClientImpl = new SlackClientImplStub('hub'),
-        slackClient = new SlackClient(slackClientImpl);
+        slackClient = new SlackClient(slackClientImpl, config);
 
     delete rule.channelNames;
     expect(rule.match(message, slackClient)).to.be.true;
@@ -86,7 +87,7 @@ describe('Rule', function() {
     var rule = new Rule(makeConfigRule()),
         message = makeMessage(),
         slackClientImpl = new SlackClientImplStub('not-the-hub'),
-        slackClient = new SlackClient(slackClientImpl);
+        slackClient = new SlackClient(slackClientImpl, config);
 
     expect(rule.match(message, slackClient)).to.be.false;
     expect(slackClientImpl.channelId).to.eql(message.item.channel);

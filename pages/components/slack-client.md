@@ -52,7 +52,14 @@ We will also add methods to use the Slack Web API methods
 wrappers for the Slack Web API, but we will write our own code in this case to
 [minimize dependencies](/concepts/minimizing-dependencies/). Since the code
 required is relatively small and straightforward, it also provides a good
-example of _how_ to write and test web API wrappers.
+example of _how_ to write and test web API wrappers. We will learn to:
+
+- manage HTTP bookkeeping
+- learn the basics of using a
+  [`Promise`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
+  to encapsulate an asynchronous operation
+- learn how to test HTTP requests by launching a local HTTP test server
+- learn how to use Promises with mocha and chai
 
 ## Starting to build `SlackClient`
 
@@ -94,7 +101,8 @@ properly.
 
 We'll start by updating our `Rule` test to instantiate a `SlackClient`,
 passing the Slack client stub to the `SlackClient` constructor. Start by
-adding the following line to the `require()` block at the top of the file:
+adding the following line to the `require()` block at the top of
+`exercise/test/rule-test.js`:
 
 ```js
 var SlackClient = require('../lib/slack-client');
@@ -104,7 +112,30 @@ Then let's rename `SlackClientStub` to `SlackClientImplStub`. This is to make
 clear that the fake object is for the actual implementation object, not for
 our `SlackClient` facade. You should be able to use your editor's global
 search and replace function for this; then run the tests to ensure everything
-passes.
+passes. Again, to run just the `Rule` tests:
+
+```sh
+$ npm test -- --grep '^Rule '
+
+> 18f-unit-testing-node@0.0.0 test .../unit-testing-node
+> gulp test "--grep" "^Rule "
+
+[19:38:39] Using gulpfile .../unit-testing-node/gulpfile.js
+[19:38:39] Starting 'test'...
+
+
+  Rule
+    ✓ should contain all the fields from the configuration
+    ✓ should match a message from one of the channelNames
+    ✓ should ignore a message if its name does not match
+    ✓ should match a message from any channel
+    ✓ should ignore a message if its channel doesn't match
+
+
+  5 passing (7ms)
+
+[19:38:39] Finished 'test' after 73 ms
+```
 
 In the same fashion, update every test from this:
 
@@ -224,7 +255,7 @@ Now update `SlackClientImplStub.getChannelByID()` to return:
 
 Run the tests again to ensure that they continue to pass.
 
-## To isolate or not to isolate?
+## <a name="to-isolate-or-not"></a>To isolate or not to isolate?
 
 We could test `SlackClient.getChannelName()` in isolation, using the
 `SlackClientImplStub`, then create a stub for our new `SlackClient` class to
@@ -246,9 +277,229 @@ doubles should help to strike the right balance between complexity of test
 setup and confidence that enough code is exercised by each test. Don't hold
 back when you need them, but don't use them if you don't have to.
 
+## The difference between a tutorial and the real thing
+
+At this point, we could begin writing and testing our `Middleware` class to
+pull these three early pieces together, before implementing the Slack API
+business. In fact, you're welcome to begin doing so right now if you like.
+When developing a program for real, it's not only perfectly OK to jump back
+and forth between different pieces, it's actually quite normal.
+
+However, for the sake of narrative clarity, we'll continue tackling this
+program one class at a time. Even though the actual application was originally
+developed in a fairly disjoint fashion, this linear presentation of ideas
+should prove easier to follow.
+
+## Designing the Slack Web API interface
+
+Now we're going to add some real, nontrivial behavior to our `SlackClient`
+class to implement the Slack Web API calls to
+[`reactions.get`](https://api.slack.com/methods/reactions.get) and
+[`reactions.add`](https://api.slack.com/methods/reactions.add). However, the
+first thing to realize about the two calls are their similarities:
+
+- Both will use the HTTP GET method. (The [Slack Web API calling
+  conventions](https://api.slack.com/web) imply that POST is also an option,
+  but we'll stick to GET.)
+- Both have three parameters in common: `token`, which is the Slack user's API
+  token from `process.env.HUBOT_SLACK_TOKEN`; and `channel` and `timestamp`,
+  which uniquely identify a message. `reactions.add` will add the `name`
+  parameter to indicate which emoji reaction to add to the specified message.
+- Both HTTP methods will return a JSON payload with an `ok:` property which
+  will be `true` on success. When `ok:` is `false`, there will be an `error:`
+  property describing the problem.
+- Even when `ok:` is `false`, the [HTTP status
+  code](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html) will still be
+  `200 OK`.
+
+Given the similarity between the calls, the corresponding `getReactions()` and
+`addSuccessReaction()` methods we'll add to the `SlackClient` will make use of
+the same underlying API functions. They will both pass in objects that will
+comprise the request query string parameters, and both return the JSON payload
+parsed from the HTTP response.
+
+In fact, let's sketch out these methods now:
+
+```js
+SlackClient.prototype.getReactions = function(channel, timestamp) {
+  return makeApiCall(this, 'reactions.get',
+    { channel: channel, timestamp: timestamp });
+};
+
+SlackClient.prototype.addSuccessReaction = function(channel, timestamp) {
+  return makeApiCall(this, 'reactions.add',
+    { channel: channel, timestamp: timestamp, name: this.successReaction });
+};
+
+function makeApiCall(that, method, params) {
+}
+```
+
+Note that `makeApiCall` is not a member of `SlackClient`, and that its first
+parameter, `that`, is actually the `this` reference from the `SlackClient`
+methods. This is because `makeApiCall` is going to launch an asynchronous HTTP
+request, and [`this` is redefined for callback functions defined inside other
+functions](http://javascript.crockford.com/private.html). Translating `this`
+to `that` here sidesteps the problem, and having `makeApiCall` private to the
+module keeps the `SlackClient` interface narrow.
+
+## Passing `Config` values to the `SlackClient`
+
+You may recall the `slackTimeout` and `successReaction` properties from the
+`Config` class's schema. To gain access to them, let's add a `config`
+parameter to the `SlackClient` constructor:
+
+```js
+function SlackClient(robotSlackClient, config) {
+  this.client = robotSlackClient;
+  this.timeout = config.slackTimeout;
+  this.successReaction = config.successReaction;
+}
+```
+
+## To default, or not to default?
+
+If you run the `Rule` tests now, most will fail because there is no `config`
+value defined for any of the `SlackClient` constructors. The easy way to get
+the tests to pass again would be to add this is the first line of the
+`SlackClient`:
+
+```js
+  config = config || {};
+```
+
+Try it; it works. However, we now run the danger of creating `SlackClient`
+objects that don't have data we think they should have. Both `slackTimeout`
+and `successReaction` are required fields of the `Config` schema. Even if
+`Rule` behavior isn't depending on any `Config`-defined `SlackClient` behavior
+now, that may not always be the case.
+
+It's better to allow this code to fail when `config` is undefined than to take
+a shortcut to get the tests to pass. If the `Rule` tests become brittle due to
+configurable `SlackClient` behavior, we may revisit [whether or not to use a
+test double](#to-isolate-or-not) for `SlackClient` itself.
+
+However, since the `Rule` tests _currently_ don't depend on any configurable
+behavior, we can take a _slight_ shortcut and import the `test-config.json`
+file directly:
+
+```js
+var config = require('./helpers/test-config.json');
+```
+
+Then update all of these calls:
+
+```js
+        slackClient = new SlackClient(slackClientImpl)
+```
+
+to this:
+
+```js
+        slackClient = new SlackClient(slackClientImpl, config)
+```
+
+Now run the `Rule` tests to confirm they all pass.
+
+## HTTP request bookkeeping
+
+Node.js fortunately has all the HTTP and HTTPS support we need in these
+standard library modules:
+
+- [http](https://nodejs.org/api/http.html)
+- [https](https://nodejs.org/api/https.html)
+- [querystring](https://nodejs.org/api/querystring.html)
+
+So let's start by adding the following `require` statements to the top of the
+file:
+
+```js
+var http = require('http');
+var https = require('https');
+var querystring = require('querystring');
+```
+
+There's actually two more properties we need to add to the `SlackClient`
+object. In the tests we're about to write, we'll want to send requests to
+`http://localhost`. In production, however, the `SlackClient` needs to send
+requests to `https://slack.com/api/`. Let's encode the production defaults by
+adding the following to the constructor:
+
+```
+  this.protocol = 'https:';
+  this.host = 'slack.com';
+```
+
+For our purposes, the `options` argument of both
+[`http.request()`](https://nodejs.org/api/http.html#http_http_request_options_callback) and
+[`https.request()`](https://nodejs.org/api/https.html#https_https_request_options_callback)
+are identical. So let's add a utility function to compose options from a
+`SlackClient` instance, the Slack Web API method name, and the API method
+parameters:
+
+```js
+function getHttpOptions(that, method, queryParams) {
+  return {
+    protocol: that.protocol,
+    host: that.host,
+    port: that.port,
+    path: '/api/' + method + '?' + querystring.stringify(queryParams),
+    method: 'GET'
+  };
+}
+```
+
+Note the addition of `port: that.port`. When `port:` is undefined, the request
+uses the default port for HTTP (80) or HTTPS(443). In our tests, we will
+launch a local HTTP server with a dynamically-assigned port. We'll assign this
+port value as a property of the `SlackClient` instance under test. In
+`getHttpOptions`, that dynamic port value will then propagate to this options
+object.
+
+## HTTP vs. HTTPS
+
+One more detail until we get to the meat of making our API request: Switching
+between HTTP in our tests and HTTPS in production. Recall that we imported
+both the `http` and `https` modules from the Node.js standard library.
+Recall that both have a `request` function that accepts the same set of HTTP
+options that we will build using `getHttpOptions()`. Also recall that we
+assigned the default value `this.protocol = 'https:'` in the `SlackClient`
+constructor.
+
+In our tests, we will assign `http:` to the `protocol` property of a
+`SlackClient` instance under test. So to ensure we're using the correct
+library in either our test or in production, add the following as the first
+line of `makeApiCall`:
+
+```js
+function makeApiCall(that, method, params) {
+  var requestFactory = (that.protocol === 'https:') ? https : http;
+}
+```
+
+## Promises, Promises
+
+[`Promise`s](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
+represent asynchronous operations that will either _resolve_ to a value or be
+_rejected_ with an error. A series of `Promise` objects may be chained
+together to execute asynchronous operations in a way that resembles a series
+of synchronous function calls. Plus, a single error handler can catch errors
+arising from any link in the `Promise` chain.
+
+Naturally, `Promise`s are a great fit for making a HTTP requests, and
+especially a series of HTTP requests. Let's start fleshing out `makeApiCall`
+by returning a `Promise`:
+
+```js
+function makeApiCall(that, method, params) {
+  var requestFactory = (that.protocol === 'https:') ? https : http;
+
+  return new Promise(function(resolve, reject) {
+  });
+}
+```
+
 ## Testing
-
-
 
 ## Check your work
 
