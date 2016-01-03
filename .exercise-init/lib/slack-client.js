@@ -2,6 +2,8 @@
 
 'use strict';
 
+module.exports = SlackClient;
+
 function SlackClient(robotSlackClient) {
   this.client = robotSlackClient;
 }
