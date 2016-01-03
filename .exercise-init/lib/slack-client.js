@@ -1,4 +1,5 @@
 /* jshint node: true */
+
 'use strict';
 
 function SlackClient(robotSlackClient) {

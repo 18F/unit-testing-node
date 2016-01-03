@@ -56,9 +56,8 @@ example of _how_ to write and test web API wrappers.
 
 ## Starting to build `SlackClient`
 
-We'll start by defining a very thin wrapper over the Slack interface that we
-used in the [`Rule` class]({{ site.baseurl }}/components/rule/). Copy this
-implementation into `exercise/lib/slack-client.js`:
+The beginning of the `slack-client.js` file, where the `SlackClient`
+constructor is defined, looks like this:
 
 ```js
 /* jshint node: true */
@@ -76,8 +75,10 @@ SlackClient.prototype.getChannelName = function(channelId) {
 };
 ```
 
-As the parameter name would suggest, `robotSlackClient` would be the real
-client object that we receive from the live Hubot instance. We're wrapping
+At the moment the class is a very thin wrapper over the Slack interface that
+we used in the [`Rule` class]({{ site.baseurl }}/components/rule/). As the
+parameter name would suggest, `robotSlackClient` would be the real client
+object that we receive from the live Hubot instance. We're wrapping
 `getChannelByID()`, which is the method required to implement
 `Rule.channelMatches()`. What's more, we're encapsulating the fact that all
 that is required from the `Channel` object returned by the method is its

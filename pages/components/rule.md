@@ -40,6 +40,7 @@ looks like this:
 
 ```js
 /* jshint node: true */
+
 'use strict';
 
 module.exports = Rule;
