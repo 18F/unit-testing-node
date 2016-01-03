@@ -661,11 +661,17 @@ A few things to notice about this handler:
   pass a new `Error` to `reject` containing the parsed object's `error:`
   message.
 
-## Testing the API interaction with a local HTTP server
+## Preparing to test the API interaction
 
-Now for the moment of truth! First, run `npm test` to ensure all the tests
-still pass. (`npm run lint` would be a good idea, too.) Now run just the
-`SlackClient` tests:
+Now for the moment of truth! First add the following to the top of the
+`exercise/test/slack-client-test.js` file:
+
+```js
+var SlackClient = require('../lib/slack-client');
+```
+
+Run `npm test` to ensure all the tests still pass. (`npm run lint` would be a
+good idea, too.) Now run just the `SlackClient` tests:
 
 ```sh
 $ npm test -- --grep '^SlackClient '
@@ -687,14 +693,516 @@ $ npm test -- --grep '^SlackClient '
 [13:46:11] Finished 'test' after 91 ms
 ```
 
+Before getting into the details of the setup, fill in the `should make a
+successful request` test with the following assertion:
+
+```js
+    it('should make a successful request', function() {
+      // We'll add the setup here shortly.
+      return slackClient.getReactions(helpers.CHANNEL_ID, helpers.TIMESTAMP)
+        .should.become(payload);
+    });
+```
+
+Let's examine what's going on here. The `getReactions` call takes `channel`
+and `timestamp` as arguments. Since it's likely we'll want to use the same
+sample data through our test suite, let's add the `CHANNEL_ID` and `TIMESTAMP`
+constants to `exercise/test/helpers/index.js`:
+
+```js
+exports = module.exports = {
+  CHANNEL_ID: 'C5150OU812',
+  TIMESTAMP: '1360782804.083113',
+
+  // Existing implementation here.
+};
+```
+
+This implies that we need to add the following to the top of our test file:
+
+```js
+var helpers = require('./helpers');
+```
+
+## `Promise`-based assertions
+
+Also notice that the test assertion starts with `return` and ends with
+`.should.become(payload)`. The first thing to realize is that we'll need a
+`payload` value; we'll address that in a moment.
+
+The more immediate concern is that the assertion is _returning a `Promise`_.
+This is a combination of two features:
+
+- The Mocha framework [will detect returned Promises and wait for them to
+  become resolved or rejected](https://mochajs.org/#working-with-promises).
+- The Chai-as-Promised extension of the Chai assertion library provides
+  [expect/should-style assertions](https://www.npmjs.com/package/chai-as-promised#should-expect-interface).
+
+To enable these features, add the following lines to the top of the test file:
+
+```js
+var chai = require('chai');
+var chaiAsPromised = require('chai-as-promised');
+
+chai.should();
+chai.use(chaiAsPromised);
+```
+
+## Expanding the test helper library
+
+Now for the `payload`, let's think outside of the box a little. Our
+`getReactions` method returns a
+[`reactions.get`](https://api.slack.com/methods/reactions.get) payload.
+However, other parts of the program will actually use this value. So rather
+than define a `payload` that's available only to this test file, let's add one
+to our `exercise/test/helpers/index.js` file:
+
+```js
+  // Don't forget to add a comma after the previous element!
+
+  messageWithReactions: function() {
+    return {
+      ok: true,
+      type: 'message',
+      channel: exports.CHANNEL_ID,
+      message: {
+        type: 'message',
+        ts: exports.TIMESTAMP,
+        reactions: [
+        ]
+      }
+    };
+  }
+```
+
+This isn't a _complete_ simulation of a `reactions.get` payload, but it has
+enough of the structure that we need for now. We will build up this sample
+message in later chapters. Also, remember that `messageWithReactions` is a
+function returning a fresh copy of the data for each test.
+
+## Defining `payload` and `slackClient`
+
+We need just one more `require()` statement to ensure we can instantiate our
+`SlackClient` instance:
+
+```js
+var config = require('./helpers/test-config.json');
+```
+
+Now we can define our `payload` variable and `slackClient` variables:
+
+```js
+describe('SlackClient', function() {
+  var slackClient, payload;
+
+  before(function() {
+    slackClient = new SlackClient(undefined, config);
+    slackClient.protocol = 'http:';
+    slackClient.host = 'localhost';
+  });
+
+  describe('getReactions', function() {
+    beforeEach(function() {
+      payload = helpers.messageWithReactions();
+    });
+
+    it('should make a successful request', function() {
+      return slackClient.getReactions(helpers.CHANNEL_ID, helpers.TIMESTAMP)
+        .should.become(payload);
+    });
+  });
+});
+```
+
+A few things are happening here:
+
+- We leave the first argument to the `SlackClient` constructor `undefined`
+  because, in this case, we're not depending on the `robotSlackClient` at all.
+  If we ever do depend on it in this test, the test will break rather
+  obviously, and we can add it then.
+- As mentioned earlier, we change the `protocol` and `host` parameters so the
+  `SlackClient` will send requests to `http://localhost`, not
+  `https://slack.com`.
+- The `SlackClient` state affecting its behavior (`protocol` and `host`) is
+  constant across every test. Consequently, we only create one instance in the
+  `before` block, rather than one per test in `beforeEach`.
+- We want to make sure each `getReactions` test gets a fresh `payload`, so we
+  assign it within a `beforeEach` block.
+
+At this point, let's run our test:
+
+```sh
+$ npm test -- --grep '^SlackClient '
+
+> 18f-unit-testing-node@0.0.0 test .../unit-testing-node
+> gulp test "--grep" "^SlackClient "
+
+[14:46:26] Using gulpfile .../unit-testing-node/gulpfile.js
+[14:46:26] Starting 'test'...
+
+
+  SlackClient
+    getReactions
+      1) should make a successful request
+
+
+  0 passing (20ms)
+  1 failing
+
+  1) SlackClient getReactions should make a successful request:
+     Error: failed to make Slack API request for method reactions.get: connect ECONNREFUSED 127.0.0.1:80
+    at ClientRequest.<anonymous> (exercise/lib/slack-client.js:58:14)
+    at Socket.socketErrorListener (_http_client.js:266:9)
+    at emitErrorNT (net.js:1257:8)
+
+
+
+
+[14:46:26] 'test' errored after 109 ms
+[14:46:26] Error in plugin 'gulp-mocha'
+Message:
+    1 test failed.
+npm ERR! Test failed.  See above for more details.
+```
+
+This is what we _want_ to see at this point, because we haven't launched a
+`localhost` HTTP server yet.
+
 ## `Promise` gotcha #1: not returning the `Promise`
+
+Before we do that, remove the `return` keyword from the test assertion, then
+run the test to see what happens:
+
+```sh
+$ npm test -- --grep '^SlackClient '
+
+> 18f-unit-testing-node@0.0.0 test .../unit-testing-node
+> gulp test "--grep" "^SlackClient "
+
+[14:48:37] Using gulpfile .../unit-testing-node/gulpfile.js
+[14:48:37] Starting 'test'...
+
+
+  SlackClient
+    getReactions
+      ✓ should make a successful request
+
+
+  1 passing (19ms)
+
+[14:48:37] Finished 'test' after 109 ms
+```
+
+Whoops! What happened? Shouldn't we see the same `connect ECONNREFUSED
+127.0.0.1:80` error as before?
+
+In this case, what happened is that **we forgot to `return` the new Promise**.
+As mentioned above, `resolve` and `reject` are like synchronization methods.
+But since we returned `undefined` from the test function instead of our
+`Promise`, Mocha didn't synchronize with anything. Rest assured, the `Promise`
+still ran to completion in the background, and certainly called `reject` with
+the same `Error`, but its outcome was completely ignored.
+
+Restore the missing `return` statement and run the test again to ensure that
+it fails before moving on.
+
+## Testing the error case
+
+Before fixing the test, let's actually copy it and make a new test out of it:
+
+```js
+    it('should fail to make a request if the server is down', function() {
+      return slackClient.getReactions(helpers.CHANNEL_ID, helpers.TIMESTAMP)
+        .should.be.rejectedWith('failed to make Slack API request ' +
+          'for method reactions.get:');
+    });
+```
+
+Run the tests and make sure that this one passes. Now we can remain confident
+that if the real Slack API server is down, our `SlackClient` will report the
+error instead of silently failing.
+
+## Writing the `SlackApiStubServer`
+
+Now for the fun part: writing the test server! Rather than clutter up our test
+file, let's create create `exercise/test/helpers/slack-api-stub-server.js`.
+This will also facilitate using this test server in other tests rather than
+using a test double for `SlackClient`.
+
+Start with this:
+
+```js
+/* jshint node: true */
+
+'use strict';
+
+var http = require('http');
+var querystring = require('querystring');
+var url = require('url');
+
+module.exports = SlackApiStubServer;
+
+function SlackApiStubServer() {
+  var that = this;
+
+  this.urlsToResponses = {};
+
+  this.server = new http.Server(function(req, res) {
+    // We'll fill in the implementation here shortly.
+  });
+  this.server.listen(0);
+}
+```
+
+A few things to note before filling in the implementation:
+
+- We'll configure `urlsToResponses` to match request URLs with expected
+  parameters, a response status code, and a response payload.
+- If the expected parameters don't match, we will return a
+  [500 class status code](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.5)
+  that will cause any test to fail.
+- We can simulate various server responses via the canned status code and
+  payoad values, making the server easy to configure for each test.
+
+## Letting the system pick a server port
+
+Another key detail:
+[`this.server.listen(0)`](https://nodejs.org/api/http.html#http_server_listen_port_hostname_backlog_callback)
+will cause our test server to listen on any avialable port. **This is
+important to prevent test flakiness, or failures due to uncontrolled inputs.**
+If we were to define our own port, it may or may not already be in use by
+another service, leading to inconsistent test failures. By allowing the system
+to pick an unused port, we avoid such unpredictiable collisions.
+
+## Filling in the stub server
+
+Let's build up our `http.server` callback a piece at a time:
+
+```js
+    var baseUrl = url.parse(req.url),
+        responseData = that.urlsToResponses[baseUrl.pathname],
+        payload,
+        expectedParams,
+        actualParams;
+
+    if (!responseData) {
+      res.statusCode = 500;
+      res.end('unexpected URL: ' + req.url);
+      return;
+    }
+```
+
+First declare all of the necessary variables at the top of the function, to
+remind ourselves that [all variables are always hoisted to the
+top](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/var#var_hoisting).
+Then the first thing we check is whether the URL matches any of the entries
+from the `urlsToResponses` object. If it doesn't, we've clearly hit a case our
+test didn't expect, so we return a 500 status with the unexpected URL.
+
+Now to parse out the rest of the data, add these lines next:
+
+```
+    res.statusCode = responseData.statusCode;
+    payload = responseData.payload;
+    expectedParams = JSON.stringify(responseData.expectedParams);
+    actualParams = JSON.stringify(querystring.parse(baseUrl.query));
+```
+
+We prepare our response with the expected status code and payload. Then, to
+avoid the hassle of doing a deep comparison of every parameter, we convert
+both sets of parameters to JSON strings. This enables a straightforward
+comparison and HTTP error response that serves the purpose of our test:
+
+```js
+    if (actualParams !== expectedParams) {
+      res.statusCode = 500;
+      payload = 'expected params ' + expectedParams +
+        ', actual params ' + actualParams;
+    }
+    res.end(JSON.stringify(payload));
+```
+
+Finally, to finish our `SlackApiStubServer` implementation, add `port()` and
+`close()` methods:
+
+```js
+SlackApiStubServer.prototype.port = function() {
+  return this.server.address().port;
+};
+
+SlackApiStubServer.prototype.close = function() {
+  this.server.close();
+};
+```
+
+## Instantiating the `SlackApiStubServer`
+
+To use this stub server in our test, first let's import the module:
+
+```js
+var SlackApiStubServer = require('./helpers/slack-api-stub-server');
+```
+
+Now let's create the test fixture infrastructure to manage our test server:
+
+```js
+describe('SlackClient', function() {
+  var slackClient, slackApiServer, createServer, payload;
+
+  // before() remains the same...
+
+  beforeEach(function() {
+    slackApiServer = undefined;
+  });
+
+  afterEach(function() {
+    if (slackApiServer) {
+      slackApiServer.close();
+    }
+  });
+
+  createServer = function(expectedUrl, expectedParams, statusCode, payload) {
+    slackApiServer = new SlackApiStubServer();
+    slackClient.port = slackApiServer.port();
+
+    slackApiServer.urlsToResponses[expectedUrl] = {
+      expectedParams: expectedParams,
+      statusCode: statusCode,
+      payload: payload
+    };
+  };
+```
+
+We'll use the `createServer` helper function to create a new test server for
+each test and set up its state. Note the `slackClient.port` assignment in
+`createServer`. This completes the loop of using a system-chosen port for our
+tests to avoid flakiness. We also make sure to call `slackApiServer.close()`
+in `afterEach` as a matter of good test hygiene.
+
+## Setting the `HUBOT_SLACK_TOKEN` environment variable
+
+Remember that the `SlackClient` will insert the Slack API token
+`HUBOT_SLACK_TOKEN` into each API request. Setting this up is rather easy;
+declare a `slackToken` variable at the top of the fixture, then add the
+following to the `before` callback:
+
+```js
+    slackToken = '<18F-slack-api-token>';
+    process.env.HUBOT_SLACK_TOKEN = slackToken;
+```
+
+To make sure the `HUBOT_SLACK_TOKEN` doesn't contaminate the environment of
+any other tests, add the following `after` block to the fixture:
+
+```js
+  after(function() {
+    delete process.env.HUBOT_SLACK_TOKEN;
+  });
+```
+
+## Finally getting the first test to pass
+
+The only thing that's left is to set the method parameters. Add a `params`
+variable to the top of the fixture, then add the following to the `beforeEach`
+function for the `getReactions` block:
+
+```js
+      params = {
+        channel: helpers.CHANNEL_ID,
+        timestamp: helpers.TIMESTAMP,
+        token: slackToken
+      };
+```
+
+Add the following line to the `should make a successful request` test:
+
+```js
+      createServer('/api/reactions.get', params, 200, payload);
+```
+
+Now confirm that our tests both pass:
+
+```sh
+$ npm test -- --grep '^SlackClient '
+
+> 18f-unit-testing-node@0.0.0 test .../unit-testing-node
+> gulp test "--grep" "^SlackClient "
+
+[16:02:37] Using gulpfile .../unit-testing-node/gulpfile.js
+[16:02:37] Starting 'test'...
+
+
+  SlackClient
+    getReactions
+      ✓ should make a successful request
+      ✓ should fail to make a request if the server is down
+
+
+  2 passing (40ms)
+
+[16:02:38] Finished 'test' after 134 ms
+```
+
+Before moving on, have a little fun with the tests. Change something to make
+one of them fail.
+
+## Knocking out the rest
+
+After all of that effort, the remaining cases are a piece of cake. Add a new
+test case to check that unsuccessful requests are reported:
+
+```js
+    it('should make an unsuccessful request', function() {
+      payload = {
+        ok: false,
+        error: 'not_authed'
+      };
+      createServer('/api/reactions.get', params, 200, payload);
+      // Add a should.be.rejectedWith(Error, 'some error string') assertion.
+    });
+```
+
+Add a test to see what happens when the server returns a non-200 response:
+
+```js
+    it('should make a request that produces a non-200 response', function() {
+      createServer('/api/reactions.get', params, 404, 'Not found');
+      // Add a should.be.rejectedWith(Error, 'some error string') assertion.
+    });
+```
+
+That pretty much covers all of the paths through `makeApiCall` and
+`handleResponse`. All we need to check from `SlackClient.addSuccessReaction`
+is that the parameters are passed through as expected:
+
+```js
+  describe('addSuccessReaction', function() {
+    beforeEach(function() {
+      params = {
+        channel: helpers.CHANNEL_ID,
+        timestamp: helpers.TIMESTAMP,
+        name: config.successReaction,
+        token: slackToken
+      };
+      payload = { ok: true };
+    });
+
+    it('should make a successful request', function() {
+      // This should be identical to the `getReactions` case, except that
+      // the first createServer argument should be '/api/reactions.add'.
+    });
+  });
+```
 
 ## Rolling our own until we upgrade
 
 As mentioned at the beginning of this chapter, most of what we've written here
 may be replaced eventually by methods added to slack-client and hubot-slack.
 It's also possible we could've added support directly to these official
-packages first, since the code for both is open source.
+packages first, since the code for both is open source. In either case, we
+wouldn't've needed to roll our own HTTP request and handler. We also could
+have have used a test double for the official package rather than writing a
+test server.
 
 Even so, the important thing is that our use of these external interfaces is
 largely contained within this single module. Read the
@@ -702,11 +1210,37 @@ largely contained within this single module. Read the
 chapter for a more thorough discussion of the factors regarding the decision
 to write `SlackClient` this way.
 
+Also, this `SlackClient` implementation provides an excellent example of how
+to write and test such methods when using an existing package _isn't_ an
+option.
+
 ## Check your work
 
 By this point, all of the `SlackClient` tests should be passing:
 
 ```sh
+$ npm test -- --grep '^SlackClient '
+
+> 18f-unit-testing-node@0.0.0 test .../unit-testing-node
+> gulp test "--grep" "^SlackClient "
+
+[16:11:23] Using gulpfile .../unit-testing-node/gulpfile.js
+[16:11:23] Starting 'test'...
+
+
+  SlackClient
+    getReactions
+      ✓ should make a successful request
+      ✓ should fail to make a request if the server is down
+      ✓ should make an unsuccessful request
+      ✓ should make a request that produces a non-200 response
+    addSuccessReaction
+      ✓ should make a successful request
+
+
+  5 passing (55ms)
+
+[16:11:23] Finished 'test' after 153 ms
 ```
 
 Now that you're all finished, compare your solutions to the code in
