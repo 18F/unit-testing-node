@@ -48,7 +48,8 @@ $ npm test
     ✓ should contain all the fields from the configuration
 
   SlackClient
-    ✓ should validate a valid configuration
+    getReactions
+      ✓ should make a successful request
 
 
   8 passing (9ms)

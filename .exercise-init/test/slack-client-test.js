@@ -5,6 +5,8 @@
 'use strict';
 
 describe('SlackClient', function() {
-  it('should validate a valid configuration', function() {
+  describe('getReactions', function() {
+    it('should make a successful request', function() {
+    });
   });
 });
