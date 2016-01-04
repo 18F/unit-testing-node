@@ -126,8 +126,8 @@ repos:
   url: https://github.com/18F/unit-testing-node
 
 back_link:
-  url: "https://pages.18f.gov/guides/"
-  text: Read more 18F Guides
+  url: "https://pages.18f.gov/edu/"
+  text: Return to 18F Edu
 
 google_analytics_ua: UA-48605964-19
 
