@@ -30,30 +30,30 @@ SlackClient.prototype.addSuccessReaction = function(channel, timestamp) {
     { channel: channel, timestamp: timestamp, name: this.successReaction });
 };
 
-function getHttpOptions(that, method, queryParams) {
+function getHttpOptions(client, method, queryParams) {
   return {
-    protocol: that.protocol,
-    host: that.host,
-    port: that.port,
+    protocol: client.protocol,
+    host: client.host,
+    port: client.port,
     path: '/api/' + method + '?' + querystring.stringify(queryParams),
     method: 'GET'
   };
 }
 
-function makeApiCall(that, method, params) {
-  var requestFactory = (that.protocol === 'https:') ? https : http;
+function makeApiCall(client, method, params) {
+  var requestFactory = (client.protocol === 'https:') ? https : http;
 
   return new Promise(function(resolve, reject) {
     var httpOptions, req;
 
     params.token = process.env.HUBOT_SLACK_TOKEN;
-    httpOptions = getHttpOptions(that, method, params);
+    httpOptions = getHttpOptions(client, method, params);
 
     req = requestFactory.request(httpOptions, function(res) {
       handleResponse(method, res, resolve, reject);
     });
 
-    req.setTimeout(that.timeout);
+    req.setTimeout(client.timeout);
     req.on('error', function(err) {
       reject(new Error('failed to make Slack API request for method ' +
         method + ': ' + err.message));

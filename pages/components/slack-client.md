@@ -331,17 +331,21 @@ SlackClient.prototype.addSuccessReaction = function(channel, timestamp) {
     { channel: channel, timestamp: timestamp, name: this.successReaction });
 };
 
-function makeApiCall(that, method, params) {
+function makeApiCall(client, method, params) {
 }
 ```
 
 Note that `makeApiCall` is not a member of `SlackClient`, and that its first
-parameter, `that`, is actually the `this` reference from the `SlackClient`
-methods. This is because `makeApiCall` is going to launch an asynchronous HTTP
-request, and [`this` is redefined for callback functions defined inside other
-functions](http://javascript.crockford.com/private.html). Translating `this`
-to `that` here sidesteps the problem, and having `makeApiCall` private to the
-module keeps the `SlackClient` interface narrow.
+parameter, `client`, is actually the `this` reference from the `SlackClient`
+methods. `makeApiCall` is going to define a [nested
+function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Functions#Nested_functions_and_closures) to launch an
+asynchronous HTTP request. Were `makeApiCall` a member of `SlackClient`,
+[inside the nested handler, `this` would not refer to the `SlackClient`
+object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Functions#Lexical_this).
+This can prove very confusing, especially to people with experience in
+object-oriented languages. Translating `this` to `client` in this way
+sidesteps the problem, and having `makeApiCall` private to the module keeps
+the `SlackClient` interface narrow.
 
 ## Passing `Config` values to the `SlackClient`
 
@@ -438,25 +442,25 @@ are identical. So let's add a utility function to compose options from a
 parameters:
 
 ```js
-function getHttpOptions(that, method, queryParams) {
+function getHttpOptions(client, method, queryParams) {
   return {
-    protocol: that.protocol,
-    host: that.host,
-    port: that.port,
+    protocol: client.protocol,
+    host: client.host,
+    port: client.port,
     path: '/api/' + method + '?' + querystring.stringify(queryParams),
     method: 'GET'
   };
 }
 ```
 
-Note the addition of `port: that.port`. When `port:` is undefined, the request
-uses the default port for HTTP (80) or HTTPS(443). In our tests, we will
-launch a local HTTP server with a dynamically-assigned port. We'll assign this
-port value as a property of the `SlackClient` instance under test. In
+Note the addition of `port: client.port`. When `port:` is undefined, the
+request uses the default port for HTTP (80) or HTTPS(443). In our tests, we
+will launch a local HTTP server with a dynamically-assigned port. We'll assign
+this port value as a property of the `SlackClient` instance under test. In
 `getHttpOptions`, that dynamic port value will then propagate to this options
 object.
 
-## HTTP vs. HTTPS
+## Selecting HTTP vs. HTTPS
 
 One more detail until we get to the meat of making our API request: Switching
 between HTTP in our tests and HTTPS in production. Recall that we imported
@@ -472,8 +476,8 @@ library in either our test or in production, add the following as the first
 line of `makeApiCall`:
 
 ```js
-function makeApiCall(that, method, params) {
-  var requestFactory = (that.protocol === 'https:') ? https : http;
+function makeApiCall(client, method, params) {
+  var requestFactory = (client.protocol === 'https:') ? https : http;
 
   // We'll continue with the rest of the implementation here shortly.
 }
@@ -493,8 +497,8 @@ especially a series of HTTP requests. Let's start fleshing out `makeApiCall`
 by returning a `Promise`:
 
 ```js
-function makeApiCall(that, method, params) {
-  var requestFactory = (that.protocol === 'https:') ? https : http;
+function makeApiCall(client, method, params) {
+  var requestFactory = (client.protocol === 'https:') ? https : http;
 
   return new Promise(function(resolve, reject) {
     // We'll fill in the actual request implementation here shortly.
@@ -520,7 +524,7 @@ Let's begin filling in the implementation of the `Promise` to make our HTTP
     var httpOptions, req;
 
     params.token = process.env.HUBOT_SLACK_TOKEN;
-    httpOptions = getHttpOptions(that, method, params);
+    httpOptions = getHttpOptions(client, method, params);
 
     req = requestFactory.request(httpOptions, function(res) {
       handleResponse(method, res, resolve, reject);
@@ -537,8 +541,6 @@ A few things to notice about this new block of code:
   added here to every request. The value comes from the `HUBOT_SLACK_TOKEN`
   environment variable, accessible via
   [`process.env`](https://nodejs.org/api/process.html#process_process_env).
-- Using `that` ensures that we're accessing our `SlackClient` instance, since
-  `this` in this context is the `makeApiCall` function itself.
 - `requestFactory` will dispatch to either `http.request()` or
   `https.request()`. The polymorphism afforded by the earlier assignment to
   `requestFactory` avoids the need for a conditional here, making the
@@ -572,7 +574,7 @@ We've got just a tiny bit more to do to complete our HTTP(S) request. Add the
 following to finish the `Promise` function:
 
 ```js
-    req.setTimeout(that.timeout);
+    req.setTimeout(client.timeout);
     req.on('error', function(err) {
       reject(new Error('failed to make Slack API request for method ' +
         method + ': ' + err.message));
@@ -588,7 +590,7 @@ itself derived from
 [`EventEmitter`](https://nodejs.org/api/events.html#events_class_events_eventemitter).
 Here we're setting a timeout (in milliseconds) defined by our `Config`
 instance. Then we set up an error handler in case the request never reaches the
-server, or the response never arrives prior to `that.timeout`. Notice that
+server, or the response never arrives prior to `client.timeout`. Notice that
 this handler creates an `Error` object and passes it as an argument to the
 `Promise` function's `reject`callback. Finally, we send the request with
 `req.end()`.
@@ -943,7 +945,7 @@ var url = require('url');
 module.exports = SlackApiStubServer;
 
 function SlackApiStubServer() {
-  var that = this;
+  var stubServer = this;
 
   this.urlsToResponses = {};
 
@@ -980,7 +982,7 @@ Let's build up our `http.server` callback a piece at a time:
 
 ```js
     var baseUrl = url.parse(req.url),
-        responseData = that.urlsToResponses[baseUrl.pathname],
+        responseData = stubServer.urlsToResponses[baseUrl.pathname],
         payload,
         expectedParams,
         actualParams;

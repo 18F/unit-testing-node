@@ -9,13 +9,13 @@ var url = require('url');
 module.exports = SlackApiStubServer;
 
 function SlackApiStubServer() {
-  var that = this;
+  var stubServer = this;
 
   this.urlsToResponses = {};
 
   this.server = new http.Server(function(req, res) {
     var baseUrl = url.parse(req.url),
-        responseData = that.urlsToResponses[baseUrl.pathname],
+        responseData = stubServer.urlsToResponses[baseUrl.pathname],
         payload,
         expectedParams,
         actualParams;
