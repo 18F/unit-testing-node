@@ -113,6 +113,9 @@ navigation:
   - text: Seams
     url: seams/
     internal: true
+  - text: Shims
+    url: shims/
+    internal: true
   - text: Testability
     url: testability/
     internal: true
