@@ -83,17 +83,164 @@ the `GitHubClient` will make calls to `https://api.github.com` by default.
 However, in our tests, we will override these properties so that requests go
 to `http://localhost` instead.
 
-The parameters `metadata` and `repository` are commented out to avoid unused
-argument errors from `npm run lint`. Go ahead and uncomment them now. They
-will be used as follows:
+## Writing the request function
 
-- `metadata`: This will contain information from the message that received the
-  reaction, used to build the GitHub issue. It will contain two properties:
-  `title:`, constructed by the `Middleware` class, and `url:`, which will be
-  the permalink for the message.
-- `repository`: The name of the repository to which to post the issue. This
-  should be just the last component of the repository's GitHub URL after the
-  user or organization name specified by `Config.githubUser`.
+Much like we did with `SlackClient`, let's make `fileNewIssue` a thin wrapper
+around a `makeApiCall` function.  (The parameters `metadata` and `repository`
+are commented out to avoid unused argument errors from `npm run lint`. Go
+ahead and uncomment them now.)
+
+```js
+GitHubClient.prototype.fileNewIssue = function(metadata, repository) {
+  return makeApiCall(this, metadata, repository);
+};
+
+function makeApiCall(client, metadata, repository) {
+}
+```
+
+Note that `makeApiCall` is not a member of `GitHubClient`, and that its first
+parameter, `client`, is actually the `this` reference from the `GitHubClient`
+methods. `makeApiCall` is going to define a [nested
+function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Functions#Nested_functions_and_closures) to launch an
+asynchronous HTTP request. Were `makeApiCall` a member of `GitHubClient`,
+[inside the nested handler, `this` would not refer to the `GitHubClient`
+object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Functions#Lexical_this).
+This can prove very confusing, especially to people with experience in
+object-oriented languages. Translating `this` to `client` in this way
+sidesteps the problem, and having `makeApiCall` private to the module keeps
+the `GitHubClient` interface narrow.
+
+## Selecting HTTP vs. HTTPS
+
+Let's import the [`http`](https://nodejs.org/api/http.html) and
+[`https`](https://nodejs.org/api/https.html) modules from the Node.js standard
+library:
+
+```js
+var http = require('http');
+var https = require('https');
+```
+
+Both have a `request` function that accepts the same set of HTTP options that
+we will build using a helper function. So as the first step in implementing
+`fileNewIssue`, let's select the correct library depending on whether the code
+is running under test or in production:
+
+```js
+function makeApiCall(client, metadata, repository) {
+  var requestFactory = (client.protocol === 'https:') ? https : http;
+};
+```
+
+## Building the API method parameters
+
+The `metadata` argument to `makeApiCall` will contain information from the
+message that received the reaction from which to build the GitHub issue. It
+will contain two properties: `title:`, constructed by the `Middleware` class,
+and `url:`, which will be the permalink for the message.
+
+The `repository` argument is name of the repository to which to post the
+issue. This should be just the last component of the repository's GitHub URL
+after the user or organization name specified by `Config.githubUser`. For
+example, for `{{ site.repos[0].url }}`, this would be `{{ site.repos[0].url |
+split:"/" | last }}`.
+
+We'll use the `metadata` object to create the [issue creation API method
+parameters](https://developer.github.com/v3/issues/#create-an-issue) as a JSON
+object, encoded as a string in the request body:
+
+```js
+  var requestFactory = (this.protocol === 'https:') ? https : http,
+      paramsStr = JSON.stringify({
+        title: metadata.title,
+        body: metadata.url
+      });
+```
+
+## Building the HTTP options
+
+The HTTP request is straightforward to build, if a little cumbersome. So let's
+introduce a helper function:
+
+```js
+function getHttpOptions(client, repository, paramsStr) {
+  return {
+    protocol: client.protocol,
+    host: client.host,
+    port: client.port,
+    path: '/repos/' + client.user + '/' + repository + '/issues',
+    method: 'POST',
+    headers: {
+      'Accept': 'application/vnd.github.v3+json',
+      'Authorization': 'token ' + process.env.HUBOT_GITHUB_TOKEN,
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(paramsStr, 'utf8'),
+      'User-Agent': packageInfo.name + '/' + packageInfo.version
+    }
+  };
+}
+```
+
+A few things to note here:
+
+- We assign `port: client.port`. When `port:` is undefined, the request uses
+  the default port for HTTP (80) or HTTPS(443). In our tests, we will launch a
+  local HTTP server with a dynamically-assigned port. We'll assign this port
+  value as a property of the `GitHubClient` instance under test. In
+  `getHttpOptions`, that dynamic port value will then propagate to this
+  options object.
+- We [specify the GitHub API version in the `Accept`
+  header](https://developer.github.com/v3/#current-version)
+- Unlike with the Slack API, we [pass the GitHub API token in the
+  `Authorization` header](https://developer.github.com/v3/#authentication).
+  This token comes from the `HUBOT_GITHUB_TOKEN` environment variable,
+  accessible via
+  [`process.env`](https://nodejs.org/api/process.html#process_process_env).
+- Unlike with the Slack API, we assign the `Content-Type` and `Content-Length`
+  since the parameters (encoded as `paramsStr`) will appear in the request
+  body as JSON.
+- We calculate `Content-Length` using
+  [`Buffer.byteLength`](https://nodejs.org/api/buffer.html#buffer_class_method_buffer_bytelength_string_encoding)
+  rather than relying on `paramsStr.length`, which may be smaller than the
+  actual byte length due to multibyte characters.
+- [GitHub requires the `User-Agent` header](https://developer.github.com/v3/#user-agent-required)
+  which we've set to [the name and version of the
+  program](http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.43).
+
+To import `packageInfo` properties that we use in the `User-Agent` definition,
+add the following `require` statement to the top of the file:
+
+```js
+var packageInfo = require('../package.json');
+```
+
+## Making the HTTP request using `Promise`
+
+[`Promises`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
+represent asynchronous operations that will either _resolve_ to a value or be
+_rejected_ with an error. For background, please see the [`SlackClient`
+section on `Promises`]({{ site.baseurl }}/components/slack-client/#promises),
+as well as
+[`Promise` gotcha #0]({{ site.baseurl }}/components/slack-client/#promises-gotcha-0)
+and
+[`Promise` gotcha #1]({{ site.baseurl }}/components/slack-client/#promises-gotcha-1).
+
+Let's start fleshing out the rest of `makeApiCall` by defining a `Promise`:
+
+```js
+function makeApiCall(client, metadata, repository) {
+  var requestFactory = (client.protocol === 'https:') ? https : http,
+      paramsStr = JSON.stringify({
+        title: metadata.title,
+        body: metadata.url
+      });
+
+  return new Promise(function(resolve, reject) {
+    // We'll fill in the implementation here shortly.
+  });
+}
+```
 
 ## Testing
 
