@@ -483,7 +483,7 @@ function makeApiCall(client, method, params) {
 }
 ```
 
-## Promises, Promises
+## <a name='promises'></a>Promises, Promises
 
 [`Promises`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
 represent asynchronous operations that will either _resolve_ to a value or be
@@ -553,7 +553,7 @@ A few things to notice about this new block of code:
   will have access to the `resolve` and `reject` callbacks passed to the
   outer `Promise` callback.
 
-## `Promise` gotcha #0: not calling `resolve` or `reject`
+## <a name='promises-gotcha-0'></a>`Promise` gotcha #0: not calling `resolve` or `reject`
 
 The first thing to remember about `Promises` is that you _must_ call one of
 `resolve` or `reject` in order to conclude the process. These are analogous to
@@ -870,7 +870,7 @@ npm ERR! Test failed.  See above for more details.
 This is what we _want_ to see at this point, because we haven't launched a
 `localhost` HTTP server yet.
 
-## `Promise` gotcha #1: not returning the `Promise`
+## <a name='promises-gotcha-1'></a>`Promise` gotcha #1: not returning the `Promise`
 
 Before we do that, remove the `return` keyword from the test assertion, then
 run the test to see what happens:

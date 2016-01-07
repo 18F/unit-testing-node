@@ -11,5 +11,5 @@ function GitHubClient(config) {
   this.host = 'api.github.com';
 }
 
-GitHubClient.prototype.fileNewIssue = function(/*metadata, repository*/) {
+GitHubClient.prototype.fileNewIssue = function(/* metadata, repository */) {
 };
