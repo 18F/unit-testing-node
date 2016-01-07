@@ -20,10 +20,16 @@ environment. Specifically, it expects that you are familiar with the basics of
 how to create directories and files on the command line of a terminal program.
 
 This exercise also assumes that you have already installed Node.js version 4.2
-or greater. See the [JavaScript section of our Development Environment
-Standardization
-Guide](https://pages.18f.gov/dev-environment-standardization/javascript/) for
-instructions on how to set up a Node.js development environment.
+or greater and Ruby version 2.2.3 or greater. (Ruby is used by the `./go`
+script to build the site and run other commands for the exercise.) See the
+[JavaScript section](https://pages.18f.gov/dev-environment-standardization/javascript/)
+and the
+[Ruby section](https://pages.18f.gov/dev-environment-standardization/languages/ruby/)
+of our Development Environment Standardization Guide for instructions on how
+to set up Node.js and Ruby development environments.
+
+**OS X users**: Consider using [Homebrew](http://brew.sh/) to install this
+software.
 
 ## Tools
 

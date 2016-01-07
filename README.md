@@ -1,83 +1,189 @@
-## 18F Guides Template
+# Unit testing in Node.js
 
-This is a skeleton repo containing the
-[CFPB/DOCter](https://github.com/CFPB/DOCter)-based
-[Jekyll](http://jekyllrb.com/) template for
-[18F Guides](http://18f.github.io/guides/).
+**Published at**: https://pages.18f.gov/unit-testing-node/
+by [18F Edu](https://pages.18f.gov/edu/)
 
-### Getting started
+[![Build Status](https://travis-ci.org/18F/unit-testing-node.svg?branch=18f-pages-staging)](https://travis-ci.org/18F/unit-testing-node)
 
-#### Installing Ruby
+This exercise will walk you through writing a small
+[Node.js](https://nodejs.org/) application and writing unit tests for it. You
+will learn how to:
 
-You will need [Ruby](https://www.ruby-lang.org) ( > version 2.1.5 ). To check
-whether it's already installed on a UNIX-like system, open up a terminal
-window (e.g. Terminal on OS X) and type `ruby -v` at the command prompt. For
-example, you should see something similar to the following:
+- structure your code to separate concerns effectively, which maximizes
+  readability, maintainability, and testability
+- write small, focused tests for your application-specific logic
+- use a technique known as "dependency injection" to simulate interaction
+  with a remote service
+- write an automated integration test for your application
 
-```shell
-$ ruby -v
-ruby 2.2.3p173 (2015-08-18 revision 51636) [x86_64-darwin14]
+This exercise assumes you are comfortable executing commands in a UNIX
+environment. Specifically, it expects that you are familiar with the basics of
+how to create directories and files on the command line of a terminal program.
+
+## Installation
+
+**OS X users**: Consider using [Homebrew](http://brew.sh/) to install the
+software described below.
+
+1. Install [Node.js](https://nodejs.org/) version 4.2 or greater on your
+   system. You can see if it is already installed by running `node -v` in a
+   terminal window. See the
+   [JavaScript chapter](https://pages.18f.gov/dev-environment-standardization/languages/javascript/)
+   of the 18F Development Environment Standardization Guide for installation
+   options and instructions.
+
+1. Install [Ruby](https://www.ruby-lang.org/) version 2.2.3 or greater on your
+   system. You can see if it is already installed by running `ruby -v` in a
+   terminal window. See the
+   [Ruby chapter](https://pages.18f.gov/dev-environment-standardization/languages/ruby/)
+   of the 18F Development Environment Standardization Guide for installation
+   options and instructions.
+
+1. Install [git](https://git-scm.com/downloads) if you do not have it
+   installed already.
+
+1. Clone this repository and change into the working directory by running:
+   ```bash
+   $ git clone https://github.com/18F/unit-testing-node.git
+   $ cd unit-testing-node
+   ```
+
+1. Run `./go serve` to serve the site locally.
+
+   The `./go` script will check that your Ruby version is supported, install
+   the [Bundler gem](http://bundler.io/) if it is not yet installed, install
+   all the gems needed by the exercise website, and launch a running instance
+   on `http://localhost:4000/`.
+
+1. Visit [http://localhost:4000/](http://localhost:4000/) in your browser.
+
+## Developing
+
+Run all the [installation instructions](#installation) to make sure the site
+builds. Then, in your clone of this repository, run the following to ensure
+your installation is in a good state:
+
+```bash
+$ npm install
+$ ./go ci_build
 ```
 
-If the version number is less than 2.1.5, or instead you see something like:
+### Directory structure
 
-```shell
-$ ruby -v
--bash: ruby: command not found
+The directory layout is as follows (note that in this exercise, _content_ in the directories other than `pages` pertains to the code used in the exercise):
+
+- `pages`: contains the content of the exercise website
+- `exercise`: contains the content that the person following the exercise will
+  edit
+- `.exercise-init`: contains the content used to create the starting state of
+  the exercise
+
+  **Note**: The `exercise` and `.exercise-init` directories should always
+  remain identical in the published version of the repo.
+
+- `solutions`: contains subdirectories containing solution content pertaining
+  to chapters of the exercise
+  - `00-CHAPTER`: each chapter should have a corresponding directory
+    containing the solution content for that chapter, with a unique numeric
+    prefix reflecting the order of the chapters
+  - `complete`: this directory should contain the solution content reflecting
+    the completed exercise
+
+Each `00-CHAPTER` directory need not contain the full content from previous
+chapters; only the content that has changed relative to previous chapters.
+This is due to the way that the `./go` commands to set `exercise` state work,
+discussed in the next section. However, each chapter should be self-contained
+and testable in isolation from other chapters.
+
+The `solutions` chapter from this exercise contains:
+
+```
+00-config
+01-rule
+02-slack-client
+03-github-client
+04-log
+05-middleware
+06-integration
+complete
 ```
 
-Then Ruby is not installed, and you should choose one of the installation
-methods below. [The "Installing Ruby" page of the official
-Ruby language web
-site](https://www.ruby-lang.org/en/documentation/installation/) explains how
-to do this in a number of ways across many different systems.
+### `./go` commands to set `exercise` state
 
-##### Quickest Ruby install/upgrade for OS X
+The [`./go` script](./go) will create the following `Tutorial commands` to set
+the state of the `exercise` directory:
 
-On OS X, you can use [Homebrew](http://brew.sh/) to install Ruby in
-`/usr/local/bin`, which may require you to update your `$PATH` environment
-variable:
+- `start-over`: sets the state to the very beginning of the exercise
+- `set-CHAPTER`: sets the state to that required at the beginning of
+  `CHAPTER`, where `CHAPTER` corresponds to one of the `OO-CHAPTER`
+  subdirectories within the `solutions` directory
+- `set-complete`: sets the state to that of the completed exercise
 
-```shell
-$ brew update
-$ brew install ruby
+The `Tutorial commmands` from this exercise are:
+
+```
+Tutorial commands
+  start-over         Restore the initial state of the exercise files
+  set-config         Set up the files for the config chapter
+  set-rule           Set up the files for the rule chapter
+  set-slack-client   Set up the files for the slack-client chapter
+  set-github-client  Set up the files for the github-client chapter
+  set-log            Set up the files for the log chapter
+  set-middleware     Set up the files for the middleware chapter
+  set-integration    Set up the files for the integration chapter
+  set-complete       Copy the complete solution into the exercise dir
 ```
 
-##### Optional: using a version manager
+### Interaction between `./go` and the directory structure
 
-Whether or not Ruby is already installed, we strongly recommend using a Ruby
-version manager such as [rbenv](https://github.com/sstephenson/rbenv) or
-[rvm](https://rvm.io/) to help ensure that Ruby version upgrades don't mean
-all your [gems](https://rubygems.org/) will need to be rebuilt.
+All of the `./go` commands that update `exercise` state start by clearing out
+the `exercise` directory and copying over the files from `.exercise-init`.
 
-#### Cloning and serving the Guides Template locally
+Every `set-CHAPTER` command will then copy the files from each _previous_
+`solutions/00-CHAPTER` directory into `exercise`, one directory at a time.
+Since each `00-CHAPTER` directory need only contain partial content, this
+process will build the _complete_ state required at the beginning of the
+target exercise chapter.
 
-To create a new guide and serve it locally, where `MY-NEW-GUIDE` is the name
-of your new repository:
+(_Note_: This presumes that content files will not be _removed_ during the
+course of the exercise; may want to revisit this mechanism in the future.)
 
-```shell
-$ git clone https://github.com/18F/guides-template.git MY-NEW-GUIDE
-$ cd MY-NEW-GUIDE
-$ ./go serve
+The `./go set-complete` command will reset the `exercise` state to the
+beginning before copying over all the files from `solutions/complete`.
+
+### `gulpfile.js` and `npm` command setup
+
+All of the `scripts` in the [`package.json`](./package.json) file are
+implemented via [`gulpfile.js`](./gulpfile.js):
+
+- The `npm test` and `npm run lint` commands only operate on the files in the
+  `exercise` directory.
+- The `npm run test-all` command processes `.exercise-init` and all
+  `solutions` subdirectories, in serial
+- `npm run lint-all` command processes every `.js` file in the project
+
+### Running a subset of tests
+
+The `buildArgs()` function in `gulpfile.js` enables the following `npm test`
+syntax to allow running a subset of tests matching a regular expression:
+
+```bash
+$ npm test -- --grep '^Config '
 ```
 
-The `./go` script will check that your Ruby version is supported, install the
-[Bundler gem](http://bundler.io/) if it is not yet installed, install all the
-gems needed by the template, and launch a running instance on
-`http://localhost:4000/`.
+Alternatively, if you want to use [`gulp`](https://www.npmjs.com/package/gulp)
+directly:
 
-#### Follow the template instructions
+```bash
+$ npm install -g gulp
+$ gulp test --grep '^Config '
+$ gulp test-all --grep '^Config '
+```
 
-The Guides Template (either [running locally](http://localhost:4000) or the
-[published version](https://pages.18f.gov/guides-template/)) will walk you
-through the rest of the steps to edit and publish your guide.
+### Submit your changes!
 
-### Staging version (for 18F team members)
-
-In addition to the `18f-pages` branch, you can create an `18f-pages-staging`
-branch and changes to that branch will be published to
-`https://pages-staging.18f.gov/MY-NEW-GUIDE`, which is identical to
-`https://pages.18f.gov/` but provides authenticated access.
+If you'd like to contribute to this repository, please follow our
+[CONTRIBUTING guidelines](./CONTRIBUTING.md).
 
 ### Public domain
 

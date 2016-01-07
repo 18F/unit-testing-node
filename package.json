@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "test": "gulp test",
-    "lint": "gulp lint"
+    "test-all": "gulp test-all",
+    "lint": "gulp lint",
+    "lint-all": "gulp lint-all"
   },
   "repository": {
     "type": "git",
@@ -24,8 +26,8 @@
     "gulp-jshint": "^2.0.0",
     "gulp-mocha": "^2.2.0",
     "jshint": "^2.8.0",
-    "mocha": "^2.3.4"
+    "mocha": "^2.3.4",
+    "yargs": "^3.31.0"
   },
-  "dependencies": {
-  }
+  "dependencies": {}
 }
