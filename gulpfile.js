@@ -24,6 +24,9 @@ function buildArgs(args) {
 }
 
 function makeTestTargetForDirectory(workDir) {
+  if (!fs.existsSync(workDir)) {
+    return function() { };
+  }
   return function() {
     process.chdir(path.join(ROOT_DIR, workDir));
     return gulp.src('./test/*.js', {read: false})
@@ -34,11 +37,14 @@ function makeTestTargetForDirectory(workDir) {
 }
 
 gulp.task('test', makeTestTargetForDirectory('exercise'));
-gulp.task('test-init', makeTestTargetForDirectory('.exercise-init'));
+gulp.task('test-init', ['test'], makeTestTargetForDirectory('.exercise-init'));
 
 // Lifted from:
 // https://github.com/gulpjs/gulp/blob/master/docs/recipes/running-task-steps-per-folder.md
 function getSubdirs(dir) {
+  if (!fs.existsSync(dir)) {
+    return [];
+  }
   return fs.readdirSync(dir)
     .filter(function(filename) {
       return fs.statSync(path.join(dir, filename)).isDirectory();
