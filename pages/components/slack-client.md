@@ -924,12 +924,11 @@ Run the tests and make sure that this one passes. Now we can remain confident
 that if the real Slack API server is down, our `SlackClient` will report the
 error instead of silently failing.
 
-## Writing the `SlackApiStubServer`
+## Writing the `ApiStubServer`
 
 Now for the fun part: writing the test server! Rather than clutter up our test
-file, let's create create `exercise/test/helpers/slack-api-stub-server.js`.
-This will also facilitate using this test server in other tests rather than
-using a test double for `SlackClient`.
+file, let's create create `exercise/test/helpers/api-stub-server.js`.
+This will also facilitate using this test server in other tests.
 
 Start with this:
 
@@ -942,9 +941,9 @@ var http = require('http');
 var querystring = require('querystring');
 var url = require('url');
 
-module.exports = SlackApiStubServer;
+module.exports = ApiStubServer;
 
-function SlackApiStubServer() {
+function ApiStubServer() {
   var stubServer = this;
 
   this.urlsToResponses = {};
@@ -1024,25 +1023,25 @@ comparison and HTTP error response that serves the purpose of our test:
     res.end(JSON.stringify(payload));
 ```
 
-Finally, to finish our `SlackApiStubServer` implementation, add `port()` and
+Finally, to finish our `ApiStubServer` implementation, add `port()` and
 `close()` methods:
 
 ```js
-SlackApiStubServer.prototype.port = function() {
+ApiStubServer.prototype.port = function() {
   return this.server.address().port;
 };
 
-SlackApiStubServer.prototype.close = function() {
+ApiStubServer.prototype.close = function() {
   this.server.close();
 };
 ```
 
-## Instantiating the `SlackApiStubServer`
+## Instantiating the `ApiStubServer`
 
 To use this stub server in our test, first let's import the module:
 
 ```js
-var SlackApiStubServer = require('./helpers/slack-api-stub-server');
+var ApiStubServer = require('./helpers/api-stub-server');
 ```
 
 Now let's create the test fixture infrastructure to manage our test server:
@@ -1064,7 +1063,7 @@ describe('SlackClient', function() {
   });
 
   createServer = function(expectedUrl, expectedParams, statusCode, payload) {
-    slackApiServer = new SlackApiStubServer();
+    slackApiServer = new ApiStubServer();
     slackClient.port = slackApiServer.port();
 
     slackApiServer.urlsToResponses[expectedUrl] = {

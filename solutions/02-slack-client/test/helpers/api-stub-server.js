@@ -6,9 +6,9 @@ var http = require('http');
 var querystring = require('querystring');
 var url = require('url');
 
-module.exports = SlackApiStubServer;
+module.exports = ApiStubServer;
 
-function SlackApiStubServer() {
+function ApiStubServer() {
   var stubServer = this;
 
   this.urlsToResponses = {};
@@ -41,10 +41,10 @@ function SlackApiStubServer() {
   this.server.listen(0);
 }
 
-SlackApiStubServer.prototype.port = function() {
+ApiStubServer.prototype.port = function() {
   return this.server.address().port;
 };
 
-SlackApiStubServer.prototype.close = function() {
+ApiStubServer.prototype.close = function() {
   this.server.close();
 };

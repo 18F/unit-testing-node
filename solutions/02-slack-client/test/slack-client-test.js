@@ -5,7 +5,7 @@
 'use strict';
 
 var SlackClient = require('../lib/slack-client');
-var SlackApiStubServer = require('./helpers/slack-api-stub-server');
+var ApiStubServer = require('./helpers/api-stub-server');
 var helpers = require('./helpers');
 var config = require('./helpers/test-config.json');
 var chai = require('chai');
@@ -41,7 +41,7 @@ describe('SlackClient', function() {
   });
 
   createServer = function(expectedUrl, expectedParams, statusCode, payload) {
-    slackApiServer = new SlackApiStubServer();
+    slackApiServer = new ApiStubServer();
     slackClient.port = slackApiServer.port();
 
     slackApiServer.urlsToResponses[expectedUrl] = {
