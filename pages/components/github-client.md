@@ -215,12 +215,26 @@ add the following `require` statement to the top of the file:
 var packageInfo = require('../package.json');
 ```
 
+Normally, this directive will refer to the `package.json` file in the root
+directory of your project. In your working copy, however, it will refer to
+`exercise/package.json`, which should contain just the information needed by
+the example code:
+
+```json
+{
+  "name": "18f-unit-testing-node",
+  "version": "0.0.0"
+}
+```
+
 ## Making the HTTP request using `Promise`
 
 [`Promises`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
 represent asynchronous operations that will either _resolve_ to a value or be
-_rejected_ with an error. For background, please see the [`SlackClient`
-section on `Promises`]({{ site.baseurl }}/components/slack-client/#promises),
+_rejected_ with an error. This abstraction works especially for HTTP requests,
+which are common asynchronous operations. For background, please see the
+[`SlackClient` section on
+`Promises`]({{ site.baseurl }}/components/slack-client/#promises),
 as well as
 [`Promise` gotcha #0]({{ site.baseurl }}/components/slack-client/#promises-gotcha-0)
 and
@@ -242,7 +256,341 @@ function makeApiCall(client, metadata, repository) {
 }
 ```
 
-## Testing
+To recap from the `SlackClient` chapter, `resolve` and `reject` are callback
+functions that the `Promise` should call when the operation succeeds or fails.
+We can pass the result of a successful operation to `resolve`, and an
+[`Error`](https://nodejs.org/api/errors.html) or similar object to `reject`.
+Now let's make our request:
+
+```js
+  return new Promise(function(resolve, reject) {
+    var httpOptions = getHttpOptions(client, repository, paramsStr),
+        req = requestFactory.request(httpOptions, function(res) {
+          handleResponse(res, resolve, reject);
+        });
+
+    req.setTimeout(client.timeout);
+    req.on('error', function(err) {
+      reject(new Error('failed to make GitHub API request: ' + err.message));
+    });
+    req.end(paramsStr);
+  });
+```
+
+This brings the `httpOptions` and `requestFactory` pieces together to make the
+actual HTTP request, delegating `resolve` and `reject` to `handleResponse`
+(which we'll fill in next). Also note:
+
+- `req` is a
+  [http.ClientRequest](https://nodejs.org/api/http.html#http_class_http_clientrequest),
+  which implements the
+  [`WritableStream` interface](https://nodejs.org/api/stream.html#stream_class_stream_writable),
+  itself derived from
+  [`EventEmitter`](https://nodejs.org/api/events.html#events_class_events_eventemitter).
+- We've set a timeout, passed from `Config.githubTimeout`, to limit how long
+  to wait before canceling the request.
+- We've set an error handler in case the program fails to send the request,
+  and pass an `Error` to `reject` to complete the operation.
+- We finally send the request with `req.end`, passing `paramsStr` as the body
+  of the request.
+
+Also, take this opportunity to read [`Promise` gotcha #0: not calling
+`resolve` or `reject`]({{ site.baseurl
+}}/components/slack-client/#promises-gotcha-0) from the `SlackClient` chapter
+before moving on.
+
+## Delegating to `handleResponse`
+
+All that's left now is to implement the `handleResponse` delegate. Let's start
+by adding this to our module:
+
+```js
+function handleResponse(res, resolve, reject) {
+  var result = '';
+
+  res.setEncoding('utf8');
+  res.on('data', function(chunk) {
+    result = result + chunk;
+  });
+  res.on('end', function() {
+    // We'll fill this in shortly.
+  });
+}
+```
+
+The `res` parameter is an instance of
+[http.ServerResponse](https://nodejs.org/api/http.html#http_class_http_serverresponse), also a `WritableStream`.
+The
+[`setEncoding` method](https://nodejs.org/api/stream.html#stream_readable_setencoding_encoding)
+comes from `WritableStream` ensures each chunk of the JSON payload is passed as a UTF-8 string to the
+[`'data'` event](https://nodejs.org/api/stream.html#stream_event_data).
+The `'data'` event handler builds up our `result` string a piece at a time.
+
+## Handling the completed HTTP response
+
+The `'end'` event happens when we've finished receiving the entire server
+response. This is the last piece we need to finish the `GitHubClient`:
+
+```js
+  res.on('end', function() {
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      try {
+        resolve(JSON.parse(result).html_url);  // jshint ignore:line
+      } catch (err) {
+        reject(new Error('could not parse JSON response from GitHub API: ' +
+          result));
+      }
+    } else {
+      reject(new Error('received ' + res.statusCode +
+        ' response from GitHub API: ' + result));
+    }
+  });
+```
+A few things to notice about this handler:
+
+- We _only_ accept [200 class HTTP status
+  codes](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2).
+- If the status code isn't in the 200 class, we call `reject` with an `Error`
+  that contains the unparsed body of the request.
+- We have to call
+  [`JSON.parse()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/parse)
+  on the body. If successful, the `Promise` for the HTTP request will resolve
+  to the `html_url` value from the response.
+- If the status code was not in the 200 class, or if the response failed to
+  parse, we reject the `Promise` with an error containing the body of the
+  request.
+
+## Preparing to test the API interaction
+
+Now for the moment of truth! First add the following to the top of the
+`exercise/test/github-client-test.js` file:
+
+```js
+var GitHubClient = require('../lib/github-client');
+```
+
+Run `npm test` to ensure all the tests still pass. (`npm run lint` would be a
+good idea, too.) Now run just the `GitHubClient` tests:
+
+```sh
+$ npm test -- --grep '^GitHubClient '
+
+> 18f-unit-testing-node@0.0.0 test .../unit-testing-node
+> gulp test "--grep" "^GitHubClient "
+
+[14:18:29] Using gulpfile .../unit-testing-node/gulpfile.js
+[14:18:29] Starting 'test'...
+
+
+  GitHubClient
+    ✓ should successfully file an issue
+
+
+  1 passing (5ms)
+
+[14:18:29] Finished 'test' after 95 ms
+```
+
+Before getting into the details of the setup, fill in the `should successfully
+file an issue` test with the following assertion:
+
+```js
+  it('should successfully file an issue', function() {
+    // We'll add the setup here shortly.
+    return githubClient.fileNewIssue(helpers.metadata(), 'handbook')
+      .should.eventually.equal(helpers.ISSUE_URL);
+  });
+```
+
+Let's examine what's going on here. The `fileNewIssue` call takes `metadata`
+and `repository` as arguments, and resolves to `ISSUE_URL`. Since it's likely
+we'll want to use the same sample data through our test suite, let's add the
+following constants and the `metadata` factory function to
+`exercise/test/helpers/index.js`:
+
+```js
+exports = module.exports = {
+  // ...existing constants...
+  PERMALINK: 'https://18f.slack.com/archives/handbook/p1360782804083113',
+  ISSUE_URL: 'https://github.com/18F/handbook/issues/1',
+
+  // ...existing implementation...
+  // Don't forget to add a comma after the previous item in the object!
+
+  metadata: function() {
+    return {
+      channel: 'handbook',
+      timestamp: exports.TIMESTAMP,
+      url: exports.PERMALINK,
+      date: new Date(1360782804.083113 * 1000),
+      title: 'Update from #handbook at Wed, 13 Feb 2013 19:13:24 GMT',
+    };
+  }
+};
+```
+
+Remember that `metadata` is returning a fresh copy of the data for each test
+so that any changes made by one test do not accidentally influence any other
+tests.
+
+Using the `helpers` module implies that we need to add the following to the
+top of our test file:
+
+```js
+var helpers = require('./helpers');
+```
+
+## `Promise`-based assertions
+
+Also notice that the test assertion starts with `return` and ends with
+`.should.become(helpers.ISSUE_URL)`. This assertion is _returning a
+`Promise`_. This is a combination of two features:
+
+- The Mocha framework [will detect returned Promises and wait for them to
+  become resolved or rejected](https://mochajs.org/#working-with-promises).
+- The Chai-as-Promised extension of the Chai assertion library provides
+  [expect/should-style assertions](https://www.npmjs.com/package/chai-as-promised#should-expect-interface).
+
+To enable these features, add the following lines to the top of the test file:
+
+```js
+var chai = require('chai');
+var chaiAsPromised = require('chai-as-promised');
+
+chai.should();
+chai.use(chaiAsPromised);
+```
+
+# Defining `githubClient`
+
+Now we can instantiate our `GitHubClient` instance:
+
+```js
+describe('GitHubClient', function() {
+  var githubClient;
+
+  before(function() {
+    githubClient = new GitHubClient(helpers.baseConfig());
+    githubClient.protocol = 'http:';
+    githubClient.host = 'localhost';
+  });
+
+  it('should successfully file an issue', function() {
+    return githubClient.fileNewIssue(helpers.metadata(), 'handbook')
+      .should.eventually.equal(helpers.ISSUE_URL);
+  });
+});
+```
+
+A few things are happening here:
+
+- We instantiate the configuration via `helpers.baseConfig()`. We could also
+  `require('./helpers/test-config.json')` as in the `SlackClient` test, but
+  we've opted to take a different path here. The result, in this case, is the
+  same.
+- As mentioned earlier, we change the `protocol` and `host` parameters so the
+  `GitHubClient` will send requests to `http://localhost`, not
+  `https://slack.com`.
+- The `GitHubClient` state affecting its behavior (`protocol` and `host`) is
+  constant across every test. Consequently, we only create one instance in the
+  `before` block, rather than one per test in `beforeEach`.
+
+At this point, let's run our test:
+
+```sh
+$ npm test -- --grep '^GitHubClient '
+
+> 18f-unit-testing-node@0.0.0 test .../unit-testing-node
+> gulp test "--grep" "^GitHubClient "
+
+[14:40:31] Using gulpfile .../unit-testing-node/gulpfile.js
+[14:40:31] Starting 'test'...
+
+
+  GitHubClient
+    1) should successfully file an issue
+
+
+  0 passing (20ms)
+  1 failing
+
+  1) GitHubClient should successfully file an issue:
+     Error: GitHub API call failed: connect ECONNREFUSED 127.0.0.1:80
+    at ClientRequest.<anonymous> (exercise/lib/github-client.js:54:14)
+    at Socket.socketErrorListener (_http_client.js:265:9)
+    at emitErrorNT (net.js:1256:8)
+
+
+
+
+[14:40:31] 'test' errored after 121 ms
+[14:40:31] Error in plugin 'gulp-mocha'
+Message:
+    1 test failed.
+npm ERR! Test failed.  See above for more details.
+```
+
+This is what we _want_ to see at this point, because we haven't launched a
+`localhost` HTTP server yet.
+
+## Broken `Promises`
+
+Before moving on to the next section, remove the `return` keyword from the
+test assertion, then run the test to see what happens:
+
+```sh
+$ npm test -- --grep '^GitHubClient '
+
+> 18f-unit-testing-node@0.0.0 test .../unit-testing-node
+> gulp test "--grep" "^GitHubClient "
+
+[14:45:58] Using gulpfile .../unit-testing-node/gulpfile.js
+[14:45:58] Starting 'test'...
+
+
+  GitHubClient
+    ✓ should successfully file an issue
+
+
+  1 passing (18ms)
+
+[14:45:58] Finished 'test' after 106 ms
+```
+
+In this case, what happened is that **we forgot to `return` the new Promise**.
+Please review [`Promise` gotcha #1: not returning the
+`Promise`]({{ site.baseurl }}/components/slack-client/#promises-gotcha-1) from
+the `SlackClient` chapter for more background. Restore the missing `return`
+statement and run the test again to ensure it fails before moving on.
+
+## Testing the error case
+
+Before fixing the test, let's actually copy it and make a new test out of it:
+
+```js
+  it('should fail to make a request if the server is down', function() {
+    return githubClient.fileNewIssue(helpers.metadata(), 'handbook')
+      .should.be.rejectedWith('failed to make GitHub API request:');
+  });
+```
+
+Run the tests and make sure that this one passes. Now we can remain confident
+that if the real GitHub API server is down, our `GitHubClient` will report the
+error instead of silently failing.
+
+## Updating the `ApiStubServer` to handle POST requests and check HTTP headers
+
+Now for the fun part: updating [the `ApiStubServer` that we implemented in the
+`SlackClient`
+chapter]({{ site.baseurl }}/components/slack-client/#api-stub-server)! Please
+review that section for background on the features and implementation details.
+
+At the moment, that server does most of what we need, but only handles HTTP
+GET requests and doesn't check HTTP headers. The first thing we will do is
+refactor our checks into a new function
+
+```js
+```
 
 ## Check your work
 

@@ -924,7 +924,7 @@ Run the tests and make sure that this one passes. Now we can remain confident
 that if the real Slack API server is down, our `SlackClient` will report the
 error instead of silently failing.
 
-## Writing the `ApiStubServer`
+## <a name="api-stub-server"></a>Writing the `ApiStubServer`
 
 Now for the fun part: writing the test server! Rather than clutter up our test
 file, let's create create `exercise/test/helpers/api-stub-server.js`.

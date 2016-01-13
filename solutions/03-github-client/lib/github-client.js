@@ -42,4 +42,38 @@ function makeApiCall(client, metadata, repository) {
         title: metadata.title,
         body: metadata.url
       });
+  return new Promise(function(resolve, reject) {
+    var httpOptions = getHttpOptions(client, repository, paramsStr),
+        req = requestFactory.request(httpOptions, function(res) {
+          handleResponse(res, resolve, reject);
+        });
+
+    req.setTimeout(client.timeout);
+    req.on('error', function(err) {
+      reject(new Error('failed to make GitHub API request: ' + err.message));
+    });
+    req.end(paramsStr);
+  });
+}
+
+function handleResponse(res, resolve, reject) {
+  var result = '';
+
+  res.setEncoding('utf8');
+  res.on('data', function(chunk) {
+    result = result + chunk;
+  });
+  res.on('end', function() {
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      try {
+        resolve(JSON.parse(result).html_url);  // jshint ignore:line
+      } catch (err) {
+        reject(new Error('could not parse JSON response from GitHub API: ' +
+          result));
+      }
+    } else {
+      reject(new Error('received ' + res.statusCode +
+        ' response from GitHub API: ' + result));
+    }
+  });
 }
