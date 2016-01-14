@@ -1,6 +1,4 @@
 ---
-permalink: /concepts/code-reuse/
-parent: Concepts
 title: Code reuse
 ---
 [Object composition]({{ site.baseurl }}/concepts/object-composition-vs-inheritance/)

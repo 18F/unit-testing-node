@@ -1,6 +1,4 @@
 ---
-permalink: /setup/tools/
-parent: Setup
 title: Adding the tools to your own project
 ---
 To add the testing frameworks from this exercise to your own project, run:

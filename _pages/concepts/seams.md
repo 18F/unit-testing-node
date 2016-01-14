@@ -1,6 +1,4 @@
 ---
-permalink: /concepts/seams/
-parent: Concepts
 title: Seams
 ---
 A "seam" is a boundary between objects, where one object interacts with

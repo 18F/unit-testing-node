@@ -1,6 +1,4 @@
 ---
-permalink: /components/github-client/
-parent: Designing and testing the components
 title: GitHubClient class
 ---
 The `GitHubClient` class encapsulates the application's dependency on the

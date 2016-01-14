@@ -1,6 +1,4 @@
 ---
-permalink: /concepts/schema-validation/
-parent: Concepts
 title: Schema validation
 ---
 [JSON](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON)

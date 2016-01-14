@@ -1,5 +1,4 @@
 ---
-permalink: /testing-component-integration/
 title: Testing component integration
 ---
 If you've skipped to this chapter, you can establish the starting state of the

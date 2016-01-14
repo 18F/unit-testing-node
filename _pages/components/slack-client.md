@@ -1,6 +1,4 @@
 ---
-permalink: /components/slack-client/
-parent: Designing and testing the components
 title: SlackClient class
 ---
 The `SlackClient` class encapsulates the application's dependency on [Slack

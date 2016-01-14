@@ -1,5 +1,4 @@
 ---
-permalink: /further-reading/
 title: Further reading
 ---
 Before or after reading this guide, read our [Automated Testing

@@ -1,6 +1,4 @@
 ---
-permalink: /components/middleware/
-parent: Designing and testing the components
 title: Middleware class
 ---
 If you've skipped to this chapter, you can establish the starting state of the

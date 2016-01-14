@@ -1,5 +1,4 @@
 ---
-permalink: /testing-strategy/
 title: Testing strategy
 ---
 Most of the tests we will write will not exercise the code at the complete

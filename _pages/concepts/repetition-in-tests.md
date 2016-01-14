@@ -1,6 +1,4 @@
 ---
-permalink: /concepts/repetition-in-tests/
-parent: Concepts
 title: Repetition in tests
 ---
 Contrary to the application of the [Don't Repeat Yourself

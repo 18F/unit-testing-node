@@ -1,5 +1,4 @@
 ---
-permalink: /components/
 title: Designing and testing the components
 ---
 There is no one right place to start. For the sake of the exercise, we will

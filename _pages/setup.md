@@ -1,5 +1,4 @@
 ---
-permalink: /setup/
 title: Setup
 ---
 Once your Node.js environment is set up the way you want it, clone the

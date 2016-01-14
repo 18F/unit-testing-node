@@ -1,6 +1,4 @@
 ---
-permalink: /concepts/exploration-vision-and-settlement/
-parent: Concepts
 title: Exploration, vision, and settlement
 ---
 As you gain experience with your program, you may develop many different

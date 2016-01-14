@@ -1,5 +1,4 @@
 ---
-permalink: /conclusion/
 title: Conclusion
 ---
 Bear in mind that this exercise came about _after_ the

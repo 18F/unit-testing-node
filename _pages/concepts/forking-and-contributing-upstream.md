@@ -1,6 +1,4 @@
 ---
-permalink: /concepts/forking-and-contributing-upstream/
-parent: Concepts
 title: Forking and contributing upstream
 ---
 In the [`SlackClient` chapter]({{ site.baseurl }}/components/slack-client/),

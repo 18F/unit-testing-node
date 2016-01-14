@@ -1,6 +1,4 @@
 ---
-permalink: /concepts/dependency-injection/
-parent: Concepts
 title: Dependency injection
 ---
 Dependency injection is a fancy term for passing an object's dependencies as

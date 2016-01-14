@@ -1,5 +1,4 @@
 ---
-permalink: /tools-and-automation/
 title: Tools and automation
 ---
 Now that we have a full application with a thorough test suite, let's discuss

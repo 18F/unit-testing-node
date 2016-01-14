@@ -1,6 +1,4 @@
 ---
-permalink: /concepts/shims/
-parent: Concepts
 title: Shims
 ---
 A "shim" is a very lightweight function, adapter or facade class. One

@@ -1,6 +1,4 @@
 ---
-permalink: /concepts/testability/
-parent: Concepts
 title: Testability
 ---
 Adhering to object composition rather than implementation inheritance also

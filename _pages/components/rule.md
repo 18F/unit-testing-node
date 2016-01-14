@@ -1,6 +1,4 @@
 ---
-permalink: /components/rule/
-parent: Designing and testing the components
 title: Rule class
 ---
 The `Rule` class is very small, but encapsulates important logic, part of

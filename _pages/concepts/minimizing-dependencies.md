@@ -1,6 +1,4 @@
 ---
-permalink: /concepts/minimizing-dependencies/
-parent: Concepts
 title: Minimizing dependencies
 ---
 This application has been designed to keep dependencies to an absolute
