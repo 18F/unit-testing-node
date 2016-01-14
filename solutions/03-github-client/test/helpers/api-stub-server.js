@@ -20,12 +20,40 @@ function ApiStubServer() {
     if (!responseData) {
       res.statusCode = 500;
       res.end('unexpected URL: ' + req.url);
-      return;
+
+    } else if (req.method === 'GET') {
+      compareParamsAndRespond(res, responseData,
+        querystring.parse(baseUrl.query));
+
+    } else if (req.method === 'POST') {
+      comparePostParamsAndRespond(req, res, responseData);
+
+    } else {
+      res.statusCode = 500;
+      res.end('unexpected HTTP method "' + req.method +
+        '" for URL: ' + req.url);
     }
-    compareParamsAndRespond(res, responseData,
-      querystring.parse(baseUrl.query));
   });
   this.server.listen(0);
+}
+
+function comparePostParamsAndRespond(req, res, responseData) {
+  var data = '';
+
+  req.setEncoding('utf8');
+  req.on('data', function(chunk) {
+    data = data + chunk;
+  });
+  req.on('end', function() {
+    try {
+      compareParamsAndRespond(res, responseData, JSON.parse(data));
+
+    } catch (err) {
+      res.statusCode = 500;
+      res.end('could not parse JSON request for ' + req.url +
+        ': ' + err + ': ' + data);
+    }
+  });
 }
 
 function compareParamsAndRespond(res, responseData, actualParams) {

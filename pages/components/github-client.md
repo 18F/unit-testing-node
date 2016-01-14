@@ -587,10 +587,116 @@ review that section for background on the features and implementation details.
 
 At the moment, that server does most of what we need, but only handles HTTP
 GET requests and doesn't check HTTP headers. The first thing we will do is
-refactor our checks into a new function
+refactor our checks into a new function `compareParamsAndRespond`, so the
+server implementation now looks like this:
 
 ```js
+function ApiStubServer() {
+  var stubServer = this;
+
+  this.urlsToResponses = {};
+
+  this.server = new http.Server(function(req, res) {
+    var baseUrl = url.parse(req.url),
+        responseData = stubServer.urlsToResponses[baseUrl.pathname];
+
+    if (!responseData) {
+      res.statusCode = 500;
+      res.end('unexpected URL: ' + req.url);
+      return;
+    }
+    compareParamsAndRespond(res, responseData,
+      querystring.parse(baseUrl.query));
+  });
+  this.server.listen(0);
+}
+
+function compareParamsAndRespond(res, responseData, actualParams) {
+  var payload = responseData.payload,
+      expectedParams = JSON.stringify(responseData.expectedParams);
+
+  res.statusCode = responseData.statusCode;
+  actualParams = JSON.stringify(actualParams);
+
+  if (actualParams !== expectedParams) {
+    res.statusCode = 500;
+    payload = 'expected params ' + expectedParams +
+      ', actual params ' + actualParams;
+  }
+  res.end(JSON.stringify(payload));
+}
 ```
+
+Run `npm test` (_not_ `npm test -- --grep '^GitHubClient '`) to make sure all
+the tests still pass. We haven't changed the behavior of the `ApiStubServer`.
+However, with `compareParamsAndRespond` extracted, we can better share that
+code between the `GET` case needed by `SlackClient` and the `POST` case needed
+by `GitHubClient`. We'll first put this new structure in place within the
+`http.Server` callback within the `ApiStubServer` constructor:
+
+```js
+  this.server = new http.Server(function(req, res) {
+    var baseUrl = url.parse(req.url),
+        responseData = stubServer.urlsToResponses[baseUrl.pathname];
+
+    if (!responseData) {
+      res.statusCode = 500;
+      res.end('unexpected URL: ' + req.url);
+
+    } else if (req.method === 'GET') {
+      compareParamsAndRespond(req, res, responseData,
+        querystring.parse(baseUrl.query));
+
+    } else if (req.method === 'POST') {
+      comparePostParamsAndRespond(res, responseData);
+
+    } else {
+      res.statusCode = 500;
+      res.end('unexpected HTTP method "' + req.method +
+        '" for URL: ' + req.url);
+    }
+  });
+```
+
+`comparePostParamsAndRespond`, defined below, needs to get the request
+paramters from the JSON object encoded in the body. Since `req` implements the
+[`WritableStream` interface](https://nodejs.org/api/stream.html#stream_class_stream_writable),
+unlike the `GET` example, we have to piece together the body before parsing
+the JSON object and calling `compareParamsAndRespond`.
+
+```js
+function comparePostParamsAndRespond(req, res, responseData) {
+  var data = '';
+
+  req.setEncoding('utf8');
+  req.on('data', function(chunk) {
+    data = data + chunk;
+  });
+  req.on('end', function() {
+    try {
+      compareParamsAndRespond(res, responseData, JSON.parse(data));
+
+    } catch (err) {
+      res.statusCode = 500;
+      res.end('could not parse JSON request for ' + req.url +
+        ': ' + err + ': ' + data);
+    }
+  });
+}
+```
+
+Run `npm test` again to make sure everything passes.
+
+## Testing the helper?
+
+While this test "helper" is getting complex enough to warrant its own tests,
+we're testing it using the actual application. If we were to reuse this in
+other applications, we would want to make a well-tested npm out of it. Or
+perhaps we would just use an existing library like
+[`nock`](https://www.npmjs.com/package/nock).
+
+The reason we roll our own here is to provide a bit of insight into how to
+write basic HTTP testing servers using the Node.js standard library.
 
 ## Check your work
 
