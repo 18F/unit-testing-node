@@ -698,11 +698,130 @@ perhaps we would just use an existing library like
 The reason we roll our own here is to provide a bit of insight into how to
 write basic HTTP testing servers using the Node.js standard library.
 
+## Launching the `ApiStubServer`
+
+To make use of our newly-updated `ApiStubServer`, first `require` its module:
+
+```js
+var ApiStubServer = require('./helpers/api-stub-server');
+```
+
+Add variables to the fixture referencing the server and the factory function
+that will create it:
+
+```js
+describe('GitHubClient', function() {
+  var githubClient, githubApiServer, createServer;
+```
+
+Start a new instance before each test, and close the instance after each test:
+
+```js
+  beforeEach(function() {
+    githubApiServer = undefined;
+  });
+
+  afterEach(function() {
+    if (githubApiServer) {
+      githubApiServer.close();
+    }
+  });
+```
+
+Since our interaction with the GitHub API is very limited, we can write a
+`createServer` function that is more focused that that appearing in the
+`SlackClient` test.
+
+```js
+  createServer = function(statusCode, payload) {
+    var metadata = helpers.metadata();
+
+    githubApiServer = new ApiStubServer();
+    githubClient.port = githubApiServer.port();
+
+    githubApiServer.urlsToResponses['/repos/18F/handbook/issues'] = {
+      expectedParams: {
+        title: metadata.title,
+        body: metadata.url
+      },
+      statusCode: statusCode,
+      payload: payload
+    };
+  };
+```
+
+Now add the following line at the beginning of the `should successfully file
+an issue` test:
+
+```js
+    createServer(201, { 'html_url': helpers.ISSUE_URL });
+```
+
+Now run `npm test -- --grep '^GitHubClient '` to verify that the request
+succeeds:
+
+```sh
+$ npm test -- --grep '^GitHubClient '
+
+> 18f-unit-testing-node@0.0.0 test .../unit-testing-node
+> gulp test "--grep" "^GitHubClient "
+
+[10:05:16] Using gulpfile .../unit-testing-node/gulpfile.js
+[10:05:16] Starting 'test'...
+
+
+  GitHubClient
+    ✓ should successfully file an issue
+    ✓ should fail to make a request if the server is down
+
+
+  2 passing (39ms)
+
+[10:05:16] Finished 'test' after 133 ms
+```
+
+## Testing an error response from the server
+
+For our last test, let's simulate an error from the GitHub server:
+
+```js
+  it('should receive an error when filing an issue', function() {
+    var payload = { message: 'test failure' };
+    createServer(500, payload);
+    return githubClient.fileNewIssue(helpers.metadata(), 'handbook')
+      .should.be.rejectedWith(Error, 'received 500 response from GitHub ' +
+        'API: ' + JSON.stringify(payload));
+  });
+```
+
+We're again checking the result using `rejectedWith`, but the error comes from
+the server's [500 class
+response](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.5).
+Our error message contains the full payload returned from the server.
+
 ## Check your work
 
 By this point, all of the `GitHubClient` tests should be passing:
 
 ```sh
+$ npm test -- --grep '^GitHubClient '
+
+> 18f-unit-testing-node@0.0.0 test .../unit-testing-node
+> gulp test "--grep" "^GitHubClient "
+
+[10:07:23] Using gulpfile .../unit-testing-node/gulpfile.js
+[10:07:23] Starting 'test'...
+
+
+  GitHubClient
+    ✓ should successfully file an issue
+    ✓ should fail to make a request if the server is down
+    ✓ should receive an error when filing an issue
+
+
+  3 passing (44ms)
+
+[10:07:23] Finished 'test' after 137 ms
 ```
 
 Now that you're all finished, compare your solutions to the code in
