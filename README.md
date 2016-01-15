@@ -39,6 +39,10 @@ software described below.
    of the 18F Development Environment Standardization Guide for installation
    options and instructions.
 
+   *Why Ruby?* The `./go` script mentioned below is written in Ruby. The
+   content is published and hosted locally using
+   [Jekyll](https://jekyllrb.com), a Ruby application.
+
 1. Install [git](https://git-scm.com/downloads) if you do not have it
    installed already.
 

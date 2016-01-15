@@ -3,6 +3,6 @@ node_js:
 - "node"
 - "4.2"
 before_install:
-- rvm install 2.2.3
+- rvm install stable
 - gem install bundler
 script: bundle install && bundle exec ./go ci_build
