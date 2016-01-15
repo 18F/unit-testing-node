@@ -1,5 +1,4 @@
 ---
-permalink: /designing-the-application/
 title: Designing the application
 ---
 The server is based on a real-world application, [the Slack bot 18F uses to
