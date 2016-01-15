@@ -9,7 +9,6 @@ function Middleware(config, slackClient, githubClient) {
   this.successReaction = config.successReaction;
   this.slackClient = slackClient;
   this.githubClient = githubClient;
-  this.inProgress = {};
 }
 
 Middleware.prototype.execute = function(/* context, next, done */) {
