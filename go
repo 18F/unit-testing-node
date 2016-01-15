@@ -79,6 +79,7 @@ end
 
 def_command('set-complete'.to_sym,
   'Copy the complete solution into the exercise dir') do
+  restore_initial_state
   replace_exercise_files(File.join('solutions', 'complete'))
   exec_cmd 'npm test'
   puts 'Restoration of complete solution state successful'
