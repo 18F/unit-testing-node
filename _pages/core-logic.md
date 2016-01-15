@@ -1,5 +1,4 @@
 ---
-permalink: /core-logic/
 title: Designing the core logic module
 ---
 Given that our core logic involves interaction with both Slack and GitHub, we
