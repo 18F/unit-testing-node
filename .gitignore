@@ -1,5 +1,9 @@
-_site/
-.sass-cache/
-.DS_store
+*.log
 .*.swp
+.DS_store
+.hubot_history
 .jekyll*
+.sass-cache/
+_site/
+coverage/*
+node_modules/

@@ -1,0 +1,33 @@
+{
+  "name": "18f-unit-testing-node",
+  "version": "0.0.0",
+  "description": "Packages necessary for the 18F unit testing exercise.",
+  "main": "index.js",
+  "scripts": {
+    "test": "gulp test",
+    "test-all": "gulp test-all",
+    "lint": "gulp lint",
+    "lint-all": "gulp lint-all"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/18F/unit-testing-node/"
+  },
+  "keywords": [
+    "18F",
+    "testing"
+  ],
+  "author": "Mike Bland <michael.bland@gsa.gov> (https://18f.gsa.gov/)",
+  "license": "CC0-1.0",
+  "devDependencies": {
+    "chai": "^3.4.1",
+    "chai-as-promised": "^5.1.0",
+    "gulp": "^3.9.0",
+    "gulp-jshint": "^2.0.0",
+    "gulp-mocha": "^2.2.0",
+    "jshint": "^2.8.0",
+    "mocha": "^2.3.4",
+    "yargs": "^3.31.0"
+  },
+  "dependencies": {}
+}
