@@ -26,6 +26,9 @@ author:
 logourl: /assets/img/18f-logo.png
 logoalt: 18F logo
 
+# If true, will expand all nav bar items by default
+expand_nav: true
+
 # Navigation
 # List links that should appear in the site sidebar here
 navigation:
@@ -37,9 +40,25 @@ navigation:
 - text: Designing the application
   url: designing-the-application/
   internal: true
+- text: Testing strategy
+  url: testing-strategy/
+  internal: true
 - text: Designing the core logic module
   url: core-logic/
   internal: true
+- text: Designing and testing the components
+  url: components/
+  internal: true
+- text: Further reading
+  url: further-reading/
+  internal: true
+- text: Concepts
+  url: concepts/
+  internal: true
+  children:
+  - text: Seams
+    url: seams/
+    internal: true
 
 repos:
 - name: Unit testing in Node.js
