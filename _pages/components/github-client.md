@@ -3,7 +3,7 @@ title: GitHubClient class
 ---
 The `GitHubClient` class encapsulates the application's dependency on the
 [GitHub API](https://api.slack.com/). You can find it in the
-['exercise/lib/github-client.js`]({{ site.baseurl }}/exercise/lib/github-client.js)
+[`exercise/lib/github-client.js`]({{ site.baseurl }}/exercise/lib/github-client.js)
 file.
 
 If you don't have experience writing HTTP calls and launching test servers,
@@ -50,11 +50,11 @@ We will learn to:
   [`Promise`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
   to encapsulate an asynchronous operation
 - learn how to test HTTP requests by launching a local HTTP test server
-- learn how to use Promises with mocha and chai
+- learn how to use `Promises` with mocha and chai
 
 ## Starting to build `GitHubClient`
 
-The beginning of the `slack-client.js` file, where the `GitHubClient`
+The beginning of the `github-client.js` file, where the `GitHubClient`
 constructor is defined, looks like this:
 
 ```js
@@ -694,7 +694,9 @@ perhaps we would just use an existing library like
 [`nock`](https://www.npmjs.com/package/nock).
 
 The reason we roll our own here is to provide a bit of insight into how to
-write basic HTTP testing servers using the Node.js standard library.
+write basic HTTP testing servers using the Node.js standard library. However,
+retrofitting another package into the existing tests would be an excellent
+exercise.
 
 ## Launching the `ApiStubServer`
 
