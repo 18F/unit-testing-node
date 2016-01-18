@@ -38,6 +38,8 @@ In short, we will learn to:
 - write more controllable, maintainable, readable tests using test doubles and
   a technique known as [dependency
   injection]({{ site.baseurl }}/concepts/dependency-injection)
+- using the [`sinon` library](http://sinonjs.org/) to create
+  [test doubles](http://googletesting.blogspot.com/2013/07/testing-on-toilet-know-your-test-doubles.html)
 - learn how to use `Promises` with mocha and chai
 
 ## The core algorithm
@@ -209,6 +211,115 @@ implement and test this step in isolation. [This will give us confidence that
 all the corner cases are accounted for, without an exponential explosion in
 the number of test
 cases](http://googletesting.blogspot.com/2008/02/in-movie-amadeus-austrian-emperor.html).
+
+Let's look at the first empty test case in
+[`exercise/test/middleware-test.js`]({{ site.baseurl }}/exercise/test/middleware-test.js):
+
+```js
+describe('Middleware', function() {
+  describe('findMatchingRule', function() {
+    it('should find the rule matching the message', function() {
+    });
+  });
+```
+
+## Introducing the `sinon` test double library
+
+The first thing we need is to instantiate a `Middleware` instance in our test
+fixture. We'll also instantiate `Config` a config object, and we'll now
+introduce the [`sinon` library](http://sinonjs.org/) to create a [test
+double](http://googletesting.blogspot.com/2013/07/testing-on-toilet-know-your-test-doubles.html)
+for `SlackClient`.
+
+`sinon` is a library that can create stub, fake, and mock objects for you.
+Though we wrote our own
+[`SlackClientImplStub`]({{ site.baseurl }}/exercises/test/helpers/slack-client-impl-stub.js)
+when testing the `Rule` class, we will need more objects and more behavior
+when testing `Middleware`. As a result, we'll use `sinon` to create a double
+for `SlackClient` in this test, rather than extracting `SlackClientImplStub`
+into `test/helpers`.
+
+Now add all of the necessary `require` statements, and instantiate the
+`config`, `slackClient`, and `githubClient` objects:
+
+```js
+var Middleware = require('../lib/middleware');
+var Config = require('../lib/config');
+var GitHubClient = require('../lib/github-client');
+var SlackClient = require('../lib/slack-client');
+var helpers = require('./helpers');
+var sinon = require('sinon');
+var chai = require('chai');
+
+describe('Middleware', function() {
+  var config, slackClient, githubClient, middleware;
+
+  beforeEach(function() {
+    config = new Config(helpers.baseConfig());
+    middleware = new Middleware(config, slackClient, githubClient);
+  });
+```
+
+Notice that we leave the `githubClient` argument to the `Middleware`
+constructor undefined for now. We'll define it when we add the behavior that
+needs it.
+
+## `reaction_added` test data
+
+The second thing we need is a `reaction_added` message instance. Now that we're
+familiar with the pattern of adding test data to our `test/helpers` package,
+let's add the following to `exercise/test/helpers/index.js`:
+
+```js
+var SlackClient = require('../../lib/slack-client');
+
+exports = module.exports = {
+  REACTION: 'evergreen_tree',
+  USER_ID: 'U5150OU812',
+
+  // ...existing declarations...
+
+  reactionAddedMessage: function() {
+    return {
+      type: SlackClient.REACTION_ADDED,
+      user: exports.USER_ID,
+      item: {
+        type: 'message',
+        channel: exports.CHANNEL_ID,
+        ts: exports.TIMESTAMP
+      },
+      reaction: exports.REACTION,
+      'event_ts': exports.TIMESTAMP
+    };
+  },
+
+  // ...existing declarations...
+```
+
+Looking closely, we can see that there's also a new member to add to
+`SlackClient`. Inside
+[`exercise/lib/slack-client.js`]({{ site.baseurl }}/exercise/lib/slack-client.js)
+add the following just below the constructor:
+
+```js
+// From: https://api.slack.com/events/reaction_added
+// May get this directly from a future version of the slack-client package.
+SlackClient.REACTION_ADDED = 'reaction_added';
+```
+
+This keeps with the theme of adding all Slack-related information and behavior
+encapsulated within the `SlackClient` class. Of course, the most correct thing
+would be to `require('slack-client')` and get the value that way. However, given
+this is the only piece of information we need, we can [minimize
+dependencies]({{ site.baseurl }}/concepts/minimizing-dependencies/) by
+assigning this one constant value ourselves.
+
+## The `findMatchingRule` test suite
+
+With this helper data in place, we can now implement our first test:
+
+```js
+```
 
 ## Testing
 
