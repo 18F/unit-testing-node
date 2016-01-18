@@ -42,7 +42,7 @@ In short, we will learn to:
   [test doubles](http://googletesting.blogspot.com/2013/07/testing-on-toilet-know-your-test-doubles.html)
 - learn how to use `Promises` with mocha and chai
 
-## The core algorithm
+## <a name="core-algorithm"></a>The core algorithm
 
 `Middleware` implements the core algorithm of the application:
 
@@ -69,11 +69,12 @@ is defined, looks like this:
 
 module.exports = Middleware;
 
-function Middleware(config, slackClient, githubClient) {
+function Middleware(config, slackClient, githubClient, logger) {
   this.rules = config.rules;
   this.successReaction = config.successReaction;
   this.slackClient = slackClient;
   this.githubClient = githubClient;
+  this.logger = logger;
 }
 
 Middleware.prototype.execute = function(/* context, next, done */) {
@@ -81,10 +82,11 @@ Middleware.prototype.execute = function(/* context, next, done */) {
 ```
 
 There are two very important things to notice about the constructor. First,
-the `rules`, `successReaction`, `slackClient`, and `githubClient` objects
-become properties of the `Middleware` object. Rather than directly implement
-configuration validation, rule matching, and HTTP request behavior, we
-delegate handling of those detailed operations to each respective object.
+the `rules`, `successReaction`, `slackClient`, `githubClient`, and `logger`
+objects become properties of the `Middleware` object. Rather than directly
+implement configuration validation, rule matching, HTTP request behavior, and
+logging, we delegate handling of those detailed operations to each respective
+object.
 
 Neither does `Middleware` inherit any behavior from other objects. Every
 dependency on behavior not implemented directly by `Middleware` itself is made
@@ -116,7 +118,7 @@ var Rule = require('./rule');
 
 // ...
 
-function Middleware(config, slackClient, githubClient) {
+function Middleware(config, slackClient, githubClient, logger) {
   this.rules = config.rules.map(function(rule) {
     return new Rule(rule);
   });
@@ -276,6 +278,9 @@ describe('Middleware', function() {
     middleware = new Middleware(config, slackClient, githubClient);
   });
 ```
+
+Note that we're not defining the `logger` argument yet. We'll cover this in a
+later section.
 
 ## Introducing the `sinon` test double library
 
@@ -554,7 +559,148 @@ return `undefined` if its `message` argument is `undefined`. Run the test via
 We will add at least one more assertion to this rule as we implement the rest
 of `execute`.
 
+## Sketching out the rest of `execute` via `Promise` chaining
+
+If `execute` finds a matching rule, it needs to launch a series of
+asynchronous operations in a specific sequence. As introduced in the
+`SlackClient` chapter,
+[`Promises`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
+represent asynchronous operations that will either _resolve_ to a value or be
+_rejected_ with an error. A series of `Promise` objects may be chained
+together to execute asynchronous operations in a way that resembles a series
+of synchronous function calls. Plus, a single error handler can catch errors
+arising from any link in the `Promise` chain.
+
+Therefore, if `execute` finds a matching rule, it will return a `Promise` that
+represents a `Promise` chain handling the various Slack and GitHub API calls.
+Each function in this chain [returns a
+`Promise`]({{ site.baseurl }}/components/slack-client/#promises-gotcha-1) that
+is linked to the previous `Promise` in the chain. This chain must eventually
+call `next(done)` regardless of success or error. Replace the current `return`
+statement at the end of `execute` with this:
+
+```js
+  return getReactions(this, msgId, message)
+    .then(fileGitHubIssue(this, msgId, rule.githubRepository))
+    .then(addSuccessReaction(this, msgId, message))
+    .then(handleSuccess(finish))
+    .catch(handleFailure(this, rule.githubRepository, finish));
+```
+
+Notice that each of these steps corresponds to the remainder of the [core
+algorithm](#core-algorithm). If any of the `Promises` in the chain before
+`handleSuccess` are rejected, the `catch(handleFailure)` case will report the
+error. There are two pieces of data here that we've yet to define:
+
+- **`msgId`**: a unique identifier computed for the incoming message
+- **`finish`**: a callback that gets called by both `handleSuccess` and
+  `handleFailure`
+
+We'll define a function private to the module like so:
+
+```js
+function messageId(message) {
+  return message.item.channel + ':' + message.item.ts;
+}
+```
+
+Now we'll add a `msgId` variable to `execute`, and call it _after_
+`findMatchingRule`, since this new function expects `message` to be defined:
+
+```js
+Middleware.prototype.execute = function(context, next, done) {
+  var response = context.response,
+      message = response.message.rawMessage,
+      rule = this.findMatchingRule(message),
+      msgId;
+
+  if (!rule) {
+    return next(done);
+  }
+
+  msgId = messageId(message);
+```
+
+We'll start with the most straightforward implementation of `finish` for now.
+First, add a `finish` variable to the top of `execute`. Then define `finish`
+thus:
+
+```js
+  finish = function() {
+    next(done);
+  };
+```
+
+What's left now is to implement the remaining functions in the `Promise`
+chain.
+
+## `getReactions`
+
+The core of the `getReactions` implementation is fairly straightforward:
+
+```js
+function getReactions(middleware, msgId, message) {
+  return middleware.slackClient.getReactions(message.item.channel, timestamp);
+}
+```
+
+However, notice that we specified a `msgId` argument that we currently are not
+using. Remember that this program will run as a Hubot plugin, and that Hubot
+runs as a long-lived service, so our plugin will run indefinitely. Also, our
+plugin may handle multiple incoming messages at once, making multiple
+concurrent requests to Slack and GitHub in the process.
+
+Though it's not core to the overall correct functioning of the program, these
+considerations make logging a critical component of operational monitoring and
+debugging. We will use `msgId` as a prefix for log messages describing the
+progress and outcome of the requests made during processing of the message.
+
+Here is the fully fleshed out version of `getReactions`:
+
+```js
+function getReactions(middleware, msgId, message) {
+  var domain = middleware.slackClient.getTeamDomain(),
+      channelName = middleware.slackClient.getChannelName(message.item.channel),
+      timestamp = message.item.ts,
+      permalink = 'https://' + domain + '.slack.com/archives/' +
+        channelName + '/p' + timestamp.replace('.', '');
+
+  middleware.logger(msgId, 'getting reactions for ' + permalink);
+  return middleware.slackClient.getReactions(message.item.channel, timestamp);
+}
+```
+
+We use the `slackClient` to get our team's Slack domain name, the channel
+name, and the list of all reactions to the message. The only one we haven't
+yet implemented is `getTeamDomain`. This method is very straightforward; let's
+implement it now in `exercise/lib/slack-client.js`:
+
+```js
+SlackClient.prototype.getTeamDomain = function() {
+  return this.client.team.domain;
+};
+```
+
+With all this information in hand, we get the `permalink` pertaining to the
+message. Though the `slackClient.getReactions` response will include this
+`permalink`, it's very handy to include it in the log message announcing API
+call.
+
 ## Logging and log testing
+
+In the deployed program the `logger` argument to the `Middleware` constructor
+will be an instance of the `Logger` class. This object, in turn, will be a
+thin wrapper over the `logger` member of the Hubot instance. Logger will have
+`info` and `error` methods that add the script name and message ID as prefixes
+to each log message.
+
+## `fileGitHubIssue`
+
+## `addSuccessReaction`
+
+## `handleSuccess`
+
+## `handleFailure`
 
 ## Preventing multiple issues from being filed while filing an issue
 
