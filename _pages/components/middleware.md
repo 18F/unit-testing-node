@@ -320,6 +320,12 @@ following to set up and tear down the test double for the
     });
 ```
 
+Here we create a [stub](http://sinonjs.org/docs/#stubs) for the
+`getChannelName` method of the `slackClient` object. We can control what the
+stub returns when it's called via `returns`. There are many other features of
+sinon stubs, and you are welcome to experiment with other methods beyond
+what's covered in this chapter.
+
 ## `reaction_added` test data
 
 The final thing we need is a `reaction_added` message instance. Now that we're
@@ -446,10 +452,113 @@ should return either a valid `Rule` object or `undefined` if no rule matches.
 Make sure all of the tests exercise every case and that they all pass before
 moving on to the next section.
 
-## Beginning to test `execute`
+## Starting to build the `execute` test fixture
 
 Now that `findMatchingRule` is in place, let's return to `execute` and begin
-to test it. 
+to test it. As a base case, we want to make sure that `execute` calls
+`next(done)` and returns if no rule matches:
+
+```js
+Middleware.prototype.execute = function(context, next, done) {
+  var response = context.response,
+      message = response.message.rawMessage,
+      rule = this.findMatchingRule(message);
+
+  if (!rule) {
+    return next(done);
+  }
+  return 'not yet implemented';
+};
+```
+
+The first thing we need to do is simulate the `context` object, the `next`
+callback, and the `done` callback (called `hubotDone` in our fixture):
+
+```js
+  describe('execute', function() {
+    var context, next, hubotDone;
+
+    beforeEach(function() {
+      context = {
+        response: {
+          message: helpers.fullReactionAddedMessage(),
+          reply: sinon.spy()
+        }
+      };
+      next = sinon.spy();
+      hubotDone = sinon.spy();
+    });
+```
+
+The `context.response.reply` and `next` objects defined above are [sinon
+spies](http://sinonjs.org/docs/#spies). Spies are similar to stubs, but are
+more limited in that they cannot be programmed to return values or throw
+errors. Since both of these methods are called without any action taken on
+their return values, spies are sufficient to validate the `Middleware`
+behavior under test.
+
+## Creating a full-featured incoming test message
+
+Note that we're defining a new test helper method, `fullReactionAddedMessage`.
+While the existing `reactionAddedMessage` contains the JSON returned from the
+[`reaction_added` API message](https://api.slack.com/events/reaction_added),
+[hubot-slack](https://www.npmjs.com/package/hubot-slack) package will wrap
+this raw message with other objects. Consequently, let's add the following to
+the `exercise/test/helpers/index.js` file:
+
+```js
+var Hubot = require('hubot');
+var SlackBot = require('hubot-slack');
+
+exports = module.exports = {
+  // ...
+
+  fullReactionAddedMessage: function() {
+    var user, text, message;
+
+    user = new Hubot.User(exports.USER_ID,
+      { id: exports.USER_ID, name: 'jquser', room: 'handbook' });
+    text = exports.REACTION;
+    message = exports.reactionAddedMessage();
+    return new SlackBot.SlackTextMessage(user, text, text, message);
+  },
+
+  // ...
+};
+```
+
+The `reactionAddedMessage` defined above will become the `rawMessage` property
+of the object returned by `fullReactionAddedMessage`. We don't necessarily
+need to use actual `Hubot` and `SlackBot` objects to test our `Middleware`
+behavior. However, using them provides the security that if an upgrade to
+either package changes the interfaces we depend on, our tests will notify us.
+
+## Testing the "no matching rule" case
+
+Now add a new test case for `execute`, below the empty `should successfully
+parse a message and file an issue` case:
+
+```js
+    it('should ignore messages that do not match', function() {
+      delete context.response.message.rawMessage;
+      expect(middleware.execute(context, next, hubotDone)).to.be.undefined;
+      next.calledWith(hubotDone).should.be.true;
+    });
+```
+
+Deleting `context.response.message.rawMessage` works because we know that
+`execute` passes this value to `findMatchingRule`, and `findMatchingRule` will
+return `undefined` if its `message` argument is `undefined`. Run the test via
+`npm test -- --grep ' execute '` and ensure it passes.
+
+We will add at least one more assertion to this rule as we implement the rest
+of `execute`.
+
+## Logging and log testing
+
+## Preventing multiple issues from being filed while filing an issue
+
+## Preventing multiple issues from being filed after filing an issue
 
 ## Testing
 

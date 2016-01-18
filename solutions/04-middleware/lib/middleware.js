@@ -18,7 +18,13 @@ function Middleware(config, slackClient, githubClient) {
 
 Middleware.prototype.execute = function(context, next, done) {
   var response = context.response,
-      message = response.message.rawMessage;
+      message = response.message.rawMessage,
+      rule = this.findMatchingRule(message);
+
+  if (!rule) {
+    return next(done);
+  }
+  return 'not yet implemented';
 };
 
 Middleware.prototype.findMatchingRule = function(message) {

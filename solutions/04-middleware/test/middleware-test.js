@@ -76,8 +76,27 @@ describe('Middleware', function() {
   });
 
   describe('execute', function() {
+    var context, next, hubotDone;
+
+    beforeEach(function() {
+      context = {
+        response: {
+          message: helpers.fullReactionAddedMessage(),
+          reply: sinon.spy()
+        }
+      };
+      next = sinon.spy();
+      hubotDone = sinon.spy();
+    });
+
     it('should successfully parse a message and file an issue', function(done) {
       done();
+    });
+
+    it('should ignore messages that do not match', function() {
+      delete context.response.message.rawMessage;
+      expect(middleware.execute(context, next, hubotDone)).to.be.undefined;
+      next.calledWith(hubotDone).should.be.true;
     });
   });
 });

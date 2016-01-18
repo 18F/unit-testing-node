@@ -4,6 +4,8 @@
 
 var testConfig = require('./test-config.json');
 var SlackClient = require('../../lib/slack-client');
+var Hubot = require('hubot');
+var SlackBot = require('hubot-slack');
 
 exports = module.exports = {
   REACTION: 'evergreen_tree',
@@ -29,6 +31,16 @@ exports = module.exports = {
       reaction: exports.REACTION,
       'event_ts': exports.TIMESTAMP
     };
+  },
+
+  fullReactionAddedMessage: function() {
+    var user, text, message;
+
+    user = new Hubot.User(exports.USER_ID,
+      { id: exports.USER_ID, name: 'jquser', room: 'handbook' });
+    text = exports.REACTION;
+    message = exports.reactionAddedMessage();
+    return new SlackBot.SlackTextMessage(user, text, text, message);
   },
 
   messageWithReactions: function() {
