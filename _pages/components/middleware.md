@@ -112,6 +112,11 @@ ensured that `config.rules` contains valid `Rule` specifications, so all we
 have to do is map each specification to a behavior-rich object:
 
 ```js
+var Rule = require('./rule');
+
+// ...
+
+function Middleware(config, slackClient, githubClient) {
   this.rules = config.rules.map(function(rule) {
     return new Rule(rule);
   });
@@ -178,9 +183,14 @@ calls.
 ## Finding the matching `Rule` for an incoming `reaction_added` message
 
 We need to iterate through our array of `Rule` objects to find the `Rule` that
-matches the incoming message. Let's give this behavior its own method:
+matches the incoming message. Let's import the `SlackClient` library and give
+this behavior its own method:
 
 ```js
+var SlackClient = require('./slack-client');
+
+// ... existing implementation ...
+
 Middleware.prototype.findMatchingRule = function(message) {
   var slackClient = this.slackClient;
 
@@ -196,6 +206,23 @@ Middleware.prototype.findMatchingRule = function(message) {
 The first thing we do is assign `this.slackClient` to a new variable, since
 [`this` will refer to a different object inside the
 callback](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Functions#Lexical_this).
+
+Looking closely, we can see that there's also a new member to add to
+`SlackClient`. Inside
+[`exercise/lib/slack-client.js`]({{ site.baseurl }}/exercise/lib/slack-client.js)
+add the following just below the constructor:
+
+```js
+// From: https://api.slack.com/events/reaction_added
+// May get this directly from a future version of the slack-client package.
+SlackClient.REACTION_ADDED = 'reaction_added';
+```
+This keeps with the theme of adding all Slack-related information and behavior
+encapsulated within the `SlackClient` class. Of course, the most correct thing
+would be to `require('slack-client')` and get the value that way. However, given
+this is the only piece of information we need, we can [minimize
+dependencies]({{ site.baseurl }}/concepts/minimizing-dependencies/) by
+assigning this one constant value ourselves.
 
 We wrap `this.rules.find` in a conditional to ensure that we call `Rule.match`
 with a valid message. This could theoretically be part of the `Rule.match`
@@ -223,13 +250,42 @@ describe('Middleware', function() {
   });
 ```
 
+The first thing we need is to instantiate a `Middleware` instance in our test
+fixture. We'll also instantiate `Config`, `SlackClient`, and `GitHubClient`
+objects. Add all of the necessary `require` statements, and then create
+`config`, `slackClient`, and `githubClient`:
+
+```js
+var Middleware = require('../lib/middleware');
+var Config = require('../lib/config');
+var GitHubClient = require('../lib/github-client');
+var SlackClient = require('../lib/slack-client');
+var helpers = require('./helpers');
+var chai = require('chai');
+
+var expect = chai.expect;
+chai.should();
+
+describe('Middleware', function() {
+  var config, slackClient, githubClient, middleware;
+
+  beforeEach(function() {
+    config = new Config(helpers.baseConfig());
+    slackClient = new SlackClient(undefined, config);
+    githubClient = new GitHubClient(config);
+    middleware = new Middleware(config, slackClient, githubClient);
+  });
+```
+
 ## Introducing the `sinon` test double library
 
-The first thing we need is to instantiate a `Middleware` instance in our test
-fixture. We'll also instantiate `Config` a config object, and we'll now
-introduce the [`sinon` library](http://sinonjs.org/) to create a [test
-double](http://googletesting.blogspot.com/2013/07/testing-on-toilet-know-your-test-doubles.html)
-for `SlackClient`.
+Notice that we leave the robotSlackClient argument to the `SlackClient`
+constructor undefined. Since `SlackClient` is already thoroughly tested, we
+can emulate its behavior without defining all (or any) of its dependencies by
+using a
+[test double](http://googletesting.blogspot.com/2013/07/testing-on-toilet-know-your-test-doubles.html).
+We'll now introduce the [`sinon` library](http://sinonjs.org/) to create a
+test doubles for `SlackClient`.
 
 `sinon` is a library that can create stub, fake, and mock objects for you.
 Though we wrote our own
@@ -239,34 +295,34 @@ when testing `Middleware`. As a result, we'll use `sinon` to create a double
 for `SlackClient` in this test, rather than extracting `SlackClientImplStub`
 into `test/helpers`.
 
-Now add all of the necessary `require` statements, and instantiate the
-`config`, `slackClient`, and `githubClient` objects:
+The first step is to add the following `require` statement:
 
 ```js
-var Middleware = require('../lib/middleware');
-var Config = require('../lib/config');
-var GitHubClient = require('../lib/github-client');
-var SlackClient = require('../lib/slack-client');
-var helpers = require('./helpers');
 var sinon = require('sinon');
-var chai = require('chai');
-
-describe('Middleware', function() {
-  var config, slackClient, githubClient, middleware;
-
-  beforeEach(function() {
-    config = new Config(helpers.baseConfig());
-    middleware = new Middleware(config, slackClient, githubClient);
-  });
 ```
 
-Notice that we leave the `githubClient` argument to the `Middleware`
-constructor undefined for now. We'll define it when we add the behavior that
-needs it.
+Then, inside the nested fixture for `findMatchingRule` tests, add the
+following to set up and tear down the test double for the
+`slackClient.getChannelName` method:
+
+```js
+  describe('findMatchingRule', function() {
+    var getChannelName, message;
+
+    beforeEach(function() {
+      getChannelName = sinon.stub(slackClient, 'getChannelName');
+      getChannelName.returns('not-any-channel-from-any-config-rule');
+      message = helpers.reactionAddedMessage();
+    });
+
+    afterEach(function() {
+      getChannelName.restore();
+    });
+```
 
 ## `reaction_added` test data
 
-The second thing we need is a `reaction_added` message instance. Now that we're
+The final thing we need is a `reaction_added` message instance. Now that we're
 familiar with the pattern of adding test data to our `test/helpers` package,
 let's add the following to `exercise/test/helpers/index.js`:
 
@@ -296,30 +352,104 @@ exports = module.exports = {
   // ...existing declarations...
 ```
 
-Looking closely, we can see that there's also a new member to add to
-`SlackClient`. Inside
-[`exercise/lib/slack-client.js`]({{ site.baseurl }}/exercise/lib/slack-client.js)
-add the following just below the constructor:
-
-```js
-// From: https://api.slack.com/events/reaction_added
-// May get this directly from a future version of the slack-client package.
-SlackClient.REACTION_ADDED = 'reaction_added';
-```
-
-This keeps with the theme of adding all Slack-related information and behavior
-encapsulated within the `SlackClient` class. Of course, the most correct thing
-would be to `require('slack-client')` and get the value that way. However, given
-this is the only piece of information we need, we can [minimize
-dependencies]({{ site.baseurl }}/concepts/minimizing-dependencies/) by
-assigning this one constant value ourselves.
-
 ## The `findMatchingRule` test suite
 
 With this helper data in place, we can now implement our first test:
 
 ```js
+    it('should find the rule matching the message', function() {
+      var expected = config.rules[config.rules.length - 1],
+          result = middleware.findMatchingRule(message);
+
+      result.reactionName.should.equal(expected.reactionName);
+      result.githubRepository.should.equal(expected.githubRepository);
+      result.should.not.have.property('channelName');
+    });
 ```
+
+Note that `expected` is assigned the last element from `config.rules`, which
+contains:
+
+```json
+    {
+      "reactionName": "evergreen_tree",
+      "githubRepository": "hub",
+      "channelNames": ["hub"]
+    },
+
+    {
+      "reactionName": "smiley",
+      "githubRepository": "hubot-slack-github-issues"
+    },
+
+    {
+      "reactionName": "evergreen_tree",
+      "githubRepository": "handbook"
+    }
+```
+
+Since `message` contains `reaction: "evergreen_tree"`, but the
+`getChannelName` stub will return a name that doesn't match the first rule,
+`findMatchingRule` should return the final rule. Run `npm test -- -grep '
+findMatchingRule '` and you should see:
+
+```sh
+$ npm test -- --grep ' findMatchingRule '
+
+> 18f-unit-testing-node@0.0.0 test
+> /Users/michaelbland/src/18F/unit-testing-node
+> gulp test "--grep" " findMatchingRule "
+
+[13:51:23] Using gulpfile ~/src/18F/unit-testing-node/gulpfile.js
+[13:51:23] Starting 'test'...
+
+
+  Middleware
+    findMatchingRule
+      ✓ should find the rule matching the message
+
+
+  1 passing (14ms)
+
+[13:51:23] Finished 'test' after 138 ms
+```
+
+We have demonstrated that `findMatchingRule` _is_ calling `match` on every
+`Rule` by testing for a match on the final rule. Consequently, while we
+_could_ test that every value is returned, doing so is of dubious benefit.
+What we should care about more is covering all of the cases where a message
+matches _none_ of the rules:
+
+```js
+    it('should ignore a message if it is undefined', function() {
+      // When execute() tries to pass context.response.message.rawMessage from
+      // a message that doesn't have one, the argument to findMatchingRule()
+      // will be undefined.
+    });
+
+    it('should ignore a message if its type does not match', function() {
+    });
+
+    it('should ignore a message if its item type does not match', function() {
+    });
+
+    it('should ignore messages that do not match any rule', function() {
+    });
+```
+
+Copy and paste these tests into your file, and fill in the tests yourself.
+Use the implementation of `findMatchingRule` to understand what parts of
+`message` you must change to exercise every condition. All of the assertions
+should be of the form `expect(...).to.be.undefined` since `findMatchingRule`
+should return either a valid `Rule` object or `undefined` if no rule matches.
+
+Make sure all of the tests exercise every case and that they all pass before
+moving on to the next section.
+
+## Beginning to test `execute`
+
+Now that `findMatchingRule` is in place, let's return to `execute` and begin
+to test it. 
 
 ## Testing
 

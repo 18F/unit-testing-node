@@ -2,10 +2,15 @@
 
 'use strict';
 
+var Rule = require('./rule');
+var SlackClient = require('./slack-client');
+
 module.exports = Middleware;
 
 function Middleware(config, slackClient, githubClient) {
-  this.rules = config.rules;
+  this.rules = config.rules.map(function(rule) {
+    return new Rule(rule);
+  });
   this.successReaction = config.successReaction;
   this.slackClient = slackClient;
   this.githubClient = githubClient;
