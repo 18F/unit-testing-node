@@ -18,11 +18,11 @@ output should look similar to the below:
 ```shell
 $ npm test
 
-> 18f-unit-testing-node@x.y.z test .../unit-testing-node
+> 18f-unit-testing-node@0.0.0 test .../unit-testing-node
 > gulp test
 
-[15:25:41] Using gulpfile .../unit-testing-node/gulpfile.js
-[15:25:41] Starting 'test'...
+[21:31:25] Using gulpfile .../unit-testing-node/gulpfile.js
+[21:31:25] Starting 'test'...
 
 
   Config
@@ -34,6 +34,9 @@ $ npm test
   Integration test
     an evergreen_tree reaction to a message
       ✓ should create a GitHub issue
+
+  Logger
+    ✓ should prefix info messages with the script name
 
   Middleware
     parseMetadata
@@ -51,9 +54,9 @@ $ npm test
       ✓ should make a successful request
 
 
-  8 passing (9ms)
+  9 passing (14ms)
 
-[16:20:15] Finished 'test' after 37 ms
+[21:31:26] Finished 'test' after 46 ms
 ```
 
 ## Create a working branch

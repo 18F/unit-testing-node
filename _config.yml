@@ -63,6 +63,9 @@ navigation:
   - text: GitHubClient class
     url: github-client/
     internal: true
+  - text: Logger class
+    url: logger/
+    internal: true
   - text: Middleware class
     url: middleware/
     internal: true

@@ -38,7 +38,7 @@ In short, we will learn to:
 - write more controllable, maintainable, readable tests using test doubles and
   a technique known as [dependency
   injection]({{ site.baseurl }}/concepts/dependency-injection)
-- using the [`sinon` library](http://sinonjs.org/) to create
+- use the [`sinon` library](http://sinonjs.org/) to create
   [test doubles](http://googletesting.blogspot.com/2013/07/testing-on-toilet-know-your-test-doubles.html)
 - learn how to use `Promises` with mocha and chai
 
@@ -706,8 +706,6 @@ to each log message.
 
 ## Preventing multiple issues from being filed after filing an issue
 
-## Testing
-
 ## Check your work
 
 By this point, all of the `Middleware` tests should be passing:
@@ -716,12 +714,12 @@ By this point, all of the `Middleware` tests should be passing:
 ```
 
 Now that you're all finished, compare your solutions to the code in
-[`solutions/04-middleware/lib/github-client.js`]({{ site.baseurl }}/solutions/04-middleware/lib/github-client.js)
+[`solutions/05-middleware/lib/github-client.js`]({{ site.baseurl }}/solutions/05-middleware/lib/github-client.js)
 and
-[`solutions/04-middleware/test/github-client-test.js`]({{ site.baseurl }}/solutions/04-middleware/test/github-client-test.js).
+[`solutions/05-middleware/test/github-client-test.js`]({{ site.baseurl }}/solutions/05-middleware/test/github-client-test.js).
 
 You may wish to `git commit` your work to your local repo at this point. After
-doing so, try copying the `config.js` file from `solutions/04-middleware`
+doing so, try copying the `config.js` file from `solutions/05-middleware`
 into `exercises` to see if it passes the test you wrote. Then run `git reset
 --hard HEAD` and copy the test files instead to see if your implementation
 passes.

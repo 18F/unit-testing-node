@@ -2,13 +2,13 @@
 
 'use strict';
 
-var PREFIX = require('../package.json').name + ':';
-
 module.exports = Logger;
 
 function Logger(logger) {
   this.logger = logger;
 }
+
+Logger.PREFIX = require('../package.json').name + ':';
 
 Logger.prototype.info = function() {
   this.logger.info.apply(this.logger, addPrefix.apply(null, arguments));
@@ -31,6 +31,6 @@ function addPrefix() {
   } else {
     args.shift();
   }
-  args.unshift(PREFIX);
+  args.unshift(Logger.PREFIX);
   return args;
 }
