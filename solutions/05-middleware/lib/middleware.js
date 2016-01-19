@@ -88,11 +88,47 @@ function fileGitHubIssue(middleware, msgId, githubRepository) {
   };
 }
 
-function addSuccessReaction(/* middleware, msgId, message */) {
+function addSuccessReaction(middleware, msgId, message) {
+  return function(issueUrl) {
+    var channel = message.item.channel,
+        timestamp = message.item.ts,
+        reaction = middleware.slackClient.successReaction,
+        resolve, reject;
+
+    resolve = function() {
+      return Promise.resolve(issueUrl);
+    };
+
+    reject = function(err) {
+      return Promise.reject(new Error('created ' + issueUrl +
+        ' but failed to add ' + reaction + ': ' + err.message));
+    };
+
+    middleware.logger(msgId, 'adding', reaction);
+    return middleware.slackClient.addSuccessReaction(channel, timestamp)
+      .then(resolve, reject);
+  };
 }
 
-function handleSuccess(/* finish */) {
+function handleSuccess(finish) {
+  return function(issueUrl) {
+    finish('created: ' + issueUrl);
+    return Promise.resolve(issueUrl);
+  };
 }
 
-function handleFailure(/* middleware, githubRepository, finish */) {
+function handleFailure(middleware, githubRepository, finish) {
+  return function(err) {
+    var message;
+
+    if (err.message.startsWith('created ')) {
+      message = err.message;
+    } else {
+      message = 'failed to create a GitHub issue in ' +
+        middleware.githubClient.user + '/' + githubRepository + ': ' +
+        err.message;
+    }
+    finish(message);
+    return Promise.reject(new Error(message));
+  };
 }

@@ -717,8 +717,20 @@ function fileGitHubIssue(middleware, msgId, githubRepository) {
 }
 ```
 
-Notice that there is another `Middleware` method that we have yet to define,
-`parseMetadata`.
+Notice the final line in particular, where we _return the `Promise` created by
+`githubClient.fileNewIssue`_. In fact, the `Promise` isn't created when
+`fileGitHubIssue` is called; it is created when _the closure returned by
+`fileGitHubIssue` is called, which then calls `githubClient.fileNewIssue`_.
+
+This would be a good time to review [`Promise` gotcha #1: not returning the
+`Promise`]{{ site.baseurl }}/components/slack-client/#promises-gotcha-1)
+from the `SlackClient` chapter. If we return a `Promise` directly from
+`fileGitHubIssue`, it will get created too early. If we don't explicitly
+_return_ the `Promise`, it will execute, but it won't become integrated
+into the `Promise` chain built by `execute`.
+
+Also notice that there is another `Middleware` method that we have yet to
+define, `parseMetadata`.
 
 ## Extracting `githubClient.fileNewIssue` information with `parseMetadata`
 
@@ -822,9 +834,108 @@ moving on.
 
 ## `addSuccessReaction`
 
-## `handleSuccess`
+As with `fileGitHubIssue`, `addSuccessReaction` is a factory function that
+will return a closure over its arguments:
 
-## `handleFailure`
+```js
+function addSuccessReaction(middleware, msgId, message) {
+  return function(issueUrl) {
+    var channel = message.item.channel,
+        timestamp = message.item.ts,
+        reaction = middleware.slackClient.successReaction,
+        resolve, reject;
+
+    resolve = function() {
+      return Promise.resolve(issueUrl);
+    };
+
+    reject = function(err) {
+      return Promise.reject(new Error('created ' + issueUrl +
+        ' but failed to add ' + reaction + ': ' + err.message));
+    };
+
+    middleware.logger(msgId, 'adding', reaction);
+    return middleware.slackClient.addSuccessReaction(channel, timestamp)
+      .then(resolve, reject);
+  };
+}
+```
+
+The closure takes as an argument the `issueUrl` produced when the `Promise` by
+`githubClient.fileNewIssue` resolves successfully. If the entire operation
+succeeds, `execute` will post `issueUrl` in the channel containing the message
+as a response to the user who added the reaction.
+
+Inside the closure, first we set up the success and error handlers for the
+`slackClient.addSuccessReaction` call at the end. This final call will return
+a `Promise` that has its own success and error handlers. These handlers will
+execute before the next `Promise` in the chain created by `execute`.
+
+The success handler, `resolve`, passes through the `issueUrl` by [producing a
+new `Promise` that resolves to the
+value](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/resolve).
+The failure handler, `reject`, creates a new
+[`Error`](https://nodejs.org/api/errors.html) value used to [produce a new
+`Promise` that is rejected with the
+error](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/reject).
+
+Again, this can't be repeated enough: [always make sure to `return` the
+`Promise` from every
+function!]({{ site.baseurl }}/components/slack-client/#promises-gotcha-1)
+
+## `handleSuccess` and `handleFailure`
+
+`handleSuccess` is, at this point, trivial:
+
+```js
+function handleSuccess(finish) {
+  return function(issueUrl) {
+    finish('created: ' + issueUrl);
+    return Promise.resolve(issueUrl);
+  };
+}
+```
+
+Recall from our definition of `execute` that `finish` is a tiny function that
+calls `next(done)` to signal to Hubot that this middleware's processing is
+finished. At the moment, the value we're passing in will be ignored. We'll
+update `finish` to rectify this shortly.
+
+`handleFailure` is slightly more complex:
+
+```js
+function handleFailure(middleware, githubRepository, finish) {
+  return function(err) {
+    var message;
+
+    if (err.message.startsWith('created ')) {
+      message = err.message;
+    } else {
+      message = 'failed to create a GitHub issue in ' +
+        middleware.githubClient.user + '/' + githubRepository + ': ' +
+        err.message;
+    }
+    finish(message);
+    return Promise.reject(new Error(message));
+  };
+}
+```
+
+There is a single error case whereby the GitHub issue was successfully
+created, but adding the success reaction to the message failed. This is why we
+have the `if (err.message.startsWith('created '))` condition to distinguish
+this error from the reset.
+
+Note that the `Promises` returned here have no bearing on the `next(done)`
+call at all, or on Hubot generally. When deployed, the resolved or rejected
+values will be discarded. In our tests, however, they enables us to use
+[chai-as-promised assertions](https://www.npmjs.com/package/chai-as-promised)
+to validate the outcome of `execute` in each test case.
+
+## Testing the happy path
+
+We're at the point where we can test the "happy path" through `execute`,
+successfully filing an issue and adding the success reaction to the message.
 
 ## Preventing multiple issues from being filed while filing an issue
 
