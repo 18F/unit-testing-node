@@ -51,6 +51,7 @@ exports = module.exports = {
       message: {
         type: 'message',
         ts: exports.TIMESTAMP,
+        permalink: exports.PERMALINK,
         reactions: [
         ]
       }

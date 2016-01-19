@@ -51,6 +51,18 @@ Middleware.prototype.findMatchingRule = function(message) {
   }
 };
 
+Middleware.prototype.parseMetadata = function(message) {
+  var result = {
+    channel: this.slackClient.getChannelName(message.channel),
+    timestamp: message.message.ts,
+    url: message.message.permalink
+  };
+  result.date = new Date(result.timestamp * 1000);
+  result.title = 'Update from #' + result.channel +
+    ' at ' + result.date.toUTCString();
+  return result;
+};
+
 function messageId(message) {
   return message.item.channel + ':' + message.item.ts;
 }
@@ -66,7 +78,14 @@ function getReactions(middleware, msgId, message) {
   return middleware.slackClient.getReactions(message.item.channel, timestamp);
 }
 
-function fileGitHubIssue(/* middleware, msgId, rule.githubRepository */) {
+function fileGitHubIssue(middleware, msgId, githubRepository) {
+  return function(message) {
+    var metadata, permalink = message.message.permalink;
+
+    metadata = middleware.parseMetadata(message);
+    middleware.logger.info(msgId, 'making GitHub request for', permalink);
+    return middleware.githubClient.fileNewIssue(metadata, githubRepository);
+  };
 }
 
 function addSuccessReaction(/* middleware, msgId, message */) {
@@ -75,5 +94,5 @@ function addSuccessReaction(/* middleware, msgId, message */) {
 function handleSuccess(/* finish */) {
 }
 
-function handleFailure(/* middleware, rule.githubRepository, finish */) {
+function handleFailure(/* middleware, githubRepository, finish */) {
 }

@@ -253,15 +253,16 @@ describe('Middleware', function() {
 ```
 
 The first thing we need is to instantiate a `Middleware` instance in our test
-fixture. We'll also instantiate `Config`, `SlackClient`, and `GitHubClient`
-objects. Add all of the necessary `require` statements, and then create
-`config`, `slackClient`, and `githubClient`:
+fixture. We'll also instantiate `Config`, `SlackClient`, `GitHubClient`, and
+`Logger` objects. Add all of the necessary `require` statements, and then
+create `config`, `slackClient`, `githubClient`, `logger`, and `middleware`:
 
 ```js
 var Middleware = require('../lib/middleware');
 var Config = require('../lib/config');
 var GitHubClient = require('../lib/github-client');
 var SlackClient = require('../lib/slack-client');
+var Logger = require('../lib/logger');
 var helpers = require('./helpers');
 var chai = require('chai');
 
@@ -269,18 +270,22 @@ var expect = chai.expect;
 chai.should();
 
 describe('Middleware', function() {
-  var config, slackClient, githubClient, middleware;
+  var config, slackClient, githubClient, logger, middleware;
 
   beforeEach(function() {
     config = new Config(helpers.baseConfig());
     slackClient = new SlackClient(undefined, config);
     githubClient = new GitHubClient(config);
-    middleware = new Middleware(config, slackClient, githubClient);
+    logger = new Logger(console);
+    middleware = new Middleware(config, slackClient, githubClient, logger);
   });
 ```
 
-Note that we're not defining the `logger` argument yet. We'll cover this in a
-later section.
+Notice that we're instantiating `logger` using the `console` object. It
+contains `info` and `error` methods just like the `robot.logger` that the real
+application will use. As we'll see later, we shoudn't actually invoke any of
+the `console` methods. If it happens by accident, we'll see the unexpected
+output printed within the test results.
 
 ## Introducing the `sinon` test double library
 
@@ -640,7 +645,8 @@ The core of the `getReactions` implementation is fairly straightforward:
 
 ```js
 function getReactions(middleware, msgId, message) {
-  return middleware.slackClient.getReactions(message.item.channel, timestamp);
+  return middleware.slackClient.getReactions(message.item.channel,
+    message.item.ts);
 }
 ```
 
@@ -681,20 +687,138 @@ SlackClient.prototype.getTeamDomain = function() {
 };
 ```
 
-With all this information in hand, we get the `permalink` pertaining to the
-message. Though the `slackClient.getReactions` response will include this
+With all this information in hand, we compute the `permalink` pertaining to
+the message. Though the `slackClient.getReactions` response will include this
 `permalink`, it's very handy to include it in the log message announcing API
 call.
 
-## Logging and log testing
-
-In the deployed program the `logger` argument to the `Middleware` constructor
-will be an instance of the `Logger` class. This object, in turn, will be a
-thin wrapper over the `logger` member of the Hubot instance. Logger will have
-`info` and `error` methods that add the script name and message ID as prefixes
-to each log message.
-
 ## `fileGitHubIssue`
+
+Recall that `slackClient.getReactions` will return a `Promise` that will
+resolve to a [`reactions.get` API
+response](https://api.slack.com/methods/reactions.get). The way that `Promise`
+chains work is that the function passed as the first argument to
+[`.then()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then))
+will be called with the resolved value. In that light, `fileGitHubIssue` is a
+_factory function_ that returns a new function called a
+[closure](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Closures),
+which can access the arguments to `fileGitHubIssue`. This closure will also
+take a `message` argument passed in from `slackClient.getReactions`:
+
+```js
+function fileGitHubIssue(middleware, msgId, githubRepository) {
+  return function(message) {
+    var metadata, permalink = message.message.permalink;
+
+    metadata = middleware.parseMetadata(message);
+    middleware.logger.info(msgId, 'making GitHub request for', permalink);
+    return middleware.githubClient.fileNewIssue(metadata, githubRepository);
+  };
+}
+```
+
+Notice that there is another `Middleware` method that we have yet to define,
+`parseMetadata`.
+
+## Extracting `githubClient.fileNewIssue` information with `parseMetadata`
+
+Recall from `GitHubClient` that the API call will create a JSON object
+comprising the API method arguments. The `makeApiCall` function expects a
+`metadata` object with `title` and `url` properties:
+
+```js
+function makeApiCall(client, metadata, repository) {
+  var requestFactory = (client.protocol === 'https:') ? https : http,
+      paramsStr = JSON.stringify({
+        title: metadata.title,
+        body: metadata.url
+      });
+```
+
+We're now at the point in `Middleware` processing where we can compute this
+information and make the GitHub call. Define the `parseMetadata` method thus:
+
+```js
+Middleware.prototype.parseMetadata = function(message) {
+  var result = {
+    channel: this.slackClient.getChannelName(message.channel),
+    timestamp: message.message.ts,
+    url: message.message.permalink
+  };
+  result.date = new Date(result.timestamp * 1000);
+  result.title = 'Update from #' + result.channel +
+    ' at ' + result.date.toUTCString();
+  return result;
+};
+```
+
+The `message` argument is [the result of the `slackClient.getReactions`
+call](https://api.slack.com/methods/reactions.get), passed through by
+`fileGitHubIssue`. The resulting issue title will contain the channel and the
+date the message was entered. The issue body will be just the permalink URL
+for the message. We limit the information in this way to avoid leaking any
+user details, or any sensitive content contained in the message. This
+information is more than enough for a repository maintainer to find the tagged
+message and triage the issue.
+
+## Testing `parseMetadata`
+
+Since this is a lightweight, stateless method, let's break from the `Promise`
+chain to write a small test to ensure `parseMetadata` behaves as expected.
+Since it makes use of `slackClient`, we'll need to set up a test stub as we
+did with `findMatchingRule`:
+
+```js
+  describe('parseMetadata', function() {
+    var getChannelName;
+
+    beforeEach(function() {
+      getChannelName = sinon.stub(slackClient, 'getChannelName');
+      getChannelName.returns('handbook');
+    });
+
+    afterEach(function() {
+      getChannelName.restore();
+    });
+```
+
+Before writing the test, remember that we already have two handy bits of data
+in `test/helpers/index.js` from when we wrote tests for `SlackClient` and
+`GitHubClient`. We'll reuse `helpers.messageWithReactions` and
+`helpers.metadata` for our new test for `parseMetadata`. First, let's add a
+`permalink` property to `messageWithReactions.message`, since that is key to
+producing the expected `metadata`:
+
+```js
+  messageWithReactions: function() {
+    return {
+      ok: true,
+      type: 'message',
+      channel: exports.CHANNEL_ID,
+      message: {
+        type: 'message',
+        ts: exports.TIMESTAMP,
+        permalink: exports.PERMALINK,
+        reactions: [
+        ]
+      }
+    };
+  },
+```
+
+Now we write the single test needed to validate `parseMetadata`:
+
+```js
+    it('should parse GitHub request metadata from a message', function() {
+      middleware.parseMetadata(helpers.messageWithReactions())
+        .should.eql(helpers.metadata());
+      getChannelName.calledOnce.should.be.true;
+      getChannelName.args[0].should.eql([helpers.CHANNEL_ID]);
+    });
+```
+
+Run `npm test -- --grep '^Middleware '` and ensure the test passes before
+moving on.
 
 ## `addSuccessReaction`
 

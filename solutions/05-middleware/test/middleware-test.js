@@ -8,6 +8,7 @@ var Middleware = require('../lib/middleware');
 var Config = require('../lib/config');
 var GitHubClient = require('../lib/github-client');
 var SlackClient = require('../lib/slack-client');
+var Logger = require('../lib/logger');
 var helpers = require('./helpers');
 var chai = require('chai');
 var sinon = require('sinon');
@@ -16,13 +17,14 @@ var expect = chai.expect;
 chai.should();
 
 describe('Middleware', function() {
-  var config, slackClient, githubClient, middleware;
+  var config, slackClient, githubClient, logger, middleware;
 
   beforeEach(function() {
     config = new Config(helpers.baseConfig());
     slackClient = new SlackClient(undefined, config);
     githubClient = new GitHubClient(config);
-    middleware = new Middleware(config, slackClient, githubClient);
+    logger = new Logger(console);
+    middleware = new Middleware(config, slackClient, githubClient, logger);
   });
 
   describe('findMatchingRule', function() {
@@ -71,7 +73,22 @@ describe('Middleware', function() {
   });
 
   describe('parseMetadata', function() {
+    var getChannelName;
+
+    beforeEach(function() {
+      getChannelName = sinon.stub(slackClient, 'getChannelName');
+      getChannelName.returns('handbook');
+    });
+
+    afterEach(function() {
+      getChannelName.restore();
+    });
+
     it('should parse GitHub request metadata from a message', function() {
+      middleware.parseMetadata(helpers.messageWithReactions())
+        .should.eql(helpers.metadata());
+      getChannelName.calledOnce.should.be.true;
+      getChannelName.args[0].should.eql([helpers.CHANNEL_ID]);
     });
   });
 
