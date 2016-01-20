@@ -15,6 +15,7 @@ function Middleware(config, slackClient, githubClient, logger) {
   this.slackClient = slackClient;
   this.githubClient = githubClient;
   this.logger = logger;
+  this.inProgress = {};
 }
 
 Middleware.prototype.execute = function(context, next, done) {
@@ -29,6 +30,12 @@ Middleware.prototype.execute = function(context, next, done) {
   }
 
   msgId = messageId(message);
+  if (this.inProgress[msgId]) {
+    this.logger.info(msgId, 'already in progress');
+    return next(done);
+  }
+  this.inProgress[msgId] = true;
+
   this.logger.info(msgId, 'matches rule:', rule);
   finish = handleFinish(msgId, this.logger, response, next, done);
 

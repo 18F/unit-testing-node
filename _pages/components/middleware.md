@@ -1358,9 +1358,153 @@ the last call will require passing `logger` and the message ID as arguments to
 
 Make sure the test passes before continuing to the next section.
 
-## Preventing multiple issues from being filed while filing an issue
+## Preventing multiple issues from being filed _while_ filing an issue
 
-## Preventing multiple issues from being filed after filing an issue
+So we've now tested a complete path through our core algorithm. However,
+there's a couple of corner cases we've yet to cover. The first is ensuring
+that when `execute` has begun to file an issue, that it doesn't allow another
+`reaction_added` event for the same message.
+
+Since we have a successful happy path test case in hand, let's copy parts of
+it and adapt it for this new requirement:
+
+```js
+    it('should not file another issue for the same message when ' +
+      'one is in progress', function(done) {
+      var result;
+
+      slackClient.getReactions
+        .returns(Promise.resolve(helpers.messageWithReactions()));
+      githubClient.fileNewIssue.returns(Promise.resolve(helpers.ISSUE_URL));
+      slackClient.addSuccessReaction
+        .returns(Promise.resolve(helpers.ISSUE_URL));
+
+      result = middleware.execute(context, next, hubotDone);
+      if (middleware.execute(context, next, hubotDone) !== undefined) {
+        return done(new Error('middleware.execute did not prevent a second ' +
+          'issue being filed when one was in progress'));
+      }
+
+      result.should.become(helpers.ISSUE_URL).then(function() {
+        next.calledWith(hubotDone).should.be.true;
+        logger.info.args.should.contain(helpers.logArgs.alreadyInProgress());
+      }).should.notify(done);
+    });
+```
+
+There's no need to check all of the same assertions as before, but we do want
+to validate an "already in progress" log message. Let's run the test and make
+sure it fails:
+
+```sh
+$ npm test -- --grep ' execute '
+
+> 18f-unit-testing-node@0.0.0 test
+> /Users/michaelbland/src/18F/unit-testing-node
+> gulp test "--grep" " execute "
+
+[13:23:20] Using gulpfile ~/src/18F/unit-testing-node/gulpfile.js
+[13:23:20] Starting 'test'...
+
+
+  Middleware
+    execute
+      ✓ should successfully parse a message and file an issue
+      ✓ should ignore messages that do not match
+      1) should not file another issue for the same message when one is in
+progress
+
+
+  2 passing (47ms)
+  1 failing
+
+  1) Middleware execute should not file another issue for the same message
+when one is in progress:
+     Error: middleware.execute did not prevent a second issue being filed when
+one was in progress
+    at Context.<anonymous> (exercise/test/middleware-test.js:160:21)
+
+
+
+
+[13:23:20] 'test' errored after
+[13:23:20] Error in plugin 'gulp-mocha'
+Message:
+    1 test failed.
+npm ERR! Test failed.  See above for more details.
+```
+
+So in order to get this test to pass, we need to keep a note of the messages
+that we're in the middle of processing. We're already computing message ID
+values, so that's a start.
+
+It turns out that we can add a new object in the `Middleware` constructor:
+
+```js
+function Middleware(config, slackClient, githubClient, logger) {
+  // ...existing assignments...
+  this.inProgress = {};
+}```
+
+
+and add the message ID as a property inside `execute`:
+
+```js
+  msgId = messageId(message);
+  if (this.inProgress[msgId]) {
+    log(msgId + ': already in progress');
+    return next(done);
+  }
+  this.inProgress[msgId] = true;
+```
+
+Note that this isn't thread-safe; in other languages we would need to protect
+this object with a mutex. However, since [Node.js uses a single-threaded event
+loop model](https://nodejs.org/en/about/), no mutexes are necessary here.
+
+Run the test again, and you should see this:
+
+```sh
+$ npm test -- --grep ' execute '
+
+> 18f-unit-testing-node@0.0.0 test
+> /Users/michaelbland/src/18F/unit-testing-node
+> gulp test "--grep" " execute "
+
+[13:51:25] Using gulpfile ~/src/18F/unit-testing-node/gulpfile.js
+[13:51:25] Starting 'test'...
+
+
+  Middleware
+    execute
+      ✓ should successfully parse a message and file an issue
+      ✓ should ignore messages that do not match
+      1) should not file another issue for the same message when one is in
+progress
+
+
+  2 passing (48ms)
+  1 failing
+
+  1) Middleware execute should not file another issue for the same message
+when one is in progress:
+     AssertionError: expected [ Array(6) ] to include [
+'C5150OU812:1360782804.083113', 'already in progress' ]
+    at exercise/test/middleware-test.js:166:33
+
+
+
+
+[13:51:25] 'test' errored after
+[13:51:25] Error in plugin 'gulp-mocha'
+Message:
+    1 test failed.
+npm ERR! Test failed.  See above for more details.
+```
+
+We need the `chai-things` assertion library:
+
+## Preventing multiple issues from being filed _after_ filing an issue
 
 ## Testing error cases
 

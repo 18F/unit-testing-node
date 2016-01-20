@@ -88,6 +88,9 @@ exports = module.exports = {
     },
     success: function() {
       return [exports.MESSAGE_ID, 'created: ' + exports.ISSUE_URL];
+    },
+    alreadyInProgress: function() {
+      return [exports.MESSAGE_ID, 'already in progress'];
     }
   }
 };

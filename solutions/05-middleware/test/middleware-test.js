@@ -13,10 +13,12 @@ var helpers = require('./helpers');
 var chai = require('chai');
 var sinon = require('sinon');
 var chaiAsPromised = require('chai-as-promised');
+var chaiThings = require('chai-things');
 
 var expect = chai.expect;
 chai.should();
 chai.use(chaiAsPromised);
+chai.use(chaiThings);
 
 describe('Middleware', function() {
   var config, slackClient, githubClient, logger, middleware;
@@ -143,6 +145,29 @@ describe('Middleware', function() {
       delete context.response.message.rawMessage;
       expect(middleware.execute(context, next, hubotDone)).to.be.undefined;
       next.calledWith(hubotDone).should.be.true;
+    });
+
+    it('should not file another issue for the same message when ' +
+      'one is in progress', function(done) {
+      var result;
+
+      slackClient.getReactions
+        .returns(Promise.resolve(helpers.messageWithReactions()));
+      githubClient.fileNewIssue.returns(Promise.resolve(helpers.ISSUE_URL));
+      slackClient.addSuccessReaction
+        .returns(Promise.resolve(helpers.ISSUE_URL));
+
+      result = middleware.execute(context, next, hubotDone);
+      if (middleware.execute(context, next, hubotDone) !== undefined) {
+        return done(new Error('middleware.execute did not prevent a second ' +
+          'issue being filed when one was in progress'));
+      }
+
+      result.should.become(helpers.ISSUE_URL).then(function() {
+        next.calledWith(hubotDone).should.be.true;
+        logger.info.args.should.include.something.that.deep.equals(
+          helpers.logArgs.alreadyInProgress());
+      }).should.notify(done);
     });
   });
 });
