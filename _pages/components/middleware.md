@@ -261,8 +261,9 @@ describe('Middleware', function() {
 
 The first thing we need is to instantiate a `Middleware` instance in our test
 fixture. We'll also instantiate `Config`, `SlackClient`, `GitHubClient`, and
-`Logger` objects. Add all of the necessary `require` statements, and then
-create `config`, `slackClient`, `githubClient`, `logger`, and `middleware`:
+`Logger` objects. Add all of the necessary `require` statements, configure the
+chai assertions, and then create `config`, `slackClient`, `githubClient`,
+`logger`, and `middleware`:
 
 ```js
 var Middleware = require('../lib/middleware');
@@ -1077,10 +1078,135 @@ $ npm test -- --grep ' execute '
 [10:04:04] Finished 'test' after 547 ms
 ```
 
-## Testing more happy path details
+Success! However, there are actually a couple details that our test _isn't_
+testing for right now:
 
-- context.response.reply should contain the reaction's user and GitHub URL
-- logger.args.should.eql([...])
+- `Middleware` should call `context.response.reply` to reply to the user who
+  added the reaction with the GitHub URL (or an error message).
+- `Middleware` should call `logger.info` or `logger.error` to record progress,
+  success, or failure.
+
+## Validating the response to the user
+
+Let's handle the `context.response.reply` piece first by adding this assertion:
+
+```js
+      middleware.execute(context, next, hubotDone)
+        .should.become(helpers.ISSUE_URL).then(function() {
+        context.response.reply.args.should.eql(
+          ['created: ' + helpers.ISSUE_URL]);
+        next.calledWith(hubotDone).should.be.true;
+      }).should.notify(done);
+```
+
+Our test should fail with:
+
+```sh
+$ npm test -- --grep ' execute '
+
+> 18f-unit-testing-node@0.0.0 test .../unit-testing-node
+> gulp test "--grep" " execute "
+
+[11:09:39] Using gulpfile .../unit-testing-node/gulpfile.js
+[11:09:39] Starting 'test'...
+
+
+  Middleware
+    execute
+      1) should successfully parse a message and file an issue
+      ✓ should ignore messages that do not match
+
+
+  1 passing (32ms)
+  1 failing
+
+  1) Middleware execute should successfully parse a message and file an issue:
+
+      AssertionError: expected [] to deeply equal [ Array(1) ]
+      + expected - actual
+
+      -[]
+      +[
+      +  [
+      +    "created: https://github.com/18F/handbook/issues/1"
+      +  ]
+      +]
+
+    at exercise/test/middleware-test.js:128:44
+
+
+
+
+[11:09:40] 'test' errored after
+[11:09:40] Error in plugin 'gulp-mocha'
+Message:
+    1 test failed.
+npm ERR! Test failed.  See above for more details.
+```
+
+Recall that our current `finish` function is defined in the body of `execute`
+as:
+
+```js
+  finish = function() {
+    next(done);
+  };
+```
+
+Yet we're already passing it an argument from both `handleSuccess` and
+`handleFailure`. Let's first update `finish` inline to report the success or
+error message to the user:
+
+```js
+  finish = function(message) {
+    response.reply(message);
+    next(done);
+  };
+```
+
+Run the tests again, and this should pass. While it's passing, let's take the
+opportunity to create a factory function for `finish` like we did with all the
+others. 
+
+```js
+function handleFinish(response, next, done) {
+  return function(message) {
+    response.reply(message);
+    next(done);
+  };
+}
+```
+
+Then replace the existing `finish` assignment with:
+
+```js
+  finish = handleFinish(response, next, done);
+```
+
+## Refactoring
+
+Run the test to make sure it still passes. This an example of
+[refactoring](https://en.wikipedia.org/wiki/Code_refactoring), improving the
+structure of existing code to improve readability and to accommodate new
+features. Having a solid suite of high-quality automated tests is critical to
+making refactoring a regular habit. This in turn allows development to
+continue at a sustained high pace, rather than slowing down due to fear of
+breaking existing behavior. A good suite of tests will tell you when something
+is wrong, and will encourage designs that are easier to change in the long
+term.
+
+## Validating logging behavior
+
+Even though all the other test assertions serve to validate the application's
+behavior, it's important to ensure that our logging behavior is in good shape.
+In production, we will rely upon the logs to tell when the application is
+behaving normally or experiencing an error. We should ensure that we'll get
+the information we expect from our log messages.
+
+Let's start by adding another assertion to our test:
+
+```js
+```
 
 ## Preventing multiple issues from being filed while filing an issue
 

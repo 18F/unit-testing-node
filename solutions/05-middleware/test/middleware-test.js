@@ -125,6 +125,8 @@ describe('Middleware', function() {
 
       middleware.execute(context, next, hubotDone)
         .should.become(helpers.ISSUE_URL).then(function() {
+        context.response.reply.args.should.eql(
+          [['created: ' + helpers.ISSUE_URL]]);
         next.calledWith(hubotDone).should.be.true;
       }).should.notify(done);
     });

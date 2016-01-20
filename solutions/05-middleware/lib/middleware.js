@@ -29,9 +29,7 @@ Middleware.prototype.execute = function(context, next, done) {
   }
 
   msgId = messageId(message);
-  finish = function() {
-    next(done);
-  };
+  finish = handleFinish(response, next, done);
 
   return getReactions(this, msgId, message)
     .then(fileGitHubIssue(this, msgId, rule.githubRepository))
@@ -130,5 +128,12 @@ function handleFailure(middleware, githubRepository, finish) {
     }
     finish(message);
     return Promise.reject(new Error(message));
+  };
+}
+
+function handleFinish(response, next, done) {
+  return function(message) {
+    response.reply(message);
+    next(done);
   };
 }
