@@ -113,7 +113,7 @@ describe('Middleware', function() {
       logger = sinon.stub(logger);
 
       slackClient.getChannelName.returns('handbook');
-      slackClient.getTeamDomain.returns('18F');
+      slackClient.getTeamDomain.returns('18f');
     });
 
     it('should successfully parse a message and file an issue', function(done) {
@@ -125,9 +125,17 @@ describe('Middleware', function() {
 
       middleware.execute(context, next, hubotDone)
         .should.become(helpers.ISSUE_URL).then(function() {
-        context.response.reply.args.should.eql(
-          [['created: ' + helpers.ISSUE_URL]]);
+        context.response.reply.args.should.eql([
+          ['created: ' + helpers.ISSUE_URL]
+        ]);
         next.calledWith(hubotDone).should.be.true;
+        logger.info.args.should.eql([
+          helpers.logArgs.matchingRule(),
+          helpers.logArgs.getReactions(),
+          helpers.logArgs.github(),
+          helpers.logArgs.addSuccessReaction(),
+          helpers.logArgs.success()
+        ]);
       }).should.notify(done);
     });
 

@@ -681,7 +681,7 @@ function getReactions(middleware, msgId, message) {
       permalink = 'https://' + domain + '.slack.com/archives/' +
         channelName + '/p' + timestamp.replace('.', '');
 
-  middleware.logger.info(msgId, 'getting reactions for ' + permalink);
+  middleware.logger.info(msgId, 'getting reactions for', permalink);
   return middleware.slackClient.getReactions(message.item.channel, timestamp);
 }
 ```
@@ -967,9 +967,12 @@ update our `execute` test fixture:
       logger = sinon.stub(logger);
 
       slackClient.getChannelName.returns('handbook');
-      slackClient.getTeamDomain.returns('18F');
+      slackClient.getTeamDomain.returns('18f');
     });
 ```
+
+_Note:_ `slackClient.getTeamDomain` returns a _lowercased_ "18f" to match
+`helpers.PERMALINK`.
 
 The most notable update here is that we are stubbing the `slackClient`,
 `githubClient`, and `logger` objects. Though the sinon documentation generally
@@ -1093,8 +1096,9 @@ Let's handle the `context.response.reply` piece first by adding this assertion:
 ```js
       middleware.execute(context, next, hubotDone)
         .should.become(helpers.ISSUE_URL).then(function() {
-        context.response.reply.args.should.eql(
-          ['created: ' + helpers.ISSUE_URL]);
+        context.response.reply.args.should.eql([
+          ['created: ' + helpers.ISSUE_URL]
+        ]);
         next.calledWith(hubotDone).should.be.true;
       }).should.notify(done);
 ```
@@ -1206,11 +1210,159 @@ the information we expect from our log messages.
 Let's start by adding another assertion to our test:
 
 ```js
+      middleware.execute(context, next, hubotDone)
+        .should.become(helpers.ISSUE_URL).then(function() {
+        context.response.reply.args.should.eql([
+          ['created: ' + helpers.ISSUE_URL]
+        ]);
+        next.calledWith(hubotDone).should.be.true;
+        logger.info.args.should.eql([
+        ]);
+      }).should.notify(done);
 ```
+
+Now we're gonna cheat a little. Let's just run the test and take a look at the
+output:
+
+```sh
+$ npm test -- --grep ' execute '
+
+> 18f-unit-testing-node@0.0.0 test
+> /Users/michaelbland/src/18F/unit-testing-node
+> gulp test "--grep" " execute "
+
+[11:59:33] Using gulpfile ~/src/18F/unit-testing-node/gulpfile.js
+[11:59:33] Starting 'test'...
+
+
+  Middleware
+    execute
+      1) should successfully parse a message and file an issue
+      ✓ should ignore messages that do not match
+
+
+  1 passing (36ms)
+  1 failing
+
+  1) Middleware execute should successfully parse a message and file an issue:
+
+      AssertionError: expected [ Array(3) ] to deeply equal []
+      + expected - actual
+
+      -[
+      -  [
+      -    "C5150OU812:1360782804.083113"
+      -    "getting reactions for"
+      -    "https://18F.slack.com/archives/handbook/p1360782804083113"
+      -  ]
+      -  [
+      -    "C5150OU812:1360782804.083113"
+      -    "making GitHub request for"
+      -    "https://18f.slack.com/archives/handbook/p1360782804083113"
+      -  ]
+      -  [
+      -    "C5150OU812:1360782804.083113"
+      -    "adding"
+      -    "heavy_check_mark"
+      -  ]
+      -]
+      +[]
+
+    at exercise/test/middleware-test.js:132:33
+
+
+
+
+[11:59:33] 'test' errored after 549 ms
+[11:59:33] Error in plugin 'gulp-mocha'
+Message:
+    1 test failed.
+npm ERR! Test failed.  See above for more details.
+```
+
+We're seeing a few things we expect:
+
+- each call has the message ID as the first argument
+- the first two calls include the message permalink
+- the last call includes `config.successReaction`
+
+However, we're missing:
+
+- a call for when the message matches a rule
+- a call for when the entire operation succeeds
+
+You should also be in the habit of thinking about putting these expected
+values in our `exercise/test/helpers/index.js` file to begin with. We already
+know we'll need to reuse these messages in other tests, so let's start by
+adding them to our helpers:
+
+```js
+var testConfig = require('./test-config.json');
+var Rule = require('../../lib/rule');
+// ...existing require statements...
+
+exports = module.exports = {
+  // ...existing constants...
+  // Note that this is exports.CHANNEL_ID + ':' + exports.TIMESTAMP, but since
+  // it's a constant, we can't use an expression to define it.
+  MESSAGE_ID: 'C5150OU812:1360782804.083113',
+
+  // ...existing helper functions...
+  // Don't forget to add a comma after the previous one!
+
+  logArgs: {
+    matchingRule: function() {
+      var matchingRule = testConfig.rules[2];
+      return [exports.MESSAGE_ID, 'matches rule:', new Rule(matchingRule)];
+    },
+    getReactions: function() {
+      return [exports.MESSAGE_ID, 'getting reactions for', exports.PERMALINK];
+    },
+    github: function() {
+      return [
+        exports.MESSAGE_ID, 'making GitHub request for', exports.PERMALINK
+      ];
+    },
+    addSuccessReaction: function() {
+      return [exports.MESSAGE_ID, 'adding', testConfig.successReaction];
+    },
+    success: function() {
+      return [exports.MESSAGE_ID, 'created: ' + exports.ISSUE_URL];
+    }
+  }
+```
+
+We define these "constants" as functions for the same reason we hardcoded
+`MESSAGE_ID`. If we tried to define these as normal constant values,
+`exports.MESSAGE_ID` and other members would produce undefined values during
+initialization. Note that `matchingRule` instantiates an actual `Rule` object.
+Note that the `success` function concatenates its last array member, since
+that's how it will get passed to `logger.info`.
+
+Now let's update our test to read:
+
+```js
+        logger.info.args.should.eql([
+          helpers.logArgs.matchingRule(),
+          helpers.logArgs.getReactions(),
+          helpers.logArgs.github(),
+          helpers.logArgs.addSuccessReaction(),
+          helpers.logArgs.success()
+        ]);
+```
+
+Run the test, and make sure it fails. Then go back to `Middleware` and add or
+update the necessary calls to `logger.info` to get the test to pass. Note that
+the last call will require passing `logger` and the message ID as arguments to
+`handleFinish`.
+
+Make sure the test passes before continuing to the next section.
 
 ## Preventing multiple issues from being filed while filing an issue
 
 ## Preventing multiple issues from being filed after filing an issue
+
+## Testing error cases
 
 ## Check your work
 

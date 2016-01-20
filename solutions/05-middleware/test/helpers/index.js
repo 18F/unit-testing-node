@@ -3,6 +3,7 @@
 'use strict';
 
 var testConfig = require('./test-config.json');
+var Rule = require('../../lib/rule');
 var SlackClient = require('../../lib/slack-client');
 var Hubot = require('hubot');
 var SlackBot = require('hubot-slack');
@@ -14,6 +15,7 @@ exports = module.exports = {
   TIMESTAMP: '1360782804.083113',
   PERMALINK: 'https://18f.slack.com/archives/handbook/p1360782804083113',
   ISSUE_URL: 'https://github.com/18F/handbook/issues/1',
+  MESSAGE_ID: 'C5150OU812:1360782804.083113',
 
   baseConfig: function() {
     return JSON.parse(JSON.stringify(testConfig));
@@ -66,5 +68,26 @@ exports = module.exports = {
       date: new Date(1360782804.083113 * 1000),
       title: 'Update from #handbook at Wed, 13 Feb 2013 19:13:24 GMT',
     };
+  },
+
+  logArgs: {
+    matchingRule: function() {
+      var matchingRule = testConfig.rules[2];
+      return [exports.MESSAGE_ID, 'matches rule:', new Rule(matchingRule)];
+    },
+    getReactions: function() {
+      return [exports.MESSAGE_ID, 'getting reactions for', exports.PERMALINK];
+    },
+    github: function() {
+      return [
+        exports.MESSAGE_ID, 'making GitHub request for', exports.PERMALINK
+      ];
+    },
+    addSuccessReaction: function() {
+      return [exports.MESSAGE_ID, 'adding', testConfig.successReaction];
+    },
+    success: function() {
+      return [exports.MESSAGE_ID, 'created: ' + exports.ISSUE_URL];
+    }
   }
 };

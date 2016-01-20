@@ -29,7 +29,8 @@ Middleware.prototype.execute = function(context, next, done) {
   }
 
   msgId = messageId(message);
-  finish = handleFinish(response, next, done);
+  this.logger.info(msgId, 'matches rule:', rule);
+  finish = handleFinish(msgId, this.logger, response, next, done);
 
   return getReactions(this, msgId, message)
     .then(fileGitHubIssue(this, msgId, rule.githubRepository))
@@ -72,7 +73,7 @@ function getReactions(middleware, msgId, message) {
       permalink = 'https://' + domain + '.slack.com/archives/' +
         channelName + '/p' + timestamp.replace('.', '');
 
-  middleware.logger.info(msgId, 'getting reactions for ' + permalink);
+  middleware.logger.info(msgId, 'getting reactions for', permalink);
   return middleware.slackClient.getReactions(message.item.channel, timestamp);
 }
 
@@ -131,8 +132,9 @@ function handleFailure(middleware, githubRepository, finish) {
   };
 }
 
-function handleFinish(response, next, done) {
+function handleFinish(messageId, logger, response, next, done) {
   return function(message) {
+    logger.info(messageId, message);
     response.reply(message);
     next(done);
   };
