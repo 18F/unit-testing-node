@@ -24,6 +24,10 @@ SlackClient.prototype.getChannelName = function(channelId) {
   return this.client.getChannelByID(channelId).name;
 };
 
+SlackClient.prototype.getTeamDomain = function() {
+  return this.client.team.domain;
+};
+
 SlackClient.prototype.getReactions = function(channel, timestamp) {
   return makeApiCall(this, 'reactions.get',
     { channel: channel, timestamp: timestamp });

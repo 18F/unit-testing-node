@@ -12,9 +12,11 @@ var Logger = require('../lib/logger');
 var helpers = require('./helpers');
 var chai = require('chai');
 var sinon = require('sinon');
+var chaiAsPromised = require('chai-as-promised');
 
 var expect = chai.expect;
 chai.should();
+chai.use(chaiAsPromised);
 
 describe('Middleware', function() {
   var config, slackClient, githubClient, logger, middleware;
@@ -93,7 +95,7 @@ describe('Middleware', function() {
   });
 
   describe('execute', function() {
-    var context, next, hubotDone;
+    var context, next, hubotDone, message;
 
     beforeEach(function() {
       context = {
@@ -104,10 +106,27 @@ describe('Middleware', function() {
       };
       next = sinon.spy();
       hubotDone = sinon.spy();
+      message = helpers.fullReactionAddedMessage();
+
+      slackClient = sinon.stub(slackClient);
+      githubClient = sinon.stub(githubClient);
+      logger = sinon.stub(logger);
+
+      slackClient.getChannelName.returns('handbook');
+      slackClient.getTeamDomain.returns('18F');
     });
 
     it('should successfully parse a message and file an issue', function(done) {
-      done();
+      slackClient.getReactions
+        .returns(Promise.resolve(helpers.messageWithReactions()));
+      githubClient.fileNewIssue.returns(Promise.resolve(helpers.ISSUE_URL));
+      slackClient.addSuccessReaction
+        .returns(Promise.resolve(helpers.ISSUE_URL));
+
+      middleware.execute(context, next, hubotDone)
+        .should.become(helpers.ISSUE_URL).then(function() {
+        next.calledWith(hubotDone).should.be.true;
+      }).should.notify(done);
     });
 
     it('should ignore messages that do not match', function() {

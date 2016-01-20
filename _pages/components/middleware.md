@@ -124,6 +124,13 @@ function Middleware(config, slackClient, githubClient, logger) {
   });
 ```
 
+In contrast to our injected dependencies, our `Rule` objects are small,
+straightforward, and do not rely on outside resources such as files, servers,
+or timers. Should this somehow ever change, we may wish to extract the `Rule`
+instantiation into a factory object. For the time being, however, it's
+completely OK for `Middleware` to instantiate these objects directly, as
+opposed to `slackClient`, `githubClient`, or `logger`.
+
 ## Understanding the `execute(context, next, done)` function signature
 
 The `Middleware` object implements the [Hubot receive middleware
@@ -265,9 +272,11 @@ var SlackClient = require('../lib/slack-client');
 var Logger = require('../lib/logger');
 var helpers = require('./helpers');
 var chai = require('chai');
+var chaiAsPromised = require('chai-as-promised');
 
 var expect = chai.expect;
 chai.should();
+chai.use(chaiAsPromised);
 
 describe('Middleware', function() {
   var config, slackClient, githubClient, logger, middleware;
@@ -671,7 +680,7 @@ function getReactions(middleware, msgId, message) {
       permalink = 'https://' + domain + '.slack.com/archives/' +
         channelName + '/p' + timestamp.replace('.', '');
 
-  middleware.logger(msgId, 'getting reactions for ' + permalink);
+  middleware.logger.info(msgId, 'getting reactions for ' + permalink);
   return middleware.slackClient.getReactions(message.item.channel, timestamp);
 }
 ```
@@ -854,7 +863,7 @@ function addSuccessReaction(middleware, msgId, message) {
         ' but failed to add ' + reaction + ': ' + err.message));
     };
 
-    middleware.logger(msgId, 'adding', reaction);
+    middleware.logger.info(msgId, 'adding', reaction);
     return middleware.slackClient.addSuccessReaction(channel, timestamp)
       .then(resolve, reject);
   };
@@ -932,10 +941,146 @@ values will be discarded. In our tests, however, they enables us to use
 [chai-as-promised assertions](https://www.npmjs.com/package/chai-as-promised)
 to validate the outcome of `execute` in each test case.
 
+## Preparing the `execute` fixture for thorough tests
+
+We're just about ready to get some tests around this new behavior. First let's
+update our `execute` test fixture:
+
+```js
+  describe('execute', function() {
+    var context, next, hubotDone, message;
+
+    beforeEach(function() {
+      context = {
+        response: {
+          message: helpers.fullReactionAddedMessage(),
+          reply: sinon.spy()
+        }
+      };
+      next = sinon.spy();
+      hubotDone = sinon.spy();
+      message = helpers.fullReactionAddedMessage();
+
+      slackClient = sinon.stub(slackClient);
+      githubClient = sinon.stub(githubClient);
+      logger = sinon.stub(logger);
+
+      slackClient.getChannelName.returns('handbook');
+      slackClient.getTeamDomain.returns('18F');
+    });
+```
+
+The most notable update here is that we are stubbing the `slackClient`,
+`githubClient`, and `logger` objects. Though the sinon documentation generally
+recommends against this, we control all of these interfaces, as they are
+defined within our own application. The risk of these objects evolving in
+unexpected ways is managably tiny.
+
+As for why we use stubs rather than full blown mock objects, read the [Mocks
+vs. stubs chapter of the Concepts
+guide]({{ site.baseurl }}/concepts/mocks-vs-stubs/).
+
+While these tests will appear a bit more complex than previous tests, there
+are two things to keep in mind. One, our `Middleware` class integrates all of
+the behaviors we've developed in isolation prior to this point. Naturally
+there will be more objects working in collaboration, and more behavior to
+model and verify.
+
+Second, by designing the `Middleware` class for [dependency
+injection]({{ site.baseurl }}/concepts/dependency-injection), we are able to
+exercise the core `execute` logic using lightweight, controllable [test
+doubles](http://googletesting.blogspot.com/2013/07/testing-on-toilet-know-your-test-doubles.html).
+This makes our set up and tear down less cumbersome, makes corner cases easier
+to exercise, and makes expected outcomes easier to validate. Plus, as systems
+grow larger, isolating system components via dependency injection and test
+doubles can make the test suite run exponentially faster.
+
 ## Testing the happy path
 
 We're at the point where we can test the "happy path" through `execute`,
 successfully filing an issue and adding the success reaction to the message.
+Let's examine our empty test case:
+
+```js
+    it('should successfully parse a message and file an issue', function(done) {
+      done();
+    });
+```
+
+Recall that `execute` will return a `Promise`, and that we've used
+[chai-as-promised](https://www.npmjs.com/package/chai-as-promised) assertions
+such as `should.become` and `should.be.rejectedWith` in our `SlackClient` and
+`GitHubClient` tests. In those tests, we actually returned the expressions
+containing those assertions, which evaluated to `Promises`, because
+[mocha supports this style of asynchronous
+notification](https://mochajs.org/#working-with-promises). Consequently, there
+was no need to rely upon [mocha's `done` callback
+support](https://mochajs.org/#asynchronous-code).
+
+In this test, however, we're actually defining `done` because we need to
+validate other behaviors after the `Promise` has resolved. [chai-as-promised
+allows us to create a `Promise` chain to eventualy call
+`done`](https://www.npmjs.com/package/chai-as-promised#working-with-non-promisefriendly-test-runners) using the format:
+
+```js
+    it('should do something asynchronous', function(done) {
+      result.should.become(...).then(function() {
+        // Other assertions...
+      }).should.notify(done);
+    });
+```
+
+So for our happy-path test, let's write:
+
+```js
+    it('should successfully parse a message and file an issue', function(done) {
+      slackClient.getReactions
+        .returns(Promise.resolve(helpers.messageWithReactions()));
+      githubClient.fileNewIssue.returns(Promise.resolve(helpers.ISSUE_URL));
+      slackClient.addSuccessReaction
+        .returns(Promise.resolve(helpers.ISSUE_URL));
+
+      middleware.execute(context, next, hubotDone)
+        .should.become(helpers.ISSUE_URL).then(function() {
+        next.calledWith(hubotDone).should.be.true;
+      }).should.notify(done);
+    });
+```
+
+Note that when we validated `next.calledWith(hubotDone).should.be.true` in
+`should ignore messages that do not match`, we were able to do so directly.
+This because in that case, `execute` returned `undefined` instead of a
+`Promise`. In this case, since there was asynchronous work to be done,
+`execute` returns a `Promise`, so we need to perform this check after the
+`Promise` resolves.
+
+Finally, let's verify that our new test passes:
+
+```sh
+$ npm test -- --grep ' execute '
+
+> 18f-unit-testing-node@0.0.0 test .../unit-testing-node
+> gulp test "--grep" " execute "
+
+[10:04:03] Using gulpfile .../unit-testing-node/gulpfile.js
+[10:04:03] Starting 'test'...
+
+
+  Middleware
+    execute
+      ✓ should successfully parse a message and file an issue
+      ✓ should ignore messages that do not match
+
+
+  2 passing (28ms)
+
+[10:04:04] Finished 'test' after 547 ms
+```
+
+## Testing more happy path details
+
+- context.response.reply should contain the reaction's user and GitHub URL
+- logger.args.should.eql([...])
 
 ## Preventing multiple issues from being filed while filing an issue
 

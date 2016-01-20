@@ -74,7 +74,7 @@ function getReactions(middleware, msgId, message) {
       permalink = 'https://' + domain + '.slack.com/archives/' +
         channelName + '/p' + timestamp.replace('.', '');
 
-  middleware.logger(msgId, 'getting reactions for ' + permalink);
+  middleware.logger.info(msgId, 'getting reactions for ' + permalink);
   return middleware.slackClient.getReactions(message.item.channel, timestamp);
 }
 
@@ -104,7 +104,7 @@ function addSuccessReaction(middleware, msgId, message) {
         ' but failed to add ' + reaction + ': ' + err.message));
     };
 
-    middleware.logger(msgId, 'adding', reaction);
+    middleware.logger.info(msgId, 'adding', reaction);
     return middleware.slackClient.addSuccessReaction(channel, timestamp)
       .then(resolve, reject);
   };
