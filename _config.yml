@@ -100,6 +100,9 @@ navigation:
   - text: Minimizing dependencies
     url: minimizing-dependencies/
     internal: true
+  - text: Mocks vs. stubs
+    url: mocks-vs-stubs/
+    internal: true
   - text: Object composition vs. inheritance
     url: object-composition-vs-inheritance/
     internal: true
