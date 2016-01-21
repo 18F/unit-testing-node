@@ -3,7 +3,6 @@
 'use strict';
 
 var testConfig = require('./test-config.json');
-var Rule = require('../../lib/rule');
 var SlackClient = require('../../lib/slack-client');
 var Hubot = require('hubot');
 var SlackBot = require('hubot-slack');
@@ -70,30 +69,14 @@ exports = module.exports = {
     };
   },
 
-  logArgs: {
-    matchingRule: function() {
-      var matchingRule = testConfig.rules[2];
-      return [exports.MESSAGE_ID, 'matches rule:', new Rule(matchingRule)];
-    },
-    getReactions: function() {
-      return [exports.MESSAGE_ID, 'getting reactions for', exports.PERMALINK];
-    },
-    github: function() {
-      return [
-        exports.MESSAGE_ID, 'making GitHub request for', exports.PERMALINK
-      ];
-    },
-    addSuccessReaction: function() {
-      return [exports.MESSAGE_ID, 'adding', testConfig.successReaction];
-    },
-    success: function() {
-      return [exports.MESSAGE_ID, 'created: ' + exports.ISSUE_URL];
-    },
-    alreadyInProgress: function() {
-      return [exports.MESSAGE_ID, 'already in progress'];
-    },
-    alreadyFiled: function() {
-      return [exports.MESSAGE_ID, 'already processed ' + exports.PERMALINK];
+  logArgs: function() {
+    var args = new Array(arguments.length),
+        i;
+
+    for (i = 0; i != args.length; ++i) {
+      args[i] = arguments[i];
     }
+    args.unshift(exports.MESSAGE_ID);
+    return args;
   }
 };

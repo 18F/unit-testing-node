@@ -42,8 +42,7 @@ Middleware.prototype.execute = function(context, next, done) {
   return getReactions(this, msgId, message)
     .then(fileGitHubIssue(this, msgId, rule.githubRepository))
     .then(addSuccessReaction(this, msgId, message))
-    .then(handleSuccess(finish))
-    .catch(handleFailure(this, rule.githubRepository, finish));
+    .then(handleSuccess(finish), handleFailure(finish));
 };
 
 Middleware.prototype.findMatchingRule = function(message) {
@@ -78,15 +77,24 @@ function getReactions(middleware, msgId, message) {
       channelName = middleware.slackClient.getChannelName(message.item.channel),
       timestamp = message.item.ts,
       permalink = 'https://' + domain + '.slack.com/archives/' +
-        channelName + '/p' + timestamp.replace('.', '');
+        channelName + '/p' + timestamp.replace('.', ''),
+      reject;
+
+  reject = function(err) {
+    return Promise.reject(new Error('failed to get reactions for ' +
+      permalink + ': ' + err.message));
+  };
 
   middleware.logger.info(msgId, 'getting reactions for', permalink);
-  return middleware.slackClient.getReactions(message.item.channel, timestamp);
+  return middleware.slackClient.getReactions(message.item.channel, timestamp)
+    .catch(reject);
 }
 
 function fileGitHubIssue(middleware, msgId, githubRepository) {
   return function(message) {
-    var metadata, permalink = message.message.permalink;
+    var metadata,
+        permalink = message.message.permalink,
+        reject;
 
     if (alreadyProcessed(message, middleware.successReaction)) {
       return Promise.reject('already processed ' + permalink);
@@ -94,7 +102,14 @@ function fileGitHubIssue(middleware, msgId, githubRepository) {
 
     metadata = middleware.parseMetadata(message);
     middleware.logger.info(msgId, 'making GitHub request for', permalink);
-    return middleware.githubClient.fileNewIssue(metadata, githubRepository);
+
+    reject = function(err) {
+      return Promise.reject(new Error('failed to create a GitHub issue in ' +
+        middleware.githubClient.user + '/' + githubRepository + ': ' +
+        err.message));
+    };
+    return middleware.githubClient.fileNewIssue(metadata, githubRepository)
+      .catch(reject);
   };
 }
 
@@ -133,31 +148,24 @@ function handleSuccess(finish) {
   };
 }
 
-function handleFailure(middleware, githubRepository, finish) {
+function handleFailure(finish) {
   return function(err) {
-    var message;
-
-    if (typeof err !== Error) {
-      finish(err);
-      return Promise.reject(err);
-    }
-
-    if (err.message.startsWith('created ')) {
-      message = err.message;
-    } else {
-      message = 'failed to create a GitHub issue in ' +
-        middleware.githubClient.user + '/' + githubRepository + ': ' +
-        err.message;
-    }
-    finish(message);
-    return Promise.reject(new Error(message));
+    finish(err);
+    return Promise.reject(err);
   };
 }
 
 function handleFinish(messageId, middleware, response, next, done) {
   return function(message) {
-    middleware.logger.info(messageId, message);
-    response.reply(message);
+    if (message instanceof Error) {
+      middleware.logger.error(messageId, message);
+    } else {
+      middleware.logger.info(messageId, message);
+    }
+
+    if (!(message.startsWith && message.startsWith('already '))) {
+      response.reply(message);
+    }
     delete middleware.inProgress[messageId];
     next(done);
   };

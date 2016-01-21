@@ -6,6 +6,7 @@
 
 var Middleware = require('../lib/middleware');
 var Config = require('../lib/config');
+var Rule = require('../lib/rule');
 var GitHubClient = require('../lib/github-client');
 var SlackClient = require('../lib/slack-client');
 var Logger = require('../lib/logger');
@@ -118,7 +119,7 @@ describe('Middleware', function() {
       slackClient.getTeamDomain.returns('18f');
     });
 
-    it('should successfully parse a message and file an issue', function(done) {
+    it('should receive a message and file an issue', function(done) {
       slackClient.getReactions
         .returns(Promise.resolve(helpers.messageWithReactions()));
       githubClient.fileNewIssue.returns(Promise.resolve(helpers.ISSUE_URL));
@@ -127,16 +128,18 @@ describe('Middleware', function() {
 
       middleware.execute(context, next, hubotDone)
         .should.become(helpers.ISSUE_URL).then(function() {
+        var matchingRule = new Rule(helpers.baseConfig().rules[2]);
+
         context.response.reply.args.should.eql([
           ['created: ' + helpers.ISSUE_URL]
         ]);
         next.calledWith(hubotDone).should.be.true;
         logger.info.args.should.eql([
-          helpers.logArgs.matchingRule(),
-          helpers.logArgs.getReactions(),
-          helpers.logArgs.github(),
-          helpers.logArgs.addSuccessReaction(),
-          helpers.logArgs.success()
+          helpers.logArgs('matches rule:', matchingRule),
+          helpers.logArgs('getting reactions for', helpers.PERMALINK),
+          helpers.logArgs('making GitHub request for', helpers.PERMALINK),
+          helpers.logArgs('adding', helpers.baseConfig().successReaction),
+          helpers.logArgs('created: ' + helpers.ISSUE_URL)
         ]);
       }).should.notify(done);
     });
@@ -159,13 +162,13 @@ describe('Middleware', function() {
 
       result = middleware.execute(context, next, hubotDone);
       if (middleware.execute(context, next, hubotDone) !== undefined) {
-        return done(new Error('middleware.execute did not prevent a second ' +
-          'issue being filed when one was in progress'));
+        return done(new Error('middleware.execute did not prevent filing a ' +
+          'second issue when one was already in progress'));
       }
 
       result.should.become(helpers.ISSUE_URL).then(function() {
         logger.info.args.should.include.something.that.deep.equals(
-          helpers.logArgs.alreadyInProgress());
+          helpers.logArgs('already in progress'));
 
         // Make another call to ensure that the ID is cleaned up. Normally the
         // message will have a successReaction after the first successful
@@ -194,8 +197,82 @@ describe('Middleware', function() {
         slackClient.getReactions.calledOnce.should.be.true;
         githubClient.fileNewIssue.called.should.be.false;
         slackClient.addSuccessReaction.called.should.be.false;
+        context.response.reply.called.should.be.false;
         logger.info.args.should.include.something.that.deep.equals(
-          helpers.logArgs.alreadyFiled());
+          helpers.logArgs('already processed ' + helpers.PERMALINK));
+      }).should.notify(done);
+    });
+
+    it('should receive a message but fail to get reactions', function(done) {
+      var errorMessage = 'failed to get reactions for ' + helpers.PERMALINK +
+        ': test failure';
+
+      slackClient.getReactions
+        .returns(Promise.reject(new Error('test failure')));
+      githubClient.fileNewIssue
+        .returns(Promise.resolve(helpers.ISSUE_URL));
+      slackClient.addSuccessReaction
+        .returns(Promise.resolve(helpers.ISSUE_URL));
+
+      middleware.execute(context, next, hubotDone)
+        .should.be.rejectedWith(errorMessage).then(function() {
+        slackClient.getReactions.calledOnce.should.be.true;
+        githubClient.fileNewIssue.called.should.be.false;
+        slackClient.addSuccessReaction.called.should.be.false;
+
+        context.response.reply.args[0][0].should.have.property(
+          'message', errorMessage);
+        logger.error.args[0][0].should.eql(helpers.MESSAGE_ID);
+        logger.error.args[0][1].should.have.property('message', errorMessage);
+      }).should.notify(done);
+    });
+
+    it('should get reactions but fail to file an issue', function(done) {
+      var errorMessage = 'failed to create a GitHub issue in 18F/handbook: ' +
+        'test failure';
+
+      slackClient.getReactions
+        .returns(Promise.resolve(helpers.messageWithReactions()));
+      githubClient.fileNewIssue
+        .returns(Promise.reject(new Error('test failure')));
+      slackClient.addSuccessReaction
+        .returns(Promise.resolve(helpers.ISSUE_URL));
+
+      middleware.execute(context, next, hubotDone)
+        .should.be.rejectedWith(errorMessage).then(function() {
+        slackClient.getReactions.calledOnce.should.be.true;
+        githubClient.fileNewIssue.called.should.be.true;
+        slackClient.addSuccessReaction.called.should.be.false;
+
+        context.response.reply.args[0][0].should.have.property(
+          'message', errorMessage);
+        logger.error.args[0][0].should.eql(helpers.MESSAGE_ID);
+        logger.error.args[0][1].should.have.property('message', errorMessage);
+      }).should.notify(done);
+    });
+
+    it('should file an issue but fail to add a reaction', function(done) {
+      var errorMessage = 'created ' + helpers.ISSUE_URL +
+        ' but failed to add ' + helpers.baseConfig().successReaction +
+        ': test failure';
+
+      slackClient.getReactions
+        .returns(Promise.resolve(helpers.messageWithReactions()));
+      githubClient.fileNewIssue
+        .returns(Promise.resolve(helpers.ISSUE_URL));
+      slackClient.addSuccessReaction
+        .returns(Promise.reject(new Error('test failure')));
+
+      middleware.execute(context, next, hubotDone)
+        .should.be.rejectedWith(errorMessage).then(function() {
+        slackClient.getReactions.calledOnce.should.be.true;
+        githubClient.fileNewIssue.called.should.be.true;
+        slackClient.addSuccessReaction.called.should.be.true;
+
+        context.response.reply.args[0][0].should.have.property(
+          'message', errorMessage);
+        logger.error.args[0][0].should.eql(helpers.MESSAGE_ID);
+        logger.error.args[0][1].should.have.property('message', errorMessage);
       }).should.notify(done);
     });
   });

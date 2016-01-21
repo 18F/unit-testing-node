@@ -598,13 +598,12 @@ statement at the end of `execute` with this:
   return getReactions(this, msgId, message)
     .then(fileGitHubIssue(this, msgId, rule.githubRepository))
     .then(addSuccessReaction(this, msgId, message))
-    .then(handleSuccess(finish))
-    .catch(handleFailure(this, rule.githubRepository, finish));
+    .then(handleSuccess(finish), handleFailure(finish));
 ```
 
 Notice that each of these steps corresponds to the remainder of the [core
 algorithm](#core-algorithm). If any of the `Promises` in the chain before
-`handleSuccess` are rejected, the `catch(handleFailure)` case will report the
+`handleSuccess` are rejected, the `handleFailure` case will report the
 error. There are two pieces of data here that we've yet to define:
 
 - **`msgId`**: a unique identifier computed for the incoming message
@@ -679,17 +678,26 @@ function getReactions(middleware, msgId, message) {
       channelName = middleware.slackClient.getChannelName(message.item.channel),
       timestamp = message.item.ts,
       permalink = 'https://' + domain + '.slack.com/archives/' +
-        channelName + '/p' + timestamp.replace('.', '');
+        channelName + '/p' + timestamp.replace('.', ''),
+      reject;
+
+  reject = function(err) {
+    return Promise.reject(new Error('failed to get reactions for ' +
+      permalink + ': ' + err.message));
+  };
 
   middleware.logger.info(msgId, 'getting reactions for', permalink);
-  return middleware.slackClient.getReactions(message.item.channel, timestamp);
+  return middleware.slackClient.getReactions(message.item.channel, timestamp)
+    .catch(reject);
 }
 ```
 
 We use the `slackClient` to get our team's Slack domain name, the channel
-name, and the list of all reactions to the message. The only one we haven't
-yet implemented is `getTeamDomain`. This method is very straightforward; let's
-implement it now in `exercise/lib/slack-client.js`:
+name, and the list of all reactions to the message. We define a special
+`reject` handler here to add some more information to the error message
+returned when `githubClient.getReactions` fails. The only `slackClient` method
+used here that  we haven't yet implemented is `getTeamDomain`. This method is
+very straightforward; let's implement it now in `exercise/lib/slack-client.js`:
 
 ```js
 SlackClient.prototype.getTeamDomain = function() {
@@ -718,11 +726,20 @@ take a `message` argument passed in from `slackClient.getReactions`:
 ```js
 function fileGitHubIssue(middleware, msgId, githubRepository) {
   return function(message) {
-    var metadata, permalink = message.message.permalink;
+    var metadata,
+        permalink = message.message.permalink,
+        finish;
 
     metadata = middleware.parseMetadata(message);
     middleware.logger.info(msgId, 'making GitHub request for', permalink);
-    return middleware.githubClient.fileNewIssue(metadata, githubRepository);
+
+    reject = function(err) {
+      return Promise.reject(new Error('failed to create a GitHub issue in ' +
+        middleware.githubClient.user + '/' + githubRepository + ': ' +
+        err.message));
+    };
+    return middleware.githubClient.fileNewIssue(metadata, githubRepository)
+      .catch(reject);
   };
 }
 ```
@@ -738,6 +755,9 @@ from the `SlackClient` chapter. If we return a `Promise` directly from
 `fileGitHubIssue`, it will get created too early. If we don't explicitly
 _return_ the `Promise`, it will execute, but it won't become integrated
 into the `Promise` chain built by `execute`.
+
+We define a special `reject` handler here to add some more information to the
+error message returned when `githubClient.fileNewIssue` fails.
 
 Also notice that there is another `Middleware` method that we have yet to
 define, `parseMetadata`.
@@ -895,7 +915,8 @@ function!]({{ site.baseurl }}/components/slack-client/#promises-gotcha-1)
 
 ## `handleSuccess` and `handleFailure`
 
-`handleSuccess` is, at this point, trivial:
+`handleSuccess` and `handleFailure` are very thin shims that call `finish`
+before re-returning a resolved or rejected value:
 
 ```js
 function handleSuccess(finish) {
@@ -904,37 +925,19 @@ function handleSuccess(finish) {
     return Promise.resolve(issueUrl);
   };
 }
+
+function handleFailure(middleware, githubRepository, finish) {
+  return function(err) {
+    finish(err);
+    return Promise.reject(err);
+  };
+}
 ```
 
 Recall from our definition of `execute` that `finish` is a tiny function that
 calls `next(done)` to signal to Hubot that this middleware's processing is
 finished. At the moment, the value we're passing in will be ignored. We'll
 update `finish` to rectify this shortly.
-
-`handleFailure` is slightly more complex:
-
-```js
-function handleFailure(middleware, githubRepository, finish) {
-  return function(err) {
-    var message;
-
-    if (err.message.startsWith('created ')) {
-      message = err.message;
-    } else {
-      message = 'failed to create a GitHub issue in ' +
-        middleware.githubClient.user + '/' + githubRepository + ': ' +
-        err.message;
-    }
-    finish(message);
-    return Promise.reject(new Error(message));
-  };
-}
-```
-
-There is a single error case whereby the GitHub issue was successfully
-created, but adding the success reaction to the message failed. This is why we
-have the `if (err.message.startsWith('created '))` condition to distinguish
-this error from the reset.
 
 Note that the `Promises` returned here have no bearing on the `next(done)`
 call at all, or on Hubot generally. When deployed, the resolved or rejected
@@ -1006,7 +1009,7 @@ successfully filing an issue and adding the success reaction to the message.
 Let's examine our empty test case:
 
 ```js
-    it('should successfully parse a message and file an issue', function(done) {
+    it('should receive a message and file an issue', function(done) {
       done();
     });
 ```
@@ -1037,7 +1040,7 @@ allows us to create a `Promise` chain to eventualy call
 So for our happy-path test, let's write:
 
 ```js
-    it('should successfully parse a message and file an issue', function(done) {
+    it('should receive a message and file an issue', function(done) {
       slackClient.getReactions
         .returns(Promise.resolve(helpers.messageWithReactions()));
       githubClient.fileNewIssue.returns(Promise.resolve(helpers.ISSUE_URL));
@@ -1072,7 +1075,7 @@ $ npm test -- --grep ' execute '
 
   Middleware
     execute
-      ✓ should successfully parse a message and file an issue
+      ✓ should receive a message and file an issue
       ✓ should ignore messages that do not match
 
 
@@ -1117,14 +1120,14 @@ $ npm test -- --grep ' execute '
 
   Middleware
     execute
-      1) should successfully parse a message and file an issue
+      1) should receive a message and file an issue
       ✓ should ignore messages that do not match
 
 
   1 passing (32ms)
   1 failing
 
-  1) Middleware execute should successfully parse a message and file an issue:
+  1) Middleware execute should receive a message and file an issue:
 
       AssertionError: expected [] to deeply equal [ Array(1) ]
       + expected - actual
@@ -1170,7 +1173,7 @@ error message to the user:
 
 Run the tests again, and this should pass. While it's passing, let's take the
 opportunity to create a factory function for `finish` like we did with all the
-others. 
+others.
 
 ```js
 function handleFinish(response, next, done) {
@@ -1237,14 +1240,14 @@ $ npm test -- --grep ' execute '
 
   Middleware
     execute
-      1) should successfully parse a message and file an issue
+      1) should receive a message and file an issue
       ✓ should ignore messages that do not match
 
 
   1 passing (36ms)
   1 failing
 
-  1) Middleware execute should successfully parse a message and file an issue:
+  1) Middleware execute should receive a message and file an issue:
 
       AssertionError: expected [ Array(3) ] to deeply equal []
       + expected - actual
@@ -1291,16 +1294,10 @@ However, we're missing:
 - a call for when the message matches a rule
 - a call for when the entire operation succeeds
 
-You should also be in the habit of thinking about putting these expected
-values in our `exercise/test/helpers/index.js` file to begin with. We already
-know we'll need to reuse these messages in other tests, so let's start by
-adding them to our helpers:
+Since we'll expect the message ID at the beginning of every log message, let's
+write a helper function to generate the expected log arguments:
 
 ```js
-var testConfig = require('./test-config.json');
-var Rule = require('../../lib/rule');
-// ...existing require statements...
-
 exports = module.exports = {
   // ...existing constants...
   // Note that this is exports.CHANNEL_ID + ':' + exports.TIMESTAMP, but since
@@ -1310,44 +1307,27 @@ exports = module.exports = {
   // ...existing helper functions...
   // Don't forget to add a comma after the previous one!
 
-  logArgs: {
-    matchingRule: function() {
-      var matchingRule = testConfig.rules[2];
-      return [exports.MESSAGE_ID, 'matches rule:', new Rule(matchingRule)];
-    },
-    getReactions: function() {
-      return [exports.MESSAGE_ID, 'getting reactions for', exports.PERMALINK];
-    },
-    github: function() {
-      return [
-        exports.MESSAGE_ID, 'making GitHub request for', exports.PERMALINK
-      ];
-    },
-    addSuccessReaction: function() {
-      return [exports.MESSAGE_ID, 'adding', testConfig.successReaction];
-    },
-    success: function() {
-      return [exports.MESSAGE_ID, 'created: ' + exports.ISSUE_URL];
+  logArgs: function() {
+    var args = new Array(arguments.length),
+        i;
+
+    for (i = 0; i != args.length; ++i) {
+      args[i] = arguments[i];
     }
+    args.unshift(exports.MESSAGE_ID);
+    return args;
   }
 ```
-
-We define these "constants" as functions for the same reason we hardcoded
-`MESSAGE_ID`. If we tried to define these as normal constant values,
-`exports.MESSAGE_ID` and other members would produce undefined values during
-initialization. Note that `matchingRule` instantiates an actual `Rule` object.
-Note that the `success` function concatenates its last array member, since
-that's how it will get passed to `logger.info`.
 
 Now let's update our test to read:
 
 ```js
         logger.info.args.should.eql([
-          helpers.logArgs.matchingRule(),
-          helpers.logArgs.getReactions(),
-          helpers.logArgs.github(),
-          helpers.logArgs.addSuccessReaction(),
-          helpers.logArgs.success()
+          helpers.logArgs('matches rule:', matchingRule),
+          helpers.logArgs('getting reactions for', helpers.PERMALINK),
+          helpers.logArgs('making GitHub request for', helpers.PERMALINK),
+          helpers.logArgs('adding', helpers.baseConfig().successReaction),
+          helpers.logArgs('created: ' + helpers.ISSUE_URL)
         ]);
 ```
 
@@ -1383,12 +1363,12 @@ return `undefined`:
 
       result = middleware.execute(context, next, hubotDone);
       if (middleware.execute(context, next, hubotDone) !== undefined) {
-        return done(new Error('middleware.execute did not prevent a second ' +
-          'issue being filed when one was in progress'));
+        return done(new Error('middleware.execute did not prevent filing a ' +
+          'second issue when one was already in progress'));
       }
 
       result.should.become(helpers.ISSUE_URL).then(function() {
-        logger.info.args.should.contain(helpers.logArgs.alreadyInProgress());
+        logger.info.args.should.contain(helpers.logArgs('already in progress'));
       }).should.notify(done);
     });
 ```
@@ -1414,7 +1394,7 @@ $ npm test -- --grep ' execute '
 
   Middleware
     execute
-      ✓ should successfully parse a message and file an issue
+      ✓ should receive a message and file an issue
       ✓ should ignore messages that do not match
       1) should not file another issue for the same message when one is in
 progress
@@ -1483,7 +1463,7 @@ $ npm test -- --grep ' execute '
 
   Middleware
     execute
-      ✓ should successfully parse a message and file an issue
+      ✓ should receive a message and file an issue
       ✓ should ignore messages that do not match
       1) should not file another issue for the same message when one is in
 progress
@@ -1531,7 +1511,7 @@ Then update the assertion to read:
 
 ```js
         logger.info.args.should.include.something.that.deep.equals(
-          helpers.logArgs.alreadyInProgress());
+          helpers.logArgs('already in progress'));
 ```
 
 Now run the test and ensure it passes.
@@ -1550,7 +1530,7 @@ one more `middleware.execute` call _inside the callback_, and move the
 ```js
       result.should.become(helpers.ISSUE_URL).then(function() {
         logger.info.args.should.include.something.that.deep.equals(
-          helpers.logArgs.alreadyInProgress());
+          helpers.logArgs('already in progress'));
 
         // Make another call to ensure that the ID is cleaned up. Normally the
         // message will have a successReaction after the first successful
@@ -1579,7 +1559,7 @@ $ npm test -- --grep ' execute '
 
   Middleware
     execute
-      ✓ should successfully parse a message and file an issue
+      ✓ should receive a message and file an issue
       ✓ should ignore messages that do not match
       1) should not file another issue for the same message when one is in
 progress
@@ -1662,8 +1642,9 @@ Let's start building our our test case first:
         slackClient.getReactions.calledOnce.should.be.true;
         githubClient.fileNewIssue.called.should.be.false;
         slackClient.addSuccessReaction.called.should.be.false;
+        context.response.reply.called.should.be.false;
         logger.info.args.should.include.something.that.deep.equals(
-          helpers.logArgs.alreadyFiled());
+          helpers.logArgs('already processed ' + helpers.PERMALINK));
       }).should.notify(done);
     });
 ```
@@ -1678,15 +1659,9 @@ that `githubClient.fileNewIssue` and `slackClient.addSuccessReaction` were not
 called.
 
 Also, we want to log the fact that the message already has a GitHub issue as
-an _info_ message, not an _error_. We need to add a new member to
-`helpers.logArgs` as well:
-
-```js
-    // Don't forget to add a comma after the previous function definition.
-    alreadyFiled: function() {
-      return [exports.MESSAGE_ID, 'already processed ' + exports.PERMALINK];
-    }
-```
+an _info_ message, not an _error_. We don't want to spam every user who adds
+another instance of the emoji, hence we check that we don't call
+`context.response.reply`.
 
 Run the test, and it should fail by producing a "successful" result, when we
 expected a short-circuit to resolve to `undefined`:
@@ -1703,7 +1678,7 @@ $ npm test -- --grep ' execute '
 
   Middleware
     execute
-      ✓ should successfully parse a message and file an issue
+      ✓ should receive a message and file an issue
       ✓ should ignore messages that do not match
       ✓ should not file another issue for the same message when one is in
 progress
@@ -1758,33 +1733,234 @@ function fileGitHubIssue(middleware, msgId, githubRepository) {
 
 Note that we're only passing a string to `Promise.reject`, not an `Error`.
 This is because we want to short-circuit the operation, but not because of an
-abnormal condition. Finally, we need to update `handleFailure` to pass through
-the rejection message to `finish`:
+abnormal condition. This will be of consequence when we add tests for the
+error cases shortly.
+
+Finally, let's update the function returned from `handleFinish` to avoid
+posting any `already filed` messages:
 
 ```js
-function handleFailure(middleware, githubRepository, finish) {
-  return function(err) {
-    var message;
-
-    if (typeof err !== Error) {
-      finish(err);
-      return Promise.reject(err);
+function handleFinish(messageId, middleware, response, next, done) {
+  return function(message) {
+    middleware.logger.info(messageId, message);
+    if (!(message.startsWith && message.startsWith('already '))) {
+      response.reply(message);
     }
 ```
-
-Again, we make sure to handle non-`Error` types as plain strings. This will be
-of consequence when we add tests for the error cases shortly.
 
 At this point, run the test again, and ensure it passes before moving on to
 the next section.
 
 ## Testing error cases
 
+Now it's time to give the "unhappy paths" their due. In the first case, we
+want to validate the behavior when an incoming message matches a rule, but
+getting its reactions fails. This is going to look very similar to the case we
+just wrote in the previous section:
+
+```js
+    it('should receive a message but fail to get reactions', function(done) {
+      var errorMessage = 'failed to get reactions for ' + helpers.PERMALINK +
+        ': test failure';
+
+      slackClient.getReactions
+        .returns(Promise.reject(new Error('test failure')));
+      githubClient.fileNewIssue
+        .returns(Promise.resolve(helpers.ISSUE_URL));
+      slackClient.addSuccessReaction
+        .returns(Promise.resolve(helpers.ISSUE_URL));
+
+      middleware.execute(context, next, hubotDone)
+        .should.be.rejectedWith(errorMessage).then(function() {
+        slackClient.getReactions.calledOnce.should.be.true;
+        githubClient.fileNewIssue.called.should.be.false;
+        slackClient.addSuccessReaction.called.should.be.false;
+
+        context.response.reply.args[0][0].should.have.property(
+          'message', errorMessage);
+        logger.error.args[0][0].should.eql(helpers.MESSAGE_ID);
+        logger.error.args[0][1].should.have.property('message', errorMessage);
+      }).should.notify(done);
+    });
+```
+
+Note that we're now checking `logger.error.args`, not `logger.info.args`.
+Also, since we're validating result that contain `Error` objects, we have to
+be more deliberate with the `context.response.reply` and `logger.error`
+assertions. This is because no two `Error` objects are equal to one another,
+so we can't create a `new Error` as an assertion argument. We have to check
+the `message` field of each Error explicitly. For both stubs, `args[0]` is the
+argument list for the first call to the stub.
+
+Now let's run the test to see what shakes out:
+
+```sh
+$ npm test -- --grep ' execute '
+
+> 18f-unit-testing-node@0.0.0 test .../unit-testing-node
+> gulp test "--grep" " execute "
+
+[17:35:15] Using gulpfile .../unit-testing-node/gulpfile.js
+[17:35:15] Starting 'test'...
+
+
+  Middleware
+    execute
+      ✓ should receive a message and file an issue
+      ✓ should ignore messages that do not match
+      ✓ should not file another issue for the same message when one is in
+progress
+      ✓ should not file another issue for the same message when one is already
+filed
+      1) should receive a message but fail to get reactions
+
+
+  4 passing (71ms)
+  1 failing
+
+  1) Middleware execute should receive a message but fail to get reactions:
+     TypeError: Cannot read property '0' of undefined
+    at exercise/test/middleware-test.js:225:29
+
+
+
+
+[17:35:16] 'test' errored after
+[17:35:16] Error in plugin 'gulp-mocha'
+Message:
+    1 test failed.
+npm ERR! Test failed.  See above for more details.
+```
+
+If you look closely, _it's the next to last assertion that's failing_.
+Everything else is already working as expected: `githubClient.fileNewIssue` is
+returning a rejected `Promise`, and consequently, `middleware.execute`
+resolves to that rejected value, and doesn't call
+`slackClient.addSuccessReaction`. The only issue here is that `logger.error`
+is empty.
+
+All we have to do to get the test to pass is update the function returned by
+`handleFinish` to differentiate between `Error` messages and other types:
+
+```js
+function handleFinish(messageId, middleware, response, next, done) {
+  return function(message) {
+    if (message instanceof Error) {
+      middleware.logger.error(messageId, message);
+    } else {
+      middleware.logger.info(messageId, message);
+    }
+
+    if (!(message.startsWith && message.startsWith('already '))) {
+      response.reply(message);
+    }
+    delete middleware.inProgress[messageId];
+    next(done);
+  };
+}
+```
+
+Run the tests, and verify that the new test passes. Then, add this next 
+test, which validates the behavior when the request to file a GitHub issue
+fails. It is nearly identical to the previous one except that
+`githubClient.fileNewIssue` produces the failure (notice
+`called.should.be.true`):
+
+```js
+    it('should get reactions but fail to file an issue', function(done) {
+      var errorMessage = 'failed to create a GitHub issue in 18F/handbook: ' +
+        'test failure';
+
+      slackClient.getReactions
+        .returns(Promise.resolve(helpers.messageWithReactions()));
+      githubClient.fileNewIssue
+        .returns(Promise.reject(new Error('test failure')));
+      slackClient.addSuccessReaction
+        .returns(Promise.resolve(helpers.ISSUE_URL));
+
+      middleware.execute(context, next, hubotDone)
+        .should.be.rejectedWith(errorMessage).then(function() {
+        slackClient.getReactions.calledOnce.should.be.true;
+        githubClient.fileNewIssue.called.should.be.true;
+        slackClient.addSuccessReaction.called.should.be.false;
+
+        context.response.reply.args[0][0].should.have.property(
+          'message', errorMessage);
+        logger.error.args[0][0].should.eql(helpers.MESSAGE_ID);
+        logger.error.args[0][1].should.have.property('message', errorMessage);
+      }).should.notify(done);
+    });
+```
+
+Even though the last few assertions look identical to those in the previous
+test, they are actually validating different code paths and values for
+`errorMessage`. Hence, contrary to earlier advice against repeating
+assertions, in this case it makes sense since they only appear to be the same,
+but actually aren't.
+
+Run the test, and verify that the new test passes. Then, add this one final
+test, which validates the behavior when the GitHub issue request succeeds, but
+adding the success reaction to the message fails. It is nearly identical to
+the previous one except that `slackClient.addSuccessReaction` produces the
+failure (notice `called.should.be.true`):
+
+```js
+    it('should file an issue but fail to add a reaction', function(done) {
+      var errorMessage = 'created ' + helpers.ISSUE_URL +
+        ' but failed to add ' + helpers.baseConfig().successReaction +
+        ': test failure';
+
+      slackClient.getReactions
+        .returns(Promise.resolve(helpers.messageWithReactions()));
+      githubClient.fileNewIssue
+        .returns(Promise.resolve(helpers.ISSUE_URL));
+      slackClient.addSuccessReaction
+        .returns(Promise.reject(new Error('test failure')));
+
+      middleware.execute(context, next, hubotDone)
+        .should.be.rejectedWith(errorMessage).then(function() {
+        slackClient.getReactions.calledOnce.should.be.true;
+        githubClient.fileNewIssue.called.should.be.true;
+        slackClient.addSuccessReaction.called.should.be.true;
+
+        context.response.reply.args[0][0].should.have.property(
+          'message', errorMessage);
+        logger.error.args[0][0].should.eql(helpers.MESSAGE_ID);
+        logger.error.args[0][1].should.have.property('message', errorMessage);
+      }).should.notify(done);
+    });
+```
+
 ## Check your work
 
 By this point, all of the `Middleware` tests should be passing:
 
 ```sh
+$ npm test -- --grep ' execute '
+
+> 18f-unit-testing-node@0.0.0 test .../unit-testing-node
+> gulp test "--grep" " execute "
+
+[17:50:42] Using gulpfile .../unit-testing-node/gulpfile.js
+[17:50:42] Starting 'test'...
+
+
+  Middleware
+    execute
+      ✓ should receive a message and file an issue
+      ✓ should ignore messages that do not match
+      ✓ should not file another issue for the same message when one is in
+progress
+      ✓ should not file another issue for the same message when one is already
+filed
+      ✓ should receive a message but fail to get reactions
+      ✓ should get reactions but fail to file an issue
+      ✓ should file an issue but fail to add a reaction
+
+
+  7 passing (87ms)
+
+[17:50:43] Finished 'test' after
 ```
 
 Now that you're all finished, compare your solutions to the code in
