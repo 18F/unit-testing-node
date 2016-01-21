@@ -37,7 +37,7 @@ Middleware.prototype.execute = function(context, next, done) {
   this.inProgress[msgId] = true;
 
   this.logger.info(msgId, 'matches rule:', rule);
-  finish = handleFinish(msgId, this.logger, response, next, done);
+  finish = handleFinish(msgId, this, response, next, done);
 
   return getReactions(this, msgId, message)
     .then(fileGitHubIssue(this, msgId, rule.githubRepository))
@@ -139,10 +139,11 @@ function handleFailure(middleware, githubRepository, finish) {
   };
 }
 
-function handleFinish(messageId, logger, response, next, done) {
+function handleFinish(messageId, middleware, response, next, done) {
   return function(message) {
-    logger.info(messageId, message);
+    middleware.logger.info(messageId, message);
     response.reply(message);
+    delete middleware.inProgress[messageId];
     next(done);
   };
 }

@@ -1366,7 +1366,9 @@ that when `execute` has begun to file an issue, that it doesn't allow another
 `reaction_added` event for the same message.
 
 Since we have a successful happy path test case in hand, let's copy parts of
-it and adapt it for this new requirement:
+it and adapt it for this new requirement. If processing for a particular
+message is already underway, a subsequent call for the same message should
+return `undefined`:
 
 ```js
     it('should not file another issue for the same message when ' +
@@ -1386,15 +1388,18 @@ it and adapt it for this new requirement:
       }
 
       result.should.become(helpers.ISSUE_URL).then(function() {
-        next.calledWith(hubotDone).should.be.true;
         logger.info.args.should.contain(helpers.logArgs.alreadyInProgress());
       }).should.notify(done);
     });
 ```
 
-There's no need to check all of the same assertions as before, but we do want
-to validate an "already in progress" log message. Let's run the test and make
-sure it fails:
+There's no need to check all of the same assertions as before; we've already
+got a thorough test for the success case. Repeating the same assertions time
+and again in different tests that exercise the same code paths is clutter that
+reduces the utility of the suite.
+
+However, we do want to validate an "already in progress" log message. Let's
+run the test and make sure it fails:
 
 ```sh
 $ npm test -- --grep ' execute '
@@ -1444,8 +1449,8 @@ It turns out that we can add a new object in the `Middleware` constructor:
 function Middleware(config, slackClient, githubClient, logger) {
   // ...existing assignments...
   this.inProgress = {};
-}```
-
+}
+```
 
 and add the message ID as a property inside `execute`:
 
@@ -1459,8 +1464,9 @@ and add the message ID as a property inside `execute`:
 ```
 
 Note that this isn't thread-safe; in other languages we would need to protect
-this object with a mutex. However, since [Node.js uses a single-threaded event
-loop model](https://nodejs.org/en/about/), no mutexes are necessary here.
+this object with a [mutex](https://en.wikipedia.org/wiki/Mutual_exclusion).
+However, since [Node.js uses a single-threaded event loop
+model](https://nodejs.org/en/about/), no mutexes are necessary here.
 
 Run the test again, and you should see this:
 
@@ -1502,7 +1508,129 @@ Message:
 npm ERR! Test failed.  See above for more details.
 ```
 
-We need the `chai-things` assertion library:
+This doesn't make much sense. We can add `console.log` statements to our tests
+and _see_ that the "already in progress" value is a member of
+`logger.info.args`. What gives?
+
+It turns out that the standard [`contains`
+assertion](http://chaijs.com/api/bdd/#include) has difficulty comparing
+elements of an array that are themselves arrays. We need the [`chai-things`
+assertion library](http://chaijs.com/plugins/chai-things). First add the
+`require` statement and `chai.use` call at the top of the file:
+
+```js
+var chaiThings = require('chai-things');
+
+var expect = chai.expect;
+chai.should();
+chai.use(chaiAsPromised);
+chai.use(chaiThings);
+```
+
+Then update the assertion to read:
+
+```js
+        logger.info.args.should.include.something.that.deep.equals(
+          helpers.logArgs.alreadyInProgress());
+```
+
+Now run the test and ensure it passes.
+
+## Cleaning up message-in-progress IDs
+
+We have to be careful to remove the in-progress message IDs after we've
+finished processing a message or errored out. Especially if the first attempt
+errored out, since we may be able to successfully process the message in the
+future.
+
+To cover this case, we'll make one last change to this test case. We'll make
+one more `middleware.execute` call _inside the callback_, and move the
+`should.notify(done)` clause to the end of this new expression:
+
+```js
+      result.should.become(helpers.ISSUE_URL).then(function() {
+        logger.info.args.should.include.something.that.deep.equals(
+          helpers.logArgs.alreadyInProgress());
+
+        // Make another call to ensure that the ID is cleaned up. Normally the
+        // message will have a successReaction after the first successful
+        // request, but we'll test that in another case.
+        middleware.execute(context, next, hubotDone)
+          .should.become(helpers.ISSUE_URL).should.notify(done);
+      });
+```
+
+Note that we still need not make any additional assertions after the final
+call; we've already got a thorough test for the base success case. Repeating
+the same assertions time and again in different tests that exercise the same
+code paths is busywork.
+
+Running this test right away should result in a failure due to a timeout:
+
+```sh
+$ npm test -- --grep ' execute '
+
+> 18f-unit-testing-node@0.0.0 test .../unit-testing-node
+> gulp test "--grep" " execute "
+
+[10:20:43] Using gulpfile .../unit-testing-node/gulpfile.js
+[10:20:43] Starting 'test'...
+
+
+  Middleware
+    execute
+      ✓ should successfully parse a message and file an issue
+      ✓ should ignore messages that do not match
+      1) should not file another issue for the same message when one is in
+progress
+
+
+  2 passing (2s)
+  1 failing
+
+  1) Middleware execute should not file another issue for the same message
+when one is in progress:
+     Error: timeout of 2000ms exceeded. Ensure the done() callback is being
+called in this test.
+
+
+
+
+[10:20:45] 'test' errored after 2.57 s
+[10:20:45] Error in plugin 'gulp-mocha'
+Message:
+    1 test failed.
+npm ERR! Test failed.  See above for more details.
+```
+
+Fixing this will require removing the message ID from `middleware.inProgress`
+once processing is complete. The right place for this is in the function
+returned by `handleFinish`. Let's update `handleFinish` to pass in the
+`Middleware` object instead of just `logger`, then delete the message ID:
+
+```js
+function handleFinish(messageId, middleware, response, next, done) {
+  return function(message) {
+    middleware.logger.info(messageId, message);
+    response.reply(message);
+    delete middleware.inProgress[messageId];
+    next(done);
+  };
+}
+```
+
+Again, no need for any mutexes when we delete the message ID, since the
+processing model is single-threaded. In other languages, you would need to
+wrap this statement in a mutex-protected block.
+
+Now update the `handleFinish` call in `execute` to pass in the `Middleware`
+object:
+
+```js
+  finish = handleFinish(msgId, this, response, next, done);
+```
+
+Run the test again, and confirm that it passes.
 
 ## Preventing multiple issues from being filed _after_ filing an issue
 

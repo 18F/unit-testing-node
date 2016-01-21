@@ -164,10 +164,15 @@ describe('Middleware', function() {
       }
 
       result.should.become(helpers.ISSUE_URL).then(function() {
-        next.calledWith(hubotDone).should.be.true;
         logger.info.args.should.include.something.that.deep.equals(
           helpers.logArgs.alreadyInProgress());
-      }).should.notify(done);
+
+        // Make another call to ensure that the ID is cleaned up. Normally the
+        // message will have a successReaction after the first successful
+        // request, but we'll test that in another case.
+        middleware.execute(context, next, hubotDone)
+          .should.become(helpers.ISSUE_URL).should.notify(done);
+      });
     });
   });
 });
