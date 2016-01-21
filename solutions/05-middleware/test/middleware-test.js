@@ -174,5 +174,29 @@ describe('Middleware', function() {
           .should.become(helpers.ISSUE_URL).should.notify(done);
       });
     });
+
+    it('should not file another issue for the same message when ' +
+      'one is already filed ', function(done) {
+      var message = helpers.messageWithReactions();
+
+      message.message.reactions.push({
+        name: config.successReaction,
+        count: 1,
+        users: [ helpers.USER_ID ]
+      });
+      slackClient.getReactions.returns(Promise.resolve(message));
+      githubClient.fileNewIssue.returns(Promise.resolve(helpers.ISSUE_URL));
+      slackClient.addSuccessReaction
+        .returns(Promise.resolve(helpers.ISSUE_URL));
+
+      middleware.execute(context, next, hubotDone)
+        .should.be.rejectedWith('already processed').then(function() {
+        slackClient.getReactions.calledOnce.should.be.true;
+        githubClient.fileNewIssue.called.should.be.false;
+        slackClient.addSuccessReaction.called.should.be.false;
+        logger.info.args.should.include.something.that.deep.equals(
+          helpers.logArgs.alreadyFiled());
+      }).should.notify(done);
+    });
   });
 });

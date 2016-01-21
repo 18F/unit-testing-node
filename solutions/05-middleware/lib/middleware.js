@@ -88,10 +88,20 @@ function fileGitHubIssue(middleware, msgId, githubRepository) {
   return function(message) {
     var metadata, permalink = message.message.permalink;
 
+    if (alreadyProcessed(message, middleware.successReaction)) {
+      return Promise.reject('already processed ' + permalink);
+    }
+
     metadata = middleware.parseMetadata(message);
     middleware.logger.info(msgId, 'making GitHub request for', permalink);
     return middleware.githubClient.fileNewIssue(metadata, githubRepository);
   };
+}
+
+function alreadyProcessed(message, successReaction) {
+  return message.message.reactions.find(function(reaction) {
+    return reaction.name === successReaction;
+  });
 }
 
 function addSuccessReaction(middleware, msgId, message) {
@@ -126,6 +136,11 @@ function handleSuccess(finish) {
 function handleFailure(middleware, githubRepository, finish) {
   return function(err) {
     var message;
+
+    if (typeof err !== Error) {
+      finish(err);
+      return Promise.reject(err);
+    }
 
     if (err.message.startsWith('created ')) {
       message = err.message;

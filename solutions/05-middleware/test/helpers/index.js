@@ -91,6 +91,9 @@ exports = module.exports = {
     },
     alreadyInProgress: function() {
       return [exports.MESSAGE_ID, 'already in progress'];
+    },
+    alreadyFiled: function() {
+      return [exports.MESSAGE_ID, 'already processed ' + exports.PERMALINK];
     }
   }
 };

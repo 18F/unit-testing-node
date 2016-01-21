@@ -1358,7 +1358,7 @@ the last call will require passing `logger` and the message ID as arguments to
 
 Make sure the test passes before continuing to the next section.
 
-## Preventing multiple issues from being filed _while_ filing an issue
+## Prevent filing multiple issues _while_ filing an issue
 
 So we've now tested a complete path through our core algorithm. However,
 there's a couple of corner cases we've yet to cover. The first is ensuring
@@ -1632,7 +1632,151 @@ object:
 
 Run the test again, and confirm that it passes.
 
-## Preventing multiple issues from being filed _after_ filing an issue
+## Prevent filing multiple issues _after_ filing the first issue
+
+The next case we'll cover is to prevent filing another issue for the same
+message after an issue for the message already exists. We accomplish this by
+adding the `config.successReaction` emoji to the message after we've
+successfully filed an issue. The code needs to abort processing once it
+detects the presence of this reaction.
+
+Let's start building our our test case first:
+
+```js
+    it('should not file another issue for the same message when ' +
+      'one is already filed ', function(done) {
+      var message = helpers.messageWithReactions();
+
+      message.message.reactions.push({
+        name: config.successReaction,
+        count: 1,
+        users: [ helpers.USER_ID ]
+      });
+      slackClient.getReactions.returns(Promise.resolve(message));
+      githubClient.fileNewIssue.returns(Promise.resolve(helpers.ISSUE_URL));
+      slackClient.addSuccessReaction
+        .returns(Promise.resolve(helpers.ISSUE_URL));
+
+      middleware.execute(context, next, hubotDone)
+        .should.be.rejectedWith('already processed').then(function() {
+        slackClient.getReactions.calledOnce.should.be.true;
+        githubClient.fileNewIssue.called.should.be.false;
+        slackClient.addSuccessReaction.called.should.be.false;
+        logger.info.args.should.include.something.that.deep.equals(
+          helpers.logArgs.alreadyFiled());
+      }).should.notify(done);
+    });
+```
+
+While or `slackClient.getReaction` call returns the message with the
+`config.successReaction`, we still set the `githubClient.fileNewIssue` and
+`slackClient.addSuccessReaction` stubs to respond as if
+`config.successReaction` wasn't present. We want the code under test to follow
+through with a successful result before we add the feature to short-circuit
+the process. After we do so, we have assertions within the callback to ensure
+that `githubClient.fileNewIssue` and `slackClient.addSuccessReaction` were not
+called.
+
+Also, we want to log the fact that the message already has a GitHub issue as
+an _info_ message, not an _error_. We need to add a new member to
+`helpers.logArgs` as well:
+
+```js
+    // Don't forget to add a comma after the previous function definition.
+    alreadyFiled: function() {
+      return [exports.MESSAGE_ID, 'already processed ' + exports.PERMALINK];
+    }
+```
+
+Run the test, and it should fail by producing a "successful" result, when we
+expected a short-circuit to resolve to `undefined`:
+
+```sh
+$ npm test -- --grep ' execute '
+
+> 18f-unit-testing-node@0.0.0 test .../unit-testing-node
+> gulp test "--grep" " execute "
+
+[11:39:03] Using gulpfile .../unit-testing-node/gulpfile.js
+[11:39:03] Starting 'test'...
+
+
+  Middleware
+    execute
+      ✓ should successfully parse a message and file an issue
+      ✓ should ignore messages that do not match
+      ✓ should not file another issue for the same message when one is in
+progress
+      1) should not file another issue for the same message when one is
+already filed
+
+
+  3 passing (65ms)
+  1 failing
+
+  1) Middleware execute should not file another issue for the same message
+when one is already filed :
+     AssertionError: expected promise to be rejected with an error including
+'already processed' but it was fulfilled with
+'https://github.com/18F/handbook/issues/1'
+
+
+
+
+
+[11:39:04] 'test' errored after 582 ms
+[11:39:04] Error in plugin 'gulp-mocha'
+Message:
+    1 test failed.
+npm ERR! Test failed.  See above for more details.
+```
+
+Now let's update the code to get the test to pass. First, let's write a
+utility function to detect when the success reaction is present in a message:
+
+```js
+function alreadyProcessed(message, successReaction) {
+  return message.message.reactions.find(function(reaction) {
+    return reaction.name === successReaction;
+  });
+}
+```
+
+Now inject this into `fileGitHubIssue`, again being mindful of
+[`Promise` gotcha #1: not returning the
+`Promise`]{{ site.baseurl }}/components/slack-client/#promises-gotcha-1):
+
+```js
+function fileGitHubIssue(middleware, msgId, githubRepository) {
+  return function(message) {
+    var metadata, permalink = message.message.permalink;
+
+    if (alreadyProcessed(message, middleware.successReaction)) {
+      return Promise.reject('already processed ' + permalink);
+    }
+```
+
+Note that we're only passing a string to `Promise.reject`, not an `Error`.
+This is because we want to short-circuit the operation, but not because of an
+abnormal condition. Finally, we need to update `handleFailure` to pass through
+the rejection message to `finish`:
+
+```js
+function handleFailure(middleware, githubRepository, finish) {
+  return function(err) {
+    var message;
+
+    if (typeof err !== Error) {
+      finish(err);
+      return Promise.reject(err);
+    }
+```
+
+Again, we make sure to handle non-`Error` types as plain strings. This will be
+of consequence when we add tests for the error cases shortly.
+
+At this point, run the test again, and ensure it passes before moving on to
+the next section.
 
 ## Testing error cases
 
