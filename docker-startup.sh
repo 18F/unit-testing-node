@@ -26,4 +26,5 @@ while true; do
 done
 echo "Opening browser"
 open "http://$(docker-machine ip $DOCKER_MACHINE_NAME):4000" &
+echo "Press enter in the terminal to get access to the shell"
 docker attach $DOCKER_ID
