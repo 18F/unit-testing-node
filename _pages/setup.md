@@ -25,9 +25,45 @@ $ npm test
 [15:25:41] Starting 'test'...
 
 
-  0 passing (1ms)
+  Config
+    ✓ should validate a valid configuration
 
-[15:25:41] Finished 'test' after 18 ms
+  GitHubClient
+    ✓ should successfully file an issue
+
+  Integration test
+    an evergreen_tree reaction to a message
+      ✓ should create a GitHub issue
+
+  Middleware
+    parseMetadata
+      ✓ should parse GitHub request metadata from a message
+    findMatchingRule
+      ✓ should find the rule matching the message
+    execute
+      ✓ should successfully parse a message and file an issue
+
+  Rule
+    ✓ should contain all the fields from the configuration
+
+  SlackClient
+    getReactions
+      ✓ should make a successful request
+
+
+  8 passing (9ms)
+
+[16:20:15] Finished 'test' after 37 ms
+```
+
+## Create a working branch
+
+It is _strongly_ suggested you create a working branch. This way, you can
+checkpoint your work, compare it against the solution code, and generally
+avoid pushing unintended changes upstream (if you have push access):
+
+```sh
+$ git checkout -b my-working-branch
 ```
 
 ## Offline viewing
