@@ -6,4 +6,5 @@
 .sass-cache/
 _site/
 coverage/*
+.bundle
 node_modules/
