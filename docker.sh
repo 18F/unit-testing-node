@@ -1,3 +1,5 @@
 #!/bin/bash
-./go serve &
+JEKYLL_LOG=/var/log/unit-testing-node.log
+./go serve -H 0.0.0.0 >> $JEKYLL_LOG 2>&1 &
+echo Jekyll logs can be found at $JEKYLL_LOG
 /bin/bash
