@@ -327,6 +327,92 @@ gets applied, we don't _need_ to copy and update more than the first test. We
 could copy the other one, but given that the bulk of the implementation is
 shared with `Logger.info` via `addPrefix`, it'd be of dubious value.
 
+## Retrofitting `Logger` into `Config`
+
+In production, the script will read the configuration from either
+`config/slack-github-issues.json` in the current directory or from the file
+specified by the `HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH` environment variable.
+It would be good to log whichever file from which the program reads its
+configuration. To that end, let's pass in an instance of `Logger` into the
+`Config` constructor:
+
+```js
+function Config(configuration, logger) {
+  var config = configuration ||
+        parseConfigFromEnvironmentVariablePathOrUseDefault(logger);
+```
+
+Thanks to this conditional, in most of our tests, we'll conveniently ignore
+this this `logger` variable. Now to update the other function:
+
+```js
+function parseConfigFromEnvironmentVariablePathOrUseDefault(logger) {
+  var configPath = (process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH ||
+    'config/slack-github-issues.json');
+  logger.info(null, 'reading configuration from', configPath); 
+  return JSON.parse(fs.readFileSync(configPath, 'utf8'));
+}
+```
+
+So now, in `exercise/test/config-test.js`, we need to add:
+
+```js
+var Logger = require('../lib/logger');
+```
+
+as well as:
+
+```js
+var sinon = require('sinon');
+```
+
+and update two tests. The first is
+`should load from HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH`:
+
+```js
+  it('should load from HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH', function() {
+    var testConfig = require('./helpers/test-config.json'),
+        logger = new Logger(console),
+        configPath = path.join(__dirname, 'helpers', 'test-config.json'),
+        config;
+
+    process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH = configPath;
+    sinon.stub(logger, 'info');
+    config = new Config(null, logger);
+    expect(JSON.stringify(config)).to.eql(JSON.stringify(testConfig));
+    expect(logger.info.args).to.eql([
+      [null, 'reading configuration from', configPath]
+    ]);
+  });
+```
+
+Notice that we're not actually exercising the `logger.info` logic; we've
+already done that in the `Logger` tests. We're using a sinon stub to ensure
+that `logger.info` is called as we expect, however.
+
+Now update the `should load from config/slack-github-issues.json by default`
+test:
+
+```js
+  it('should load from config/slack-github-issues.json by default', function() {
+    var testConfig = require('../config/slack-github-issues.json'),
+        logger = new Logger(console),
+        configPath = path.join('config', 'slack-github-issues.json'),
+        config;
+
+    sinon.stub(logger, 'info');
+    config = new Config(null, logger);
+    expect(JSON.stringify(config)).to.eql(JSON.stringify(testConfig));
+    expect(logger.info.args).to.eql([
+      [null, 'reading configuration from', configPath]
+    ]);
+  });
+```
+
+Now run `npm test -- --grep '^Config '` to ensure that the tests continue to
+pass. Feel free to change something around to make them break, to make sure
+they're testing what we intend them to test.
+
 ## Check your work
 
 By this point, all of the `Logger` tests should be passing:
