@@ -71,8 +71,8 @@ function compareParamsAndRespond(res, responseData, actualParams) {
   res.end(JSON.stringify(payload));
 }
 
-ApiStubServer.prototype.port = function() {
-  return this.server.address().port;
+ApiStubServer.prototype.address = function() {
+  return 'http://localhost:' + this.server.address().port;
 };
 
 ApiStubServer.prototype.close = function() {

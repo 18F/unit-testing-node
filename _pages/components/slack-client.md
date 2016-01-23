@@ -1147,9 +1147,10 @@ $ npm test -- --grep '^SlackClient '
   1) SlackClient getReactions should fail to make a request if the server is
 down:
      AssertionError: expected promise to be rejected with an error including
-'failed to make Slack API request for method reactions.get:' but got 'Error:
-received 500 response from Slack API method reactions.get: unexpected URL:
-/api/reactions.get?channel=C5150OU812&timestamp=1360782804.083113&token=%3C18F-slack-api-token%3E'
+     'failed to make Slack API request for method reactions.get:' but got
+     'Error: received 500 response from Slack API method reactions.get:
+     unexpected URL:
+     /api/reactions.get?channel=C5150OU812&timestamp=1360782804.083113&token=%3C18F-slack-api-token%3E'
 
 
 

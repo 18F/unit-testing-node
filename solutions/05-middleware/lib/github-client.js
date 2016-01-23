@@ -5,26 +5,31 @@
 var http = require('http');
 var https = require('https');
 var packageInfo = require('../package.json');
+var url = require('url');
 
 module.exports = GitHubClient;
 
 function GitHubClient(config) {
   this.user = config.githubUser;
   this.timeout = config.githubTimeout;
-  this.protocol = 'https:';
-  this.host = 'api.github.com';
+  this.baseurl = url.parse(config.githubApiBaseUrl ||
+    GitHubClient.API_BASE_URL);
 }
+
+GitHubClient.API_BASE_URL = 'https://api.github.com/';
 
 GitHubClient.prototype.fileNewIssue = function(metadata, repository) {
   return makeApiCall(this, metadata, repository);
 };
 
 function getHttpOptions(client, repository, paramsStr) {
+  var baseurl = client.baseurl;
   return {
-    protocol: client.protocol,
-    host: client.host,
-    port: client.port,
-    path: '/repos/' + client.user + '/' + repository + '/issues',
+    protocol: baseurl.protocol,
+    host: baseurl.hostname,
+    port: baseurl.port,
+    path: baseurl.pathname + 'repos/' + client.user + '/' + repository +
+      '/issues',
     method: 'POST',
     headers: {
       'Accept': 'application/vnd.github.v3+json',

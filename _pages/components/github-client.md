@@ -43,14 +43,14 @@ to write and test web API wrappers.
 This class is actually a little smaller than `SlackClient`. However, whereas
 `SlackClient` makes a GET request with all its information encoded in the
 URL, `GitHubClient` makes a POST request that requires specific HTTP headers.
-We will learn to:
+We will learn:
 
-- manage HTTP bookkeeping
-- learn the basics of using a
+- to manage HTTP bookkeeping
+- the basics of using a
   [`Promise`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
   to encapsulate an asynchronous operation
-- learn how to test HTTP requests by launching a local HTTP test server
-- learn how to use `Promises` with mocha and chai
+- how to test HTTP requests by launching a local HTTP test server
+- how to use `Promises` with mocha and chai
 
 ## Starting to build `GitHubClient`
 
@@ -67,8 +67,6 @@ module.exports = GitHubClient;
 function GitHubClient(config) {
   this.user = config.githubUser;
   this.timeout = config.githubTimeout;
-  this.protocol = 'https:';
-  this.host = 'api.github.com';
 }
 
 GitHubClient.prototype.fileNewIssue = function(/* metadata, repository */) {
@@ -76,10 +74,30 @@ GitHubClient.prototype.fileNewIssue = function(/* metadata, repository */) {
 ```
 
 We see that the constructor pulls the GitHub-related parameters from a
-`Config` object. It also sets the `protocol` and `host` properties such that
-the `GitHubClient` will make calls to `https://api.github.com` by default.
-However, in our tests, we will override these properties so that requests go
-to `http://localhost` instead.
+`Config` object. The first thing we need to do is set a `baseurl` property
+such that the `GitHubClient` will make calls to `https://api.github.com` by
+default. However, in our tests, we will override this property via
+`Config.githubApiBaseUrl` so that requests go to `http://localhost` instead.
+
+Let's start by encoding the production default as a module constant:
+
+```js
+GitHubClient.API_BASE_URL = 'https://api.github.com/';
+```
+
+Then we need to add a require statement for the [standard `url`
+package](https://nodejs.org/api/url.html):
+
+```js
+var url = require('url');
+```
+
+Now let's add the following to our constructor:
+
+```
+  this.baseurl = url.parse(config.githubApiBaseUrl ||
+    GitHubClient.API_BASE_URL);
+```
 
 ## Writing the request function
 
@@ -99,7 +117,7 @@ function makeApiCall(client, metadata, repository) {
 
 Note that `makeApiCall` is not a member of `GitHubClient`, and that its first
 parameter, `client`, is actually the `this` reference from the `GitHubClient`
-methods. `makeApiCall` is going to define a [nested
+method. `makeApiCall` is going to define a [nested
 function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Functions#Nested_functions_and_closures) to launch an
 asynchronous HTTP request. Were `makeApiCall` a member of `GitHubClient`,
 [inside the nested handler, `this` would not refer to the `GitHubClient`
@@ -163,11 +181,13 @@ introduce a helper function:
 
 ```js
 function getHttpOptions(client, repository, paramsStr) {
+  var baseurl = client.baseurl;
   return {
-    protocol: client.protocol,
-    host: client.host,
-    port: client.port,
-    path: '/repos/' + client.user + '/' + repository + '/issues',
+    protocol: baseurl.protocol,
+    host: baseurl.hostname,
+    port: baseurl.port,
+    path: baseurl.pathname + 'repos/' + client.user + '/' + repository +
+      '/issues',
     method: 'POST',
     headers: {
       'Accept': 'application/vnd.github.v3+json',
@@ -182,12 +202,13 @@ function getHttpOptions(client, repository, paramsStr) {
 
 A few things to note here:
 
-- We assign `port: client.port`. When `port:` is undefined, the request uses
+- We assign `port: baseurl.port`. When `port:` is undefined, the request uses
   the default port for HTTP (80) or HTTPS(443). In our tests, we will launch a
-  local HTTP server with a dynamically-assigned port. We'll assign this port
-  value as a property of the `GitHubClient` instance under test. In
-  `getHttpOptions`, that dynamic port value will then propagate to this
-  options object.
+  local HTTP server with a dynamically-assigned port. We'll assign this
+  server's URL, including its port value, to the `githubApiBaseUrl` property
+  of the `Config` object used to create the `GitHubClient` instance under
+  test. In `getHttpOptions`, that dynamic port value will then propagate to
+  this options object.
 - We [specify the GitHub API version in the `Accept`
   header](https://developer.github.com/v3/#current-version)
 - Unlike with the Slack API, we [pass the GitHub API token in the
@@ -468,9 +489,9 @@ describe('GitHubClient', function() {
   var githubClient;
 
   before(function() {
-    githubClient = new GitHubClient(helpers.baseConfig());
-    githubClient.protocol = 'http:';
-    githubClient.host = 'localhost';
+    var config = helpers.baseConfig();
+    config.githubApiBaseUrl = 'http://localhost';
+    githubClient = new GitHubClient(config);
   });
 
   it('should successfully file an issue', function() {
@@ -482,16 +503,12 @@ describe('GitHubClient', function() {
 
 A few things are happening here:
 
-- We instantiate the configuration via `helpers.baseConfig()`. We could also
-  `require('./helpers/test-config.json')` as in the `SlackClient` test, but
-  we've opted to take a different path here. The result, in this case, is the
-  same.
-- As mentioned earlier, we change the `protocol` and `host` parameters so the
-  `GitHubClient` will send requests to `http://localhost`, not
-  `https://slack.com`.
-- The `GitHubClient` state affecting its behavior (`protocol` and `host`) is
-  constant across every test. Consequently, we only create one instance in the
-  `before` block, rather than one per test in `beforeEach`.
+- As mentioned earlier, we define `config.githubApiBaseUrl` so the
+  `GitHubClient` will send requests to `http://localhost/repos/`, not
+  `https://api.github.com/repos/`.
+- The `GitHubClient` state affecting its behavior (`config.githubApiBaseUrl`)
+  is constant across every test. Consequently, we only create one instance in
+  the `before` block, rather than one per test in `beforeEach`.
 
 At this point, let's run our test:
 
@@ -706,38 +723,41 @@ To make use of our newly-updated `ApiStubServer`, first `require` its module:
 var ApiStubServer = require('./helpers/api-stub-server');
 ```
 
-Add variables to the fixture referencing the server and the factory function
-that will create it:
+Add variables to the fixture referencing the server and the helper function
+that will configure it:
 
 ```js
 describe('GitHubClient', function() {
-  var githubClient, githubApiServer, createServer;
+  var githubClient, githubApiServer, setResponse;
 ```
 
-Start a new instance before each test, and close the instance after each test:
+Start a new instance for the test fixture, close it after all tests have
+finished running, and clear its state after every test case:
 
 ```js
-  beforeEach(function() {
-    githubApiServer = undefined;
+  before(function() {
+    var config = helpers.baseConfig();
+    githubApiServer = new ApiStubServer();
+    config.githubApiBaseUrl = githubApiServer.address();
+    githubClient = new GitHubClient(config);
+  });
+
+  after(function() {
+    githubApiServer.close();
   });
 
   afterEach(function() {
-    if (githubApiServer) {
-      githubApiServer.close();
-    }
+    githubApiServer.urlsToResponses = {};
   });
 ```
 
 Since our interaction with the GitHub API is very limited, we can write a
-`createServer` function that is more focused that that appearing in the
+`setResponse` function that is more focused that that appearing in the
 `SlackClient` test.
 
 ```js
-  createServer = function(statusCode, payload) {
+  setResponse = function(statusCode, payload) {
     var metadata = helpers.metadata();
-
-    githubApiServer = new ApiStubServer();
-    githubClient.port = githubApiServer.port();
 
     githubApiServer.urlsToResponses['/repos/18F/handbook/issues'] = {
       expectedParams: {
@@ -761,6 +781,59 @@ Now run `npm test -- --grep '^GitHubClient '` to verify that the request
 succeeds:
 
 ```sh
+$ npm test -- --grep '^GitHubClient'
+
+> 18f-unit-testing-node@0.0.0 test .../unit-testing-node
+> gulp test "--grep" "^GitHubClient"
+
+[12:08:36] Using gulpfile .../unit-testing-node/gulpfile.js
+[12:08:36] Starting 'test'...
+
+
+  GitHubClient
+    ✓ should successfully file an issue
+    1) should fail to make a request if the server is down
+
+
+  1 passing (49ms)
+  1 failing
+
+  1) GitHubClient should fail to make a request if the server is down:
+     AssertionError: expected promise to be rejected with an error including
+     'failed to make GitHub API request:' but got 'Error: received 500
+     response from GitHub API: unexpected URL: /repos/18F/handbook/issues'
+
+
+
+
+
+[12:08:36] 'test' errored after
+[12:08:36] Error in plugin 'gulp-mocha'
+Message:
+    1 test failed.
+npm ERR! Test failed.  See above for more details.
+```
+
+Whoops! Now that we've actually launched a working server, our test for the
+error case now fails. To rectify this, we can create `Config` and
+`GitHubClient` instances local to this one test to simulate an unreachable
+server:
+
+```js
+  it('should fail to make a request if the server is down', function() {
+    var config = helpers.baseConfig(),
+        githubClient;
+    config.githubApiBaseUrl = 'http://localhost';
+    githubClient = new GitHubClient(config);
+
+  return githubClient.fileNewIssue(helpers.metadata(), 'handbook')
+      .should.be.rejectedWith('failed to make GitHub API request:');
+  });
+```
+
+Now confirm that our tests both pass:
+
+```sh
 $ npm test -- --grep '^GitHubClient '
 
 > 18f-unit-testing-node@0.0.0 test .../unit-testing-node
@@ -782,7 +855,7 @@ $ npm test -- --grep '^GitHubClient '
 
 ## Testing an error response from the server
 
-For our last test, let's simulate an error from the GitHub server:
+For our next test, let's simulate an error from the GitHub server:
 
 ```js
   it('should receive an error when filing an issue', function() {
@@ -799,6 +872,36 @@ the server's [500 class
 response](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.5).
 Our error message contains the full payload returned from the server.
 
+## Sanity testing the selection of the base API URL
+
+In all the excitement, we've forgotten to test one small yet critical piece of
+behavior: parsing `GitHubClient.API_BASE_URL` when `Config.githubApiBaseUrl`
+is undefined. Sure, it's trivial, but it's also very easy to test and our
+application won't work at all if we happen to break this behavior.
+
+To start, add the following to the `require` statements at the top:
+
+```js
+var url = require('url');
+```
+
+Now let's add two test cases near the top of our fixture, before `it should
+successfully file an issue` test case:
+
+```js
+  describe('API base URL', function() {
+    it('should parse the local server URL', function() {
+    });
+
+    it('should parse API_BASE_URL if config base URL undefined', function() {
+    });
+  });
+```
+
+In the `should parse API_BASE_URL if config base URL undefined` test, create a
+new `var githubClient = new GitHubClient` instance. Then implement both tests
+by validating `url.format(githubClient.baseurl)`.
+
 ## Check your work
 
 By this point, all of the `GitHubClient` tests should be passing:
@@ -809,19 +912,22 @@ $ npm test -- --grep '^GitHubClient '
 > 18f-unit-testing-node@0.0.0 test .../unit-testing-node
 > gulp test "--grep" "^GitHubClient "
 
-[10:07:23] Using gulpfile .../unit-testing-node/gulpfile.js
-[10:07:23] Starting 'test'...
+[12:17:55] Using gulpfile .../unit-testing-node/gulpfile.js
+[12:17:55] Starting 'test'...
 
 
   GitHubClient
     ✓ should successfully file an issue
     ✓ should fail to make a request if the server is down
     ✓ should receive an error when filing an issue
+    API base URL
+      ✓ should parse the local server URL
+      ✓ should parse API_BASE_URL if config base URL undefined
 
 
-  3 passing (44ms)
+  5 passing (48ms)
 
-[10:07:23] Finished 'test' after 137 ms
+[12:17:55] Finished 'test' after 140 ms
 ```
 
 Now that you're all finished, compare your solutions to the code in
