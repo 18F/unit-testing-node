@@ -5,6 +5,7 @@
 var http = require('http');
 var https = require('https');
 var querystring = require('querystring');
+var url = require('url');
 
 module.exports = SlackClient;
 
@@ -12,9 +13,10 @@ function SlackClient(robotSlackClient, config) {
   this.client = robotSlackClient;
   this.timeout = config.slackTimeout;
   this.successReaction = config.successReaction;
-  this.protocol = 'https:';
-  this.host = 'slack.com';
+  this.baseurl = url.parse(config.slackApiBaseUrl || SlackClient.API_BASE_URL);
 }
+
+SlackClient.API_BASE_URL = 'https://slack.com/api/';
 
 SlackClient.prototype.getChannelName = function(channelId) {
   return this.client.getChannelByID(channelId).name;
@@ -31,17 +33,18 @@ SlackClient.prototype.addSuccessReaction = function(channel, timestamp) {
 };
 
 function getHttpOptions(client, method, queryParams) {
+  var baseurl = client.baseurl;
   return {
-    protocol: client.protocol,
-    host: client.host,
-    port: client.port,
-    path: '/api/' + method + '?' + querystring.stringify(queryParams),
+    protocol: baseurl.protocol,
+    host: baseurl.hostname,
+    port: baseurl.port,
+    path: baseurl.pathname + method + '?' + querystring.stringify(queryParams),
     method: 'GET'
   };
 }
 
 function makeApiCall(client, method, params) {
-  var requestFactory = (client.protocol === 'https:') ? https : http;
+  var requestFactory = (client.baseurl.protocol === 'https:') ? https : http;
 
   return new Promise(function(resolve, reject) {
     var httpOptions, req;

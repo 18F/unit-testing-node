@@ -50,14 +50,14 @@ We will also add methods to use the Slack Web API methods
 wrappers for the Slack Web API, but we will write our own code in this case to
 [minimize dependencies](/concepts/minimizing-dependencies/). Since the code
 required is relatively small and straightforward, it also provides a good
-example of _how_ to write and test web API wrappers. We will learn to:
+example of _how_ to write and test web API wrappers. We will learn:
 
-- manage HTTP bookkeeping
-- learn the basics of using a
+- to manage HTTP bookkeeping
+- the basics of using a
   [`Promise`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
   to encapsulate an asynchronous operation
-- learn how to test HTTP requests by launching a local HTTP test server
-- learn how to use Promises with mocha and chai
+- how to test HTTP requests by launching a local HTTP test server
+- how to use Promises with mocha and chai
 
 ## Starting to build `SlackClient`
 
@@ -411,6 +411,7 @@ standard library modules:
 - [http](https://nodejs.org/api/http.html)
 - [https](https://nodejs.org/api/https.html)
 - [querystring](https://nodejs.org/api/querystring.html)
+- [url](https://nodejs.org/api/url.html)
 
 So let's start by adding the following `require` statements to the top of the
 file:
@@ -419,17 +420,23 @@ file:
 var http = require('http');
 var https = require('https');
 var querystring = require('querystring');
+var url = require('url');
 ```
 
-There's actually two more properties we need to add to the `SlackClient`
+There's actually one more property we need to add to the `SlackClient`
 object. In the tests we're about to write, we'll want to send requests to
 `http://localhost`. In production, however, the `SlackClient` needs to send
-requests to `https://slack.com/api/`. Let's encode the production defaults by
-adding the following to the constructor:
+requests to `https://slack.com/api/`. Let's encode the production default by
+adding a new module constant:
 
 ```
-  this.protocol = 'https:';
-  this.host = 'slack.com';
+SlackClient.API_BASE_URL = 'https://slack.com/api/';
+```
+
+Now let's add the following to our constructor:
+
+```
+  this.baseurl = url.parse(config.slackApiBaseUrl || SlackClient.API_BASE_URL);
 ```
 
 For our purposes, the `options` argument of both
@@ -441,20 +448,22 @@ parameters:
 
 ```js
 function getHttpOptions(client, method, queryParams) {
+  var baseurl = client.baseurl;
   return {
-    protocol: client.protocol,
-    host: client.host,
-    port: client.port,
-    path: '/api/' + method + '?' + querystring.stringify(queryParams),
+    protocol: baseurl.protocol,
+    host: baseurl.hostname,
+    port: baseurl.port,
+    path: baseurl.pathname + method + '?' + querystring.stringify(queryParams),
     method: 'GET'
   };
 }
 ```
 
-Note the addition of `port: client.port`. When `port:` is undefined, the
-request uses the default port for HTTP (80) or HTTPS(443). In our tests, we
-will launch a local HTTP server with a dynamically-assigned port. We'll assign
-this port value as a property of the `SlackClient` instance under test. In
+Note `port: baseulr.port`. When `port:` is undefined, the request uses the
+default port for HTTP (80) or HTTPS(443). In our tests, we will launch a local
+HTTP server with a dynamically-assigned port. We'll assign this server's URL,
+including its port value, to the `slackApiBaseUrl` property of the `Config`
+object used to create the `SlackClient` instance under test. In
 `getHttpOptions`, that dynamic port value will then propagate to this options
 object.
 
@@ -464,18 +473,16 @@ One more detail until we get to the meat of making our API request: Switching
 between HTTP in our tests and HTTPS in production. Recall that we imported
 both the `http` and `https` modules from the Node.js standard library.
 Recall that both have a `request` function that accepts the same set of HTTP
-options that we will build using `getHttpOptions()`. Also recall that we
-assigned the default value `this.protocol = 'https:'` in the `SlackClient`
-constructor.
+options that we will build using `getHttpOptions()`.
 
-In our tests, we will assign `http:` to the `protocol` property of a
-`SlackClient` instance under test. So to ensure we're using the correct
-library in either our test or in production, add the following as the first
-line of `makeApiCall`:
+In our tests, we will configure our `SlackClient` instance to make requests to
+an HTTP server running locally. So to ensure we're using the correct library
+in either our test or in production, add the following as the first line of
+`makeApiCall`:
 
 ```js
 function makeApiCall(client, method, params) {
-  var requestFactory = (client.protocol === 'https:') ? https : http;
+  var requestFactory = (client.baseurl.protocol === 'https:') ? https : http;
 
   // We'll continue with the rest of the implementation here shortly.
 }
@@ -496,7 +503,7 @@ by returning a `Promise`:
 
 ```js
 function makeApiCall(client, method, params) {
-  var requestFactory = (client.protocol === 'https:') ? https : http;
+  var requestFactory = (client.baseurl.protocol === 'https:') ? https : http;
 
   return new Promise(function(resolve, reject) {
     // We'll fill in the actual request implementation here shortly.
@@ -780,25 +787,18 @@ enough of the structure that we need for now. We will build up this sample
 message in later chapters. Also, remember that `messageWithReactions` is a
 function returning a fresh copy of the data for each test.
 
-## Defining `payload` and `slackClient`
+## Defining `config`, `payload` and `slackClient`
 
-We need just one more `require()` statement to ensure we can instantiate our
-`SlackClient` instance:
-
-```js
-var config = require('./helpers/test-config.json');
-```
-
-Now we can define our `payload` variable and `slackClient` variables:
+Now we can define our `config`, `payload`, and `slackClient` variables:
 
 ```js
 describe('SlackClient', function() {
-  var slackClient, payload;
+  var slackClient, config, payload;
 
   before(function() {
+    config = helpers.baseConfig();
+    config.slackApiBaseUrl = 'http://localhost/api/';
     slackClient = new SlackClient(undefined, config);
-    slackClient.protocol = 'http:';
-    slackClient.host = 'localhost';
   });
 
   describe('getReactions', function() {
@@ -820,10 +820,10 @@ A few things are happening here:
   because, in this case, we're not depending on the `robotSlackClient` at all.
   If we ever do depend on it in this test, the test will break rather
   obviously, and we can add it then.
-- As mentioned earlier, we change the `protocol` and `host` parameters so the
-  `SlackClient` will send requests to `http://localhost`, not
-  `https://slack.com`.
-- The `SlackClient` state affecting its behavior (`protocol` and `host`) is
+- As mentioned earlier, we define `config.slackApiBaseUrl` so the
+  `SlackClient` will send requests to `http://localhost/api/`, not
+  `https://slack.com/api/`.
+- The `SlackClient` state affecting its behavior (`config.slackApiBaseUrl`) is
   constant across every test. Consequently, we only create one instance in the
   `before` block, rather than one per test in `beforeEach`.
 - We want to make sure each `getReactions` test gets a fresh `payload`, so we
@@ -1021,12 +1021,12 @@ comparison and HTTP error response that serves the purpose of our test:
     res.end(JSON.stringify(payload));
 ```
 
-Finally, to finish our `ApiStubServer` implementation, add `port()` and
+Finally, to finish our `ApiStubServer` implementation, add `address()` and
 `close()` methods:
 
 ```js
-ApiStubServer.prototype.port = function() {
-  return this.server.address().port;
+ApiStubServer.prototype.address = function() {
+  return 'http://localhost:' + this.server.address().port;
 };
 
 ApiStubServer.prototype.close = function() {
@@ -1046,24 +1046,24 @@ Now let's create the test fixture infrastructure to manage our test server:
 
 ```js
 describe('SlackClient', function() {
-  var slackClient, slackApiServer, createServer, payload;
+  var slackClient, config, slackApiServer, setResponse, payload;
 
-  // before() remains the same...
+  before(function() {
+    slackApiServer = new ApiStubServer();
+    config = helpers.baseConfig();
+    config.slackApiBaseUrl = slackApiServer.address() + '/api/';
+    slackClient = new SlackClient(undefined, config);
+  });
 
-  beforeEach(function() {
-    slackApiServer = undefined;
+  after(function() {
+    slackApiServer.close();
   });
 
   afterEach(function() {
-    if (slackApiServer) {
-      slackApiServer.close();
-    }
+    slackApiServer.urlsToResponses = {};
   });
 
-  createServer = function(expectedUrl, expectedParams, statusCode, payload) {
-    slackApiServer = new ApiStubServer();
-    slackClient.port = slackApiServer.port();
-
+  setResponse = function(expectedUrl, expectedParams, statusCode, payload) {
     slackApiServer.urlsToResponses[expectedUrl] = {
       expectedParams: expectedParams,
       statusCode: statusCode,
@@ -1072,11 +1072,13 @@ describe('SlackClient', function() {
   };
 ```
 
-We'll use the `createServer` helper function to create a new test server for
-each test and set up its state. Note the `slackClient.port` assignment in
-`createServer`. This completes the loop of using a system-chosen port for our
-tests to avoid flakiness. We also make sure to call `slackApiServer.close()`
-in `afterEach` as a matter of good test hygiene.
+We'll use the `setResponse` helper function to set up the `slackApiServer`
+state specific to each test case. Note the updated assignment to
+`config.slackApiBaseUrl` using `slackClient.address` in `beforeEach`. This
+completes the loop of using a system-chosen port for our tests to avoid
+flakiness. We also make sure to call `slackApiServer.close()` in `after`
+and reset `slackApiServer.urlsToResponses` in `afterEach` as a matter of good
+test hygiene.
 
 ## Setting the `HUBOT_SLACK_TOKEN` environment variable
 
@@ -1091,11 +1093,12 @@ following to the `before` callback:
 ```
 
 To make sure the `HUBOT_SLACK_TOKEN` doesn't contaminate the environment of
-any other tests, add the following `after` block to the fixture:
+any other tests, update the `after` block of the fixture to the following:
 
 ```js
   after(function() {
     delete process.env.HUBOT_SLACK_TOKEN;
+    slackApiServer.close();
   });
 ```
 
@@ -1116,7 +1119,65 @@ function for the `getReactions` block:
 Add the following line to the `should make a successful request` test:
 
 ```js
-      createServer('/api/reactions.get', params, 200, payload);
+      setResponse('/api/reactions.get', params, 200, payload);
+```
+
+Now confirm that our tests both pass:
+
+```sh
+$ npm test -- --grep '^SlackClient '
+
+> 18f-unit-testing-node@0.0.0 test
+> /Users/michaelbland/src/18F/unit-testing-node
+> gulp test "--grep" "^SlackClient "
+
+[10:48:36] Using gulpfile ~/src/18F/unit-testing-node/gulpfile.js
+[10:48:36] Starting 'test'...
+
+
+  SlackClient
+    getReactions
+      ✓ should make a successful request
+      1) should fail to make a request if the server is down
+
+
+  1 passing (46ms)
+  1 failing
+
+  1) SlackClient getReactions should fail to make a request if the server is
+down:
+     AssertionError: expected promise to be rejected with an error including
+'failed to make Slack API request for method reactions.get:' but got 'Error:
+received 500 response from Slack API method reactions.get: unexpected URL:
+/api/reactions.get?channel=C5150OU812&timestamp=1360782804.083113&token=%3C18F-slack-api-token%3E'
+
+
+
+
+
+[10:48:36] 'test' errored after 140 ms
+[10:48:36] Error in plugin 'gulp-mocha'
+Message:
+    1 test failed.
+npm ERR! Test failed.  See above for more details.
+```
+
+Whoops! Now that we've actually launched a working server, our test for the
+error case now fails. To rectify this, we can create `Config` and
+`SlackClient` instances local to this one test to simulate an unreachable
+server:
+
+```js
+    it('should fail to make a request if the server is down', function() {
+      var config = helpers.baseConfig(),
+          slackClient;
+      config.slackApiBaseUrl = 'http://localhost';
+      slackClient = new SlackClient(undefined, config);
+
+      return slackClient.getReactions(helpers.CHANNEL_ID, helpers.TIMESTAMP)
+        .should.be.rejectedWith('failed to make Slack API request ' +
+          'for method reactions.get:');
+    });
 ```
 
 Now confirm that our tests both pass:
@@ -1156,7 +1217,7 @@ test case to check that unsuccessful requests are reported:
         ok: false,
         error: 'not_authed'
       };
-      createServer('/api/reactions.get', params, 200, payload);
+      setResponse('/api/reactions.get', params, 200, payload);
       // Add a should.be.rejectedWith(Error, 'some error string') assertion.
     });
 ```
@@ -1165,7 +1226,7 @@ Add a test to see what happens when the server returns a non-200 response:
 
 ```js
     it('should make a request that produces a non-200 response', function() {
-      createServer('/api/reactions.get', params, 404, 'Not found');
+      setResponse('/api/reactions.get', params, 404, 'Not found');
       // Add a should.be.rejectedWith(Error, 'some error string') assertion.
     });
 ```
@@ -1188,10 +1249,40 @@ is that the parameters are passed through as expected:
 
     it('should make a successful request', function() {
       // This should be identical to the `getReactions` case, except that
-      // the first createServer argument should be '/api/reactions.add'.
+      // the first setResponse argument should be '/api/reactions.add'.
     });
   });
 ```
+
+## Sanity testing the selection of the base API URL
+
+In all the excitement, we've forgotten to test one small yet critical piece of
+behavior: parsing `SlackClient.API_BASE_URL` when `Config.slackApiBaseUrl` is
+undefined. Sure, it's trivial, but it's also very easy to test and our
+application won't work at all if we happen to break this behavior.
+
+To start, add the following to the `require` statements at the top:
+
+```js
+var url = require('url');
+```
+
+Now let's add two test cases near the top of our fixture, before the
+`getReactions` sub-fixture:
+
+```js
+  describe('API base URL', function() {
+    it('should parse the local server URL', function() {
+    });
+
+    it('should parse API_BASE_URL if config base URL undefined', function() {
+    });
+  });
+```
+
+In the `should parse API_BASE_URL if config base URL undefined` test, create a
+new `var slackClient = new SlackClient` instance. Then implement both tests
+by validating `url.format(slackClient.baseurl)`.
 
 ## Rolling our own until we upgrade
 
@@ -1223,11 +1314,14 @@ $ npm test -- --grep '^SlackClient '
 > 18f-unit-testing-node@0.0.0 test .../unit-testing-node
 > gulp test "--grep" "^SlackClient "
 
-[16:11:23] Using gulpfile .../unit-testing-node/gulpfile.js
-[16:11:23] Starting 'test'...
+[11:17:19] Using gulpfile .../unit-testing-node/gulpfile.js
+[11:17:19] Starting 'test'...
 
 
   SlackClient
+    API base URL
+      ✓ should parse the local server URL
+      ✓ should parse API_BASE_URL if config base URL undefined
     getReactions
       ✓ should make a successful request
       ✓ should fail to make a request if the server is down
@@ -1237,9 +1331,9 @@ $ npm test -- --grep '^SlackClient '
       ✓ should make a successful request
 
 
-  5 passing (55ms)
+  7 passing (59ms)
 
-[16:11:23] Finished 'test' after 153 ms
+[11:17:19] Finished 'test' after 150 ms
 ```
 
 Now that you're all finished, compare your solutions to the code in

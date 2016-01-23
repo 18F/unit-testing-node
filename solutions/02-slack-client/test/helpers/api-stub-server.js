@@ -41,8 +41,8 @@ function ApiStubServer() {
   this.server.listen(0);
 }
 
-ApiStubServer.prototype.port = function() {
-  return this.server.address().port;
+ApiStubServer.prototype.address = function() {
+  return 'http://localhost:' + this.server.address().port;
 };
 
 ApiStubServer.prototype.close = function() {
