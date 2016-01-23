@@ -458,9 +458,10 @@ Config.prototype.checkRequiredTopLevelFields = function(errors) {
 repeated for each element of `this.rules`. How can we effectively factor out
 this duplication?
 
-The answer is to convert the loop into a pipeline of distinct, composable
-steps. The first step is to convert the `for (fieldName in
-schema.requiredTopLevelFields)` to:
+The answer is to [convert the loop into a collection pipeline of distinct,
+composable
+steps](http://martinfowler.com/articles/refactoring-pipelines.html). The first
+step is to convert the `for (fieldName in schema.requiredTopLevelFields)` to:
 
 ```js
 Config.prototype.checkRequiredTopLevelFields = function(errors) {
