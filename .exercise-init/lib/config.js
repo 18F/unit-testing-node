@@ -5,7 +5,8 @@
 module.exports = Config;
 
 function Config(configuration) {
-  var config = configuration || parseConfigFromEnvironmentVariablePath();
+  var config = configuration ||
+        parseConfigFromEnvironmentVariablePathOrUseDefault();
 
   for (var fieldName in config) {
     if (config.hasOwnProperty(fieldName)) {
@@ -48,7 +49,7 @@ Config.prototype.validate = function() {
   }
 };
 
-function parseConfigFromEnvironmentVariablePath() {
+function parseConfigFromEnvironmentVariablePathOrUseDefault() {
 }
 
 Config.prototype.checkRequiredTopLevelFields = function(errors) {

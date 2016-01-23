@@ -16,6 +16,7 @@ function Config(configuration) {
     }
   }
   this.validate();
+
 }
 
 var schema = {
@@ -25,6 +26,10 @@ var schema = {
     slackTimeout: 'Slack API timeout limit in milliseconds',
     successReaction: 'emoji used to indicate an issue was successfully filed',
     rules: 'Slack-reaction-to-GitHub-issue rules'
+  },
+  optionalTopLevelFields: {
+    githubApiBaseUrl: 'Alternate base URL for GitHub API requests',
+    slackApiBaseUrl: 'Alternate base URL for Slack API requests'
   },
   requiredRulesFields: {
     reactionName: 'name of the reaction emoji triggering the rule',
@@ -61,51 +66,49 @@ function parseConfigFromEnvironmentVariablePathOrUseDefault() {
 }
 
 Config.prototype.checkRequiredTopLevelFields = function(errors) {
-  var fieldName;
-
-  for (fieldName in schema.requiredTopLevelFields) {
-    if (schema.requiredTopLevelFields.hasOwnProperty(fieldName) &&
-        !this.hasOwnProperty(fieldName)) {
+  filterMissingFields(this, schema.requiredTopLevelFields)
+    .forEach(function(fieldName) {
       errors.push('missing ' + fieldName);
-    }
-  }
+    });
 };
+
+function filterMissingFields(object, requiredFields) {
+  return Object.keys(requiredFields).filter(function(fieldName) {
+    return !object.hasOwnProperty(fieldName);
+  });
+}
 
 Config.prototype.checkForUnknownFieldNames = function(errors) {
-  var fieldName;
-
-  for (fieldName in this) {
-    if (this.hasOwnProperty(fieldName) &&
-      !schema.requiredTopLevelFields.hasOwnProperty(fieldName)) {
+  filterUnknownFields(this, schema.requiredTopLevelFields,
+    schema.optionalTopLevelFields)
+    .forEach(function(fieldName) {
       errors.push('unknown property ' + fieldName);
-    }
-  }
+    });
 };
+
+function filterUnknownFields(object, requiredFields, optionalFields) {
+  return Object.keys(object).filter(function(fieldName) {
+    return !requiredFields.hasOwnProperty(fieldName) &&
+      !optionalFields.hasOwnProperty(fieldName);
+  });
+}
 
 Config.prototype.checkRequiredRulesFields = function(errors) {
   this.rules.forEach(function(rule, index) {
-    var fieldName;
-
-    for (fieldName in schema.requiredRulesFields) {
-      if (schema.requiredRulesFields.hasOwnProperty(fieldName) &&
-          !rule.hasOwnProperty(fieldName)) {
-          errors.push('rule ' + index + ' missing ' + fieldName);
-      }
-    }
+    filterMissingFields(rule, schema.requiredRulesFields)
+      .forEach(function(fieldName) {
+        errors.push('rule ' + index + ' missing ' + fieldName);
+      });
   });
 };
 
 Config.prototype.checkForUnknownRuleFieldNames = function(errors) {
   this.rules.forEach(function(rule, index) {
-    var fieldName;
-
-    for (fieldName in rule) {
-      if (rule.hasOwnProperty(fieldName) &&
-        !schema.requiredRulesFields.hasOwnProperty(fieldName) &&
-        !schema.optionalRulesFields.hasOwnProperty(fieldName)) {
+    filterUnknownFields(rule, schema.requiredRulesFields,
+      schema.optionalRulesFields)
+      .forEach(function(fieldName) {
         errors.push('rule ' + index +
           ' contains unknown property ' + fieldName);
-      }
-    }
+      });
   });
 };

@@ -40,9 +40,11 @@ describe('Config', function() {
     expect(function() { return new Config({}); }).to.throw(Error, errorMessage);
   });
 
-  it('should validate a rule specifying a channel', function() {
+  it('should validate optional config fields', function() {
     var configData = helpers.baseConfig(),
         config;
+    configData.githubApiBaseUrl = 'http://localhost/github/';
+    configData.slackApiBaseUrl = 'http://localhost/slack/';
     configData.rules[0].channelNames = ['hub'];
 
     config = new Config(configData);

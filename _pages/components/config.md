@@ -56,6 +56,7 @@ function Config(configuration) {
     }
   }
   this.validate();
+
 }
 ```
 
@@ -83,6 +84,10 @@ var schema = {
     slackTimeout: 'Slack API timeout limit in milliseconds',
     successReaction: 'emoji used to indicate an issue was successfully filed',
     rules: 'Slack-reaction-to-GitHub-issue rules'
+  },
+  optionalTopLevelFields: {
+    githubApiBaseUrl: 'Alternate base URL for GitHub API requests',
+    slackApiBaseUrl: 'Alternate base URL for Slack API requests'
   },
   requiredRulesFields: {
     reactionName: 'name of the reaction emoji triggering the rule',
@@ -238,7 +243,7 @@ $ npm test -- --grep Config
 [12:29:20] Finished 'test' after 58 ms
 ```
 
-## Testing `checkReqiredTopLevelFields()`
+## Testing `checkRequiredTopLevelFields()`
 
 We've now verified that our `Config` will accept a valid configuration.
 However, we'd like to remain confident that `Config` will detect every missing
@@ -267,22 +272,28 @@ expected, do one the following and inspect the error message:
 - misspell a member of `errors` or reorder some of the elements
 - change the `to.throw` expression to `to.not.throw`
 
-## Testing the optional `channelNames` field
+## Testing the optional fields
 
-`channelNames` is the only optional field, and it's an optional field for
-`rules` items. If it is present, it names the channels matched by the rule.
-If it is absent, the rule will match any channel.
+The top level config defines the optional fields `githubApiBaseUrl` and
+`slackApiBaseUrl`. We will use these fields to override built-in defaults from
+`SlackClient` and `GitHubClient` in several later tests.
 
-In [`exercise/config/slack-github-issues.json`]({{ site.baseurl }}/exercise/config/slack-github-issues.json),
-the only rule defined does not contain a `channelNames` field. To test that
-`channelNames` is rightfully allowed by validation, create a new test case
-called `'should validate a rule specifying a channel'`. Copy the
-implementation from  `'should validate a valid configuration'`, but update the
-`configData` variable in one of two ways:
+For the `rules` field, `channelNames` is the only optional field. If it is
+present, it names the channels matched by the rule. If it is absent, the rule
+will match any channel.
 
-- directly update the existing `rules` member to have a `channelNames` field
-- call `configData.rules.push()` to add a new member with `channelNames` field
-  defined
+In [`exercise/config/slack-github-issues.json`]({{ site.baseurl
+}}/exercise/config/slack-github-issues.json), neither `githubApiBaseUrl` nor
+`slackApiBaseUrl` are defined, and the only rule defined does not contain a
+`channelNames` field. To test that these fields are rightfully allowed by
+validation, create a new test case called `'should validate optional config
+fields'`. Copy the implementation from  `'should validate a valid
+configuration'`, but add values for `githubApiBaseUrl` and `slackApiBaseUrl`,
+and update the `configData.rules` member by either:
+
+- directly updating the existing `rules` member to have a `channelNames` field
+- calling `configData.rules.push()` to add a new member with `channelNames`
+  field defined
 
 Do not worry about the duplicated code and data for now. We will address this
 in a later step.
@@ -295,11 +306,11 @@ Here's roughly how they should be implemented and tested.
 ### `checkForUnknownFieldNames()`
 
 This is the inverse of `checkRequiredTopLevelFields()`. You will need to
-iterate over every property of `this` and compare each against the properties
-in the schema. Since the schema only defines `requiredTopLevelFields`, not
-optional fields, this is the only set of fields you need to check against. You
-will also need to perform the `hasOwnProperty()` check on properties for both
-objects.
+iterate over every property of `this` and compare each against the required
+and optional properties in the schema. You will need to perform the
+`hasOwnProperty()` check on properties from `this`, as well as from the
+`schema.requiredTopLevelFields` and `schema.optionalTopLevelFields`
+collections.
 
 To test, create a new test case called `'should raise errors for unknown
 properties'` starting with this template:
@@ -344,9 +355,9 @@ duplication later.
 
 This function requires the same test for `this.rules` as
 `checkRequiredRulesFields()`, but the logic performed on each rule will need
-to resemble `checkForUnknownFieldNames()`. However, the schema does define
-`optionalRulesFields`, so you will have to check against both this set of
-properties as well as `requiredRulesFields`.
+to resemble `checkForUnknownFieldNames()`. You will have to check each rule's
+properties against the property names from both `schema.requiredRulesFields`
+and `schema.optionalRulesFields`.
 
 Since the behavior is similar, you can add to the previous `'should raise
 errors for unknown properties'` test rather than writing a new test. However,
@@ -417,6 +428,119 @@ Note that at the moment, both tests are using the same data file. Though two
 different code paths are exercised, the test assertions are the same. This
 means that the environment variable-based test will still pass even if that
 code path is removed. However, we will fix this issue in the next step.
+
+## Eliminating duplication
+
+You may have noticed an uncanny resemblance in the logic for these pairs of
+functions:
+
+- `checkRequiredTopLevelFields` and `checkRequiredRulesFields`
+- `checkOptionalTopLevelFields` and `checkOptionalRulesFields`
+
+Now that you have a thorough battery of tests covering these functions, let's
+try to factor out some common logic to share between each pair. For example,
+our current implementation of `checkRequiredTopLevelFields` looks like:
+
+```js
+Config.prototype.checkRequiredTopLevelFields = function(errors) {
+  var fieldName;
+
+  for (fieldName in schema.requiredTopLevelFields) {
+    if (schema.requiredTopLevelFields.hasOwnProperty(fieldName) &&
+        !this.hasOwnProperty(fieldName)) {
+      errors.push('missing ' + fieldName);
+    }
+  }
+};
+```
+
+`checkRequiredRulesFields` likely looks very similar, except that the logic is
+repeated for each element of `this.rules`. How can we effectively factor out
+this duplication?
+
+The answer is to convert the loop into a pipeline of distinct, composable
+steps. The first step is to convert the `for (fieldName in
+schema.requiredTopLevelFields)` to:
+
+```js
+Config.prototype.checkRequiredTopLevelFields = function(errors) {
+  var config = this;
+
+  Object.keys(schema.requiredTopLevelFields).forEach(function(fieldName) {
+    if (!config.hasOwnProperty(fieldName)) {
+      errors.push('missing ' + fieldName);
+    }
+  });
+};
+```
+
+[`Object.keys`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/keys)
+return an array of an object's own properties that we can iterate over via
+[`Array.forEach`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/forEach).
+Run the tests to make sure they all still pass.
+
+We can now switch the `forEach` function body into two separate pipeline
+functions:
+
+```js
+Config.prototype.checkRequiredTopLevelFields = function(errors) {
+  var config = this;
+
+  Object.keys(schema.requiredTopLevelFields)
+    .filter(function(fieldName) {
+      return !config.hasOwnProperty(fieldName);
+    })
+    .forEach(function(fieldName) {
+      errors.push('missing ' + fieldName);
+    });
+};
+```
+
+Now rather than having one big loop, we have three small ones:
+
+- `Object.keys`: iterates over an object and returns and array of field names
+- `.filter`: iterates over the result of `Object.keys` to select only those
+  field names that do not appear in the `config` object
+- `.forEach`: iterates over the result of `.filter` to push the error messages
+
+Run the tests to make sure they all still pass. We're now ready to extract the
+common logic to detect missing fields into a utility function
+`filterMissingFields`:
+
+```js
+function filterMissingFields(object, requiredFields) {
+  return Object.keys(requiredFields).filter(function(fieldName) {
+    return !object.hasOwnProperty(fieldName);
+  });
+}
+```
+
+We can now use this utility function to update `checkRequiredTopLevelFields`
+to look like:
+
+```js
+Config.prototype.checkRequiredTopLevelFields = function(errors) {
+  filterMissingFields(this, schema.requiredTopLevelFields)
+    .forEach(function(fieldName) {
+      errors.push('missing ' + fieldName);
+    });
+};
+```
+
+Run the tests to make sure they all still pass. Now perform a similar
+transformation on `checkRequiredRulesFields`, and ensure the tests still pass.
+Do the same sort of work for `checkOptionalTopLevelFields` and
+`checkOptionalRulesFields`, ensuring the tests pass throughout the process.
+
+This an example of
+[refactoring](https://en.wikipedia.org/wiki/Code_refactoring), improving the
+structure of existing code to improve readability and to accommodate new
+features. Having a solid suite of high-quality automated tests is critical to
+making refactoring a regular habit. This in turn allows development to
+continue at a sustained high pace, rather than slowing down due to fear of
+breaking existing behavior. A good suite of tests will tell you when something
+is wrong, and will encourage designs that are easier to change in the long
+term.
 
 ## Consolidating data with `test/helpers`
 
@@ -500,23 +624,23 @@ $ npm test -- --grep '^Config '
 > 18f-unit-testing-node@0.0.0 test .../unit-testing-node
 > gulp test "--grep" "^Config "
 
-[12:16:44] Using gulpfile .../unit-testing-node/gulpfile.js
-[12:16:44] Starting 'test'...
+[18:00:58] Using gulpfile .../unit-testing-node/gulpfile.js
+[18:00:58] Starting 'test'...
 
 
   Config
     ✓ should validate a valid configuration
     ✓ should raise errors for missing required fields
-    ✓ should validate a rule specifying a channel
+    ✓ should validate optional config fields
     ✓ should raise errors for unknown top-level properties
     ✓ should raise errors for missing required rules fields
     ✓ should load from HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH
     ✓ should load from config/slack-github-issues.json by default
 
 
-  7 passing (10ms)
+  7 passing (11ms)
 
-[12:16:45] Finished 'test' after 83 ms
+[18:00:58] Finished 'test' after 73 ms
 ```
 
 Now that you're all finished, compare your solutions to the code in
