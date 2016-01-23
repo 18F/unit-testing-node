@@ -20,10 +20,13 @@ module.exports = function(robot) {
         config,
         new SlackClient(robot.adapter.client, config),
         new GitHubClient(config),
-        new Logger(robot.logger));
+        new Logger(robot.logger)),
+      middleware;
 
-  robot.receiveMiddleware(function(context, next, done) {
+  middleware = function(context, next, done) {
     impl.execute(context, next, done);
-  });
-  impl.logger.info('registered receiveMiddleware');
+  };
+  middleware.impl = impl;
+  robot.receiveMiddleware(middleware);
+  impl.logger.info(null, 'registered receiveMiddleware');
 };
