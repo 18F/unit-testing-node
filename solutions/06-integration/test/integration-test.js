@@ -14,8 +14,10 @@ var fs = require('fs');
 var path = require('path');
 var scriptName = require('../package.json').name;
 var chai = require('chai');
+var chaiAsPromised = require('chai-as-promised');
 
 chai.should();
+chai.use(chaiAsPromised);
 
 describe('Integration test', function() {
   var room, logHelper, apiStubServer, config, apiServerDefaults,
@@ -158,17 +160,16 @@ describe('Integration test', function() {
         'INFO reading configuration from ' + invalidConfigPath,
         'ERROR receiveMiddleware registration failed: Invalid configuration:'
       ]);
+      logHelper.messages[logHelper.messages.length - 1].should.have.string(
+        'Invalid configuration:\n  missing rules');
+
     } finally {
       process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH = origPath;
     }
   });
 
-  context('an evergreen_tree reaction to a message', function() {
-    beforeEach(function() {
-      return sendReaction(helpers.REACTION);
-    });
-
-    it('should create a GitHub issue', function() {
+  it('should create a GitHub issue given a valid reaction', function(done) {
+    sendReaction(helpers.REACTION).should.be.fulfilled.then(function() {
       room.messages.should.eql([
         ['mbland', 'evergreen_tree'],
         ['hubot', '@mbland created: ' + helpers.ISSUE_URL]
@@ -182,22 +183,17 @@ describe('Integration test', function() {
           'created: ' + helpers.ISSUE_URL
         ]))
       );
-    });
+    }).should.notify(done);
   });
 
-  context('a evergreen_tree reaction to a message', function() {
-    var payload = { message: 'test failure' };
+  it('should fail to create a GitHub issue', function(done) {
+    var payload = { message: 'test failure' },
+        url = '/github/repos/18F/handbook/issues',
+        response = apiStubServer.urlsToResponses[url];
 
-    beforeEach(function() {
-      var url = '/github/repos/18F/handbook/issues',
-          response = apiStubServer.urlsToResponses[url];
-
-      response.statusCode = 500;
-      response.payload = payload;
-      return sendReaction(helpers.REACTION);
-    });
-
-    it('should fail to create a GitHub issue', function() {
+    response.statusCode = 500;
+    response.payload = payload;
+    sendReaction(helpers.REACTION).should.be.fulfilled.then(function() {
       var errorReply = 'failed to create a GitHub issue in ' +
             '18F/handbook: received 500 response from GitHub API: ' +
             JSON.stringify(payload),
@@ -215,36 +211,28 @@ describe('Integration test', function() {
       ]));
       logMessages.push('ERROR ' + helpers.MESSAGE_ID + ': ' + errorReply);
       logHelper.filteredMessages().should.eql(logMessages);
-    });
+    }).should.notify(done);
   });
 
-  context('a message receiving an unknown reaction', function() {
-    beforeEach(function() {
-      Object.keys(apiStubServer.urlsToResponses).forEach(function(url) {
-        var response = apiStubServer.urlsToResponses[url];
+  it('should ignore a message receiving an unknown reaction', function(done) {
+    Object.keys(apiStubServer.urlsToResponses).forEach(function(url) {
+      var response = apiStubServer.urlsToResponses[url];
 
-        response.statusCode = 500;
-        response.payload = { message: 'should not happen' };
-      });
-      return sendReaction('sad-face');
+      response.statusCode = 500;
+      response.payload = { message: 'should not happen' };
     });
-
-    it('should be ignored', function() {
+    sendReaction('sad-face').should.be.fulfilled.then(function() {
       room.messages.should.eql([['mbland', 'sad-face']]);
       logHelper.filteredMessages().should.eql(initLogMessages());
-    });
+    }).should.notify(done);
   });
 
-  context('an unanticipated error from Middleware.expect', function() {
-    beforeEach(function() {
-      var impl = room.robot.middleware.receive.stack[0].impl;
-      impl.slackClient.client.getChannelByID = function() {
-        throw Error('forced error');
-      };
-      return sendReaction(helpers.REACTION);
-    });
-
-    it('should be caught and logged', function() {
+  it('should catch and log an unanticipated error', function(done) {
+    var impl = room.robot.middleware.receive.stack[0].impl;
+    impl.slackClient.client.getChannelByID = function() {
+      throw Error('forced error');
+    };
+    sendReaction(helpers.REACTION).should.be.fulfilled.then(function() {
       room.messages.should.eql([['mbland', helpers.REACTION]]);
       logHelper.filteredMessages().should.eql(
         initLogMessages().concat(['ERROR unhandled error: forced error '])
@@ -252,6 +240,6 @@ describe('Integration test', function() {
       logHelper.messages[logHelper.messages.length - 1].should.have.string(
         '\nmessage: ' + JSON.stringify(
           helpers.reactionAddedMessage(), null, 2));
-    });
+    }).should.notify(done);
   });
 });
