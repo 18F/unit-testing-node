@@ -61,8 +61,18 @@ function validate(config) {
 
 function parseConfigFromEnvironmentVariablePathOrUseDefault() {
   var configPath = (process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH ||
-    'config/slack-github-issues.json');
-  return JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        'config/slack-github-issues.json'),
+      errorPrefix = 'failed to load configuration from ' + configPath + ': ';
+
+  try {
+    return JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  } catch (err) {
+    if (err instanceof SyntaxError) {
+      errorPrefix = errorPrefix + 'invalid JSON: ';
+    }
+    err.message = errorPrefix + err.message;
+    throw err;
+  }
 }
 
 function checkRequiredTopLevelFields(config, errors) {

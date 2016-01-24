@@ -386,7 +386,8 @@ should return the JSON object parsed from the file, using
 to read the contents.
 
 The tests for this function need only validate that the `Config` object reads
-the file properly. All of the success and failure cases have been covered by
+the file properly (or throws an appropriate `Error`, which we'll cover
+shortly). All of the validation success and failure cases have been covered by
 the other tests, using data defined in the test itself.
 
 **Don't forget to `require('fs')` and `require('path')` as needed.**
@@ -438,7 +439,59 @@ data to the validated `Config` object.
 Note that at the moment, both tests are using the same data file. Though two
 different code paths are exercised, the test assertions are the same. This
 means that the environment variable-based test will still pass even if that
-code path is removed. However, we will fix this issue in the next step.
+code path is removed. However, we will fix this issue in a later step.
+
+### Testing `parseConfigFromEnvironmentVariablePathOrUseDefault` error cases
+
+Should loading the file or parsing its contents fail, we should decorate the
+resulting `Error.message` with contextual information and rethrow it. Add the
+following `var errorPrefix` declaration and [`try...catch`
+block](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/try...catch)
+to the end of the function (presuming `configPath` holds either
+`HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH` or the default config path):
+
+```js
+  var errorPrefix = 'failed to load configuration from ' + configPath + ': ';
+
+  try {
+    return JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  } catch (err) {
+    if (err instanceof SyntaxError) {
+      errorPrefix = errorPrefix + 'invalid JSON: ';
+    }
+    err.message = errorPrefix + err.message;
+    throw err;
+  }
+```
+
+The test cases for the errors are fairly straightforward. We'll take advantage
+of the [`__dirname`](https://nodejs.org/api/globals.html#globals_dirname) and
+[`__filename`](https://nodejs.org/api/globals.html#globals_filename) global
+variables to point `HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH` at nonexistent and
+malformed config files:
+
+```js
+  it('should raise an error if the config file does not exist', function() {
+    var configPath = path.join(__dirname, 'nonexistent-config-file'),
+        errorMessage = 'failed to load configuration from ' + configPath +
+          ': ENOENT: no such file or directory';
+
+    process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH = configPath;
+    expect(function() { return new Config(); })
+      .to.throw(Error, errorMessage);
+  });
+
+  it('should raise an error if the config file isn\'t valid JSON', function() {
+    var errorMessage = 'failed to load configuration from ' + __filename +
+          ': invalid JSON: Unexpected token /';
+
+    process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH = __filename;
+    expect(function() { return new Config(); })
+      .to.throw(Error, errorMessage);
+  });
+```
+
+Run the tests and ensure they pass before moving onto the next section.
 
 ## Eliminating duplication
 

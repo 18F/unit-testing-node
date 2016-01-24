@@ -348,9 +348,11 @@ this this `logger` variable. Now to update the other function:
 ```js
 function parseConfigFromEnvironmentVariablePathOrUseDefault(logger) {
   var configPath = (process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH ||
-    'config/slack-github-issues.json');
+      'config/slack-github-issues.json'),
+    errorPrefix = 'failed to load configuration from ' + configPath + ': ';
   logger.info(null, 'reading configuration from', configPath); 
-  return JSON.parse(fs.readFileSync(configPath, 'utf8'));
+
+  // ...the try...catch block...
 }
 ```
 
@@ -409,9 +411,15 @@ test:
   });
 ```
 
-Now run `npm test -- --grep '^Config '` to ensure that the tests continue to
-pass. Feel free to change something around to make them break, to make sure
-they're testing what we intend them to test.
+In a similar way, update the `should raise and error if the config file...`
+tests. Rather than refactoring the `Config` code to catch and log the error,
+[we want to allow it to propagate so the `Config` object never
+exists]({{ site.baseurl }}/concepts/valid-by-contract/). The code calling the
+`Config` constructor can (and should!) catch and log the error.
+
+Run `npm test -- --grep '^Config '` to ensure that the tests continue to pass.
+Feel free to change something around to make them break, to make sure they're
+testing what we intend them to test.
 
 ## Check your work
 

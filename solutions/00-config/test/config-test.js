@@ -100,4 +100,23 @@ describe('Config', function() {
     config = new Config();
     expect(JSON.stringify(config)).to.eql(JSON.stringify(testConfig));
   });
+
+  it('should raise an error if the config file does not exist', function() {
+    var configPath = path.join(__dirname, 'nonexistent-config-file'),
+        errorMessage = 'failed to load configuration from ' + configPath +
+          ': ENOENT: no such file or directory';
+
+    process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH = configPath;
+    expect(function() { return new Config(); })
+      .to.throw(Error, errorMessage);
+  });
+
+  it('should raise an error if the config file isn\'t valid JSON', function() {
+    var errorMessage = 'failed to load configuration from ' + __filename +
+          ': invalid JSON: Unexpected token /';
+
+    process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH = __filename;
+    expect(function() { return new Config(); })
+      .to.throw(Error, errorMessage);
+  });
 });
