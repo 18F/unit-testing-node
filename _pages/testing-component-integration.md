@@ -95,7 +95,7 @@ which takes a function as its argument, not an object. This is why we create a
 closure that contains the `impl` object.
 
 Believe it or not, as far as the main script goes, we're done. That's it.
-Nothing more to it.
+Nothing more to it. (For now.)
 
 ## Integration testing using `hubot-test-helper`
 
@@ -109,9 +109,7 @@ Open the `exercise/test/integration-test.js` file, which should look like:
 'use strict';
 
 describe('Integration test', function() {
-  context('an evergreen_tree reaction to a message', function() {
-    it('should create a GitHub issue', function() {
-    });
+  it('should successfully load the application script', function() {
   });
 });
 ```
@@ -156,10 +154,8 @@ $ npm test -- --grep '^Integration test '
 
   Integration test
     an evergreen_tree reaction to a message
-[Sat Jan 23 2016 19:28:42 GMT-0500 (EST)] INFO 18f-unit-testing-node: reading
-configuration from config/slack-github-issues.json
-[Sat Jan 23 2016 19:28:42 GMT-0500 (EST)] INFO 18f-unit-testing-node:
-registered receiveMiddleware
+[Sat Jan 23 2016 19:28:42 GMT-0500 (EST)] INFO 18f-unit-testing-node: reading configuration from config/slack-github-issues.json
+[Sat Jan 23 2016 19:28:42 GMT-0500 (EST)] INFO 18f-unit-testing-node: registered receiveMiddleware
       ✓ should create a GitHub issue
 
 
@@ -232,8 +228,8 @@ describe('Integration test', function() {
   });
 ```
 
-We can add a test case to ensure the script loads successfully to begin with.
-First, we need to add the following before our fixture:
+We can now implement the test case to ensure the script loads successfully to
+begin with. First, we need to add the following before our fixture:
 
 ```js
 var chai = require('chai');
@@ -276,11 +272,8 @@ $ npm test -- --grep '^Integration test '
       + expected - actual
 
       -[
-      -  "[Sat Jan 23 2016 19:31:23 GMT-0500 (EST)] INFO
-         18f-unit-testing-node: reading configuration from
-config/slack-github-issues.json\n"
-      -  "[Sat Jan 23 2016 19:31:23 GMT-0500 (EST)] INFO
-         18f-unit-testing-node: registered receiveMiddleware\n"
+      -  "[Sat Jan 23 2016 19:31:23 GMT-0500 (EST)] INFO 18f-unit-testing-node: reading configuration from config/slack-github-issues.json\n"
+      -  "[Sat Jan 23 2016 19:31:23 GMT-0500 (EST)] INFO 18f-unit-testing-node: registered receiveMiddleware\n"
       -]
       +[]
 
@@ -592,8 +585,7 @@ $ npm test -- --grep '^Integration test '
       + expected - actual
 
        [
-      -  "INFO reading configuration from
-         .../18f-unit-testing-node-integration-test-config-116023-52840-1jwmn06"
+      -  "INFO reading configuration from .../18f-unit-testing-node-integration-test-config-116023-52840-1jwmn06"
       +  "INFO reading configuration from config/slack-github-issues.json"
          "INFO registered receiveMiddleware"
        ]
@@ -809,6 +801,7 @@ runner output:
         'INFO reading configuration from ' + invalidConfigPath,
         'ERROR receiveMiddleware registration failed: Invalid configuration:'
       ]);
+
     } finally {
       process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH = origPath;
     }
@@ -816,7 +809,14 @@ runner output:
 ```
 
 Note that `logHelper.filteredMessages()` cuts off the error message after
-`Invalid configuration` because it contains a newline character.
+`Invalid configuration` because it contains a newline character. Let's add one
+more assertion to check that the raw log message reports the expected
+validation error:
+
+```js
+      logHelper.messages[logHelper.messages.length - 1].should.have.string(
+        'Invalid configuration:\n  missing rules');
+```
 
 ## Monkey patching the `hubot-test-helper` framework
 
@@ -869,7 +869,8 @@ Then define the function thus:
 This function is based on the implementation of `Room.receive` found in
 `node_modules/hubot-test-helper/src/index.coffee`. Yet another benefit of open
 source is being able to see the code you depend on for hints regarding how to
-extend its behavior.
+extend its behavior. As always, remain mindful of [`Promise` gotcha #1: not
+returning the `Promise`](#promises-gotcha-1).
 
 Though monkey patching is not ideal, in this test, it gets the job done quite
 effectively. Also, `reaction_added` message support hasn't completely
@@ -883,18 +884,29 @@ been possible, but a bit more work.)
 
 ## Sending a reaction message
 
-We're finally ready to implement our `should create a GitHub issue` test case.
-The first thing to do is add a `beforeEach` hook to the sub-fixture to send
-the reaction message:
+We're finally ready to implement our `should create a GitHub issue given a
+valid reaction` test case. Since `room.user.react` returns a `Promise`, we'll
+use [chai-as-promised](https://www.npmjs.com/package/chai-as-promised) to
+validate our test cases. The first thing to do is add the requisite `require`
+and setup statements:
 
 ```js
-  context('an evergreen_tree reaction to a message', function() {
-    beforeEach(function() {
-      return room.user.react('mbland', 'evergreen_tree');
-    });
+var chai = require('chai');
+var chaiAsPromised = require('chai-as-promised');
 
-    it('should create a GitHub issue', function() {
-    });
+chai.should();
+chai.use(chaiAsPromised);
+```
+
+Now set up an empty test case, using the [`.should.notify(done)`
+syntax](https://www.npmjs.com/package/chai-as-promised#working-with-non-promisefriendly-test-runners)
+that will allow us to make assertions after the `Promise` resolves:
+
+```js
+  it('should create a GitHub issue given a valid reaction', function(done) {
+    room.user.react('mbland', helpers.REACTION).should.be.fulfilled
+      .then(function() {
+    }).should.notify(done);
   });
 ```
 
@@ -906,15 +918,14 @@ $ npm test -- --grep '^Integration '
 > 18f-unit-testing-node@0.0.0 test .../unit-testing-node
 > gulp test "--grep" "^Integration "
 
-[14:23:49] Using gulpfile .../unit-testing-node/gulpfile.js
-[14:23:49] Starting 'test'...
+[17:17:28] Using gulpfile .../unit-testing-node/gulpfile.js
+[17:17:28] Starting 'test'...
 
 
   Integration test
     ✓ should successfully load the application script
     ✓ should not register if the config file is invalid
-    an evergreen_tree reaction to a message
-[Sun Jan 24 2016 14:23:50 GMT-0500 (EST)] ERROR TypeError: Cannot read property 'getChannelByID' of undefined
+[Sun Jan 24 2016 17:17:29 GMT-0500 (EST)] ERROR TypeError: Cannot read property 'getChannelByID' of undefined
   at SlackClient.getChannelName (.../unit-testing-node/exercise/lib/slack-client.js:26:21)
   at Rule.channelMatches (.../unit-testing-node/exercise/lib/rule.js:28:34)
   at Rule.match (.../unit-testing-node/exercise/lib/rule.js:17:10)
@@ -924,14 +935,14 @@ $ npm test -- --grep '^Integration '
   at Middleware.execute (.../unit-testing-node/exercise/lib/middleware.js:24:19)
   at .../unit-testing-node/exercise/scripts/slack-github-issues.js:30:12
   at .../unit-testing-node/node_modules/hubot/src/middleware.coffee:33:24
-  [...snip Mocha stack frames...]
+  [...snip Hubot stack frames...]
 
-      ✓ should create a GitHub issue
+    ✓ should create a GitHub issue given a valid reaction
 
 
-  3 passing (215ms)
+  3 passing (216ms)
 
-[14:23:50] Finished 'test' after 790 ms
+[17:17:29] Finished 'test' after 790 ms
 ```
 
 ## Appreciating the invention of dependency injection
@@ -1011,25 +1022,24 @@ $ npm test -- --grep '^Integration '
 > 18f-unit-testing-node@0.0.0 test .../unit-testing-node
 > gulp test "--grep" "^Integration "
 
-[14:30:03] Using gulpfile .../unit-testing-node/gulpfile.js
-[14:30:03] Starting 'test'...
+[17:21:16] Using gulpfile .../unit-testing-node/gulpfile.js
+[17:21:16] Starting 'test'...
 
 
   Integration test
     ✓ should successfully load the application script
     ✓ should not register if the config file is invalid
-    an evergreen_tree reaction to a message
-[Sun Jan 24 2016 14:30:04 GMT-0500 (EST)] INFO 18f-unit-testing-node: C5150OU812:1360782804.083113: matches rule: Rule { reactionName: 'evergreen_tree', githubRepository: 'handbook' }
-[Sun Jan 24 2016 14:30:04 GMT-0500 (EST)] INFO 18f-unit-testing-node: C5150OU812:1360782804.083113: getting reactions for https://18f.slack.com/archives/handbook/p1360782804083113
-[Sun Jan 24 2016 14:30:04 GMT-0500 (EST)] INFO 18f-unit-testing-node: C5150OU812:1360782804.083113: making GitHub request for https://18f.slack.com/archives/handbook/p1360782804083113
-[Sun Jan 24 2016 14:30:04 GMT-0500 (EST)] INFO 18f-unit-testing-node: C5150OU812:1360782804.083113: adding heavy_check_mark
-[Sun Jan 24 2016 14:30:04 GMT-0500 (EST)] INFO 18f-unit-testing-node: C5150OU812:1360782804.083113: created: https://github.com/18F/handbook/issues/1
-      ✓ should create a GitHub issue
+[Sun Jan 24 2016 17:21:16 GMT-0500 (EST)] INFO 18f-unit-testing-node: C5150OU812:1360782804.083113: matches rule: Rule { reactionName: 'evergreen_tree', githubRepository: 'handbook' }
+[Sun Jan 24 2016 17:21:16 GMT-0500 (EST)] INFO 18f-unit-testing-node: C5150OU812:1360782804.083113: getting reactions for https://18f.slack.com/archives/handbook/p1360782804083113
+[Sun Jan 24 2016 17:21:16 GMT-0500 (EST)] INFO 18f-unit-testing-node: C5150OU812:1360782804.083113: making GitHub request for https://18f.slack.com/archives/handbook/p1360782804083113
+[Sun Jan 24 2016 17:21:16 GMT-0500 (EST)] INFO 18f-unit-testing-node: C5150OU812:1360782804.083113: adding heavy_check_mark
+[Sun Jan 24 2016 17:21:16 GMT-0500 (EST)] INFO 18f-unit-testing-node: C5150OU812:1360782804.083113: created: https://github.com/18F/handbook/issues/1
+    ✓ should create a GitHub issue given a valid reaction (54ms)
 
 
   3 passing (251ms)
 
-[14:30:04] Finished 'test' after 791 ms
+[17:21:16] Finished 'test' after
 ```
 
 Now it looks like the test and the code is doing exactly what it should. All
@@ -1063,7 +1073,8 @@ LogHelper.prototype.capture = function(callback) {
 };
 ```
 
-Then add these two functions:
+Then add these two functions, remembering to watch out for [`Promise` gotcha
+#1: not returning the `Promise`](#promises-gotcha-1):
 
 ```js
 LogHelper.prototype.endCaptureResolve = function() {
@@ -1086,15 +1097,16 @@ LogHelper.prototype.endCaptureReject = function() {
 ```
 
 We still need the other `logHelper.capture` call because
-`scriptHelper.createRoom` may raise an error. Now update the `an
-evergreen_tree reaction to a message` fixture `beforeEach` hook to read:
+`scriptHelper.createRoom` may raise an error. Now update the test case to make suse of the `logHelper`:
 
 ```js
-    beforeEach(function() {
-      logHelper.beginCapture();
-      return room.user.react('mbland', 'evergreen_tree')
-        .then(logHelper.endCaptureResolve(), logHelper.endCaptureReject());
-    });
+  it('should create a GitHub issue given a valid reaction', function(done) {
+    logHelper.beginCapture();
+    room.user.react('mbland', helpers.REACTION).should.be.fulfilled
+      .then(logHelper.endCaptureResolve(), logHelper.endCaptureReject())
+      .then(function() {
+    }).should.notify(done);
+  });
 ```
 
 Run the test to make sure they still pass, and that the log output is properly
@@ -1107,12 +1119,11 @@ honest to goodness test assertions. First, let's check the messages posted to
 the `room` object during the course of the application flow:
 
 ```js
-    it('should create a GitHub issue', function() {
-      room.messages.should.eql([
-        ['mbland', 'evergreen_tree'],
-        ['hubot', '@mbland created: ' + helpers.ISSUE_URL]
-      ]);
-    });
+      .then(function() {
+        room.messages.should.eql([
+          ['mbland', 'evergreen_tree'],
+          ['hubot', '@mbland created: ' + helpers.ISSUE_URL]
+        ]);
 ```
 
 Run the test and make sure it passes. Change one of the messages in the
@@ -1140,27 +1151,26 @@ $ npm test -- --grep '^Integration '
 > 18f-unit-testing-node@0.0.0 test .../unit-testing-node
 > gulp test "--grep" "^Integration "
 
-[14:32:37] Using gulpfile .../unit-testing-node/gulpfile.js
-[14:32:37] Starting 'test'...
+[17:25:14] Using gulpfile .../unit-testing-node/gulpfile.js
+[17:25:14] Starting 'test'...
 
 
   Integration test
     ✓ should successfully load the application script
     ✓ should not register if the config file is invalid
-    an evergreen_tree reaction to a message
-      1) should create a GitHub issue
+    1) should create a GitHub issue given a valid reaction
 
 
-  2 passing (299ms)
+  2 passing (279ms)
   1 failing
 
-  1) Integration test an evergreen_tree reaction to a message should create a GitHub issue:
+  1) Integration test should create a GitHub issue given a valid reaction:
 
       AssertionError: expected [ Array(7) ] to deeply equal []
       + expected - actual
 
       -[
-      -  "INFO reading configuration from .../18f-unit-testing-node-integration-test-config-116024-62199-1gov2lz"
+      -  "INFO reading configuration from /var/folders/kr/qnjc102n0wg_b89_g0jsfbnh0000gp/T/18f-unit-testing-node-integration-test-config-116024-65738-1ip6jz6"
       -  "INFO registered receiveMiddleware"
       -  "INFO C5150OU812:1360782804.083113: matches rule: Rule { reactionName: 'evergreen_tree', githubRepository: 'handbook' }"
       -  "INFO C5150OU812:1360782804.083113: getting reactions for https://18f.slack.com/archives/handbook/p1360782804083113"
@@ -1170,13 +1180,13 @@ $ npm test -- --grep '^Integration '
       -]
       +[]
 
-    at Context.<anonymous> (exercise/test/integration-test.js:160:43)
+    at exercise/test/integration-test.js:162:45
 
 
 
 
-[14:32:38] 'test' errored after
-[14:32:38] Error in plugin 'gulp-mocha'
+[17:25:15] 'test' errored after
+[17:25:15] Error in plugin 'gulp-mocha'
 Message:
     1 test failed.
 npm ERR! Test failed.  See above for more details.
@@ -1207,19 +1217,21 @@ describe('Integration test', function() {
 
   // ...invalid config file test case...
 
-  context('an evergreen_tree reaction to a message', function() {
-    // ...beforeEach hook...
-
-    it('should create a GitHub issue', function() {
-      room.messages.should.eql([
-        ['mbland', 'evergreen_tree'],
-        ['hubot', '@mbland created: ' + helpers.ISSUE_URL]
-      ]);
-      logHelper.filteredMessages().should.eql(
-        initLogMessages().concat([
-        ])
-      );
-    });
+  it('should create a GitHub issue given a valid reaction', function(done) {
+    logHelper.beginCapture();
+    room.user.react('mbland', helpers.REACTION).should.be.fulfilled
+      .then(logHelper.endCaptureResolve(), logHelper.endCaptureReject())
+      .then(function() {
+        room.messages.should.eql([
+          ['mbland', 'evergreen_tree'],
+          ['hubot', '@mbland created: ' + helpers.ISSUE_URL]
+        ]);
+        logHelper.filteredMessages().should.eql(
+          initLogMessages().concat([
+          ])
+        );
+    }).should.notify(done);
+  });
 ```
 
 Run the tests, and the first two messages should now match. Of the messages
@@ -1245,21 +1257,26 @@ describe('Integration test', function() {
 
   // ...
 
-    it('should create a GitHub issue', function() {
-      room.messages.should.eql([
-        ['mbland', 'evergreen_tree'],
-        ['hubot', '@mbland created: ' + helpers.ISSUE_URL]
-      ]);
-      logHelper.filteredMessages().should.eql(
-        initLogMessages().concat(wrapInfoMessages([
-          'matches rule: ' + matchingRule,
-          'getting reactions for ' + helpers.PERMALINK,
-          'making GitHub request for ' + helpers.PERMALINK,
-          'adding ' + config.successReaction,
-          'created: ' + helpers.ISSUE_URL
-        ]))
-      );
-    });
+  it('should create a GitHub issue given a valid reaction', function(done) {
+    logHelper.beginCapture();
+    room.user.react('mbland', helpers.REACTION).should.be.fulfilled
+      .then(logHelper.endCaptureResolve(), logHelper.endCaptureReject())
+      .then(function() {
+        room.messages.should.eql([
+          ['mbland', 'evergreen_tree'],
+          ['hubot', '@mbland created: ' + helpers.ISSUE_URL]
+        ]);
+        logHelper.filteredMessages().should.eql(
+          initLogMessages().concat(wrapInfoMessages([
+            'matches rule: ' + matchingRule,
+            'getting reactions for ' + helpers.PERMALINK,
+            'making GitHub request for ' + helpers.PERMALINK,
+            'adding ' + config.successReaction,
+            'created: ' + helpers.ISSUE_URL
+          ]))
+        );
+    }).should.notify(done);
+  });
 ```
 
 Run the tests again, and ensure they all pass.
@@ -1267,35 +1284,23 @@ Run the tests again, and ensure they all pass.
 ## Testing a failure case
 
 So much for the happy path. Now let's see what happens when the operation
-fails.
-
-The test fixture follows the pattern of returning a `Promise` from
-`beforeEach`, and this `Promise` will invoke our middleware. Consequently, we
-need to configure a new sub-fixture to test a new scenario. Let's get started
-with that, but we'll use the same fixture name as before:
+fails. Let's start our new test case thus:
 
 ```js
-  context('a evergreen_tree reaction to a message', function() {
-    var payload = { message: 'test failure' };
+  it('should fail to create a GitHub issue', function(done) {
+    var payload = { message: 'test failure' },
+        url = '/github/repos/18F/handbook/issues',
+        response = apiStubServer.urlsToResponses[url];
 
-    beforeEach(function() {
-      var url = '/github/repos/18F/handbook/issues',
-          response = apiStubServer.urlsToResponses[url];
-
-      response.statusCode = 500;
-      response.payload = payload;
-
-      logHelper.beginCapture();
-      return room.user.react('mbland', 'evergreen_tree')
-        .then(logHelper.endCaptureResolve(), logHelper.endCaptureReject());
-    });
+    response.statusCode = 500;
+    response.payload = payload;
   });
 ```
 
 Notice that all we're doing is configuring the GitHub endpoint of the
-`apiStubServer` to send a failure response. There is that annoying bit of
-repetition with invoking the `logHelper` and `room.user.react`. Let's create a
-new helper function in the top level fixture and call it `sendReaction`:
+`apiStubServer` to send a failure response. To eliminate the repetition of
+invoking the `logHelper` and `room.user.react`, let's create a new helper
+function in the top level fixture and call it `sendReaction`:
 
 ```js
 describe('Integration test', function() {
@@ -1310,29 +1315,34 @@ describe('Integration test', function() {
     return room.user.react('mbland', reactionName)
       .then(logHelper.endCaptureResolve(), logHelper.endCaptureReject());
   };
+```
 
+As ever, we are mindful of [`Promise` gotcha #1: not returning the
+`Promise`](#promises-gotcha-1). Then, in the test cases, use `sendReaction` to
+replace both the `logHelper.beginCapture` calls and the
+`.then(logHelper.endCaptureResolve(), logHelper.endCaptureReject())` clause:
+
+```js
   // ...
 
-  context('an evergreen_tree reaction to a message', function() {
-    beforeEach(function() {
-      return sendReaction(helpers.REACTION);
-    });
+  it('should create a GitHub issue given a valid reaction', function(done) {
+    sendReaction(helpers.REACTION).should.be.fulfilled.then(function() {
 
-    // ...should create a GitHub issue test case...
+    // You can indent everything here back one level.
 
+    }).should.notify(done);
   });
 
-  context('a evergreen_tree reaction to a message', function() {
-    var payload = { message: 'test failure' };
+  it('should fail to create a GitHub issue', function(done) {
+    var payload = { message: 'test failure' },
+        url = '/github/repos/18F/handbook/issues',
+        response = apiStubServer.urlsToResponses[url];
 
-    beforeEach(function() {
-      var url = '/github/repos/18F/handbook/issues',
-          response = apiStubServer.urlsToResponses[url];
-
-      response.statusCode = 500;
-      response.payload = payload;
-      return sendReaction(helpers.REACTION);
-    });
+    response.statusCode = 500;
+    response.payload = payload;
+    sendReaction(helpers.REACTION).should.be.fulfilled.then(function() {
+    }).should.notify(done);
+  });
 ```
 
 Run the test to make sure everything passes first. The previous `should create
@@ -1341,11 +1351,12 @@ fail to create a GitHub issue` test case. First, let's format our expected
 error reply and declare a variable to hold our expected log messages:
 
 ```js
-    it('should fail to create a GitHub issue', function() {
+    sendReaction(helpers.REACTION).should.be.fulfilled.then(function() {
       var errorReply = 'failed to create a GitHub issue in ' +
             '18F/handbook: received 500 response from GitHub API: ' +
             JSON.stringify(payload),
           logMessages;
+    }).should.notify(done);
 ```
 
 The asssertion for the room messages is pretty straightforward:
@@ -1369,7 +1380,6 @@ though:
       ]));
       logMessages.push('ERROR ' + helpers.MESSAGE_ID + ': ' + errorReply);
       logHelper.filteredMessages().should.eql(logMessages);
-    });
 ```
 
 Run the test, and ensure that it passes.
@@ -1382,21 +1392,18 @@ message. The error responses are to verify that the middleware never attempts
 to make any API requests.
 
 ```js
-  context('a message receiving an unknown reaction', function() {
-    beforeEach(function() {
-      Object.keys(apiStubServer.urlsToResponses).forEach(function(url) {
-        var response = apiStubServer.urlsToResponses[url];
+  it('should ignore a message receiving an unknown reaction', function(done) {
+    Object.keys(apiStubServer.urlsToResponses).forEach(function(url) {
+      var response = apiStubServer.urlsToResponses[url];
 
-        response.statusCode = 500;
-        response.payload = { message: 'should not happen' };
-      });
-      return sendReaction('sad-face');
+      response.statusCode = 500;
+      response.payload = { message: 'should not happen' };
     });
 
-    it('should be ignored', function() {
+    sendReaction('sad-face').should.be.fulfilled.then(function() {
       room.messages.should.eql([['mbland', 'sad-face']]);
       logHelper.filteredMessages().should.eql(initLogMessages());
-    });
+    }).should.notify(done);
   });
 ```
 
@@ -1413,20 +1420,19 @@ that happens, we'll pollute the log with a nasty stack trace, and `next(done)`
 won't get called.
 
 To simulate this, let's add this new test case, relying on the dirty trick of
-reaching into `room.robot.middleware.receive.stack` to force an `Error`:
+reaching into `room.robot.middleware.receive.stack` to force an `Error`. We'll
+call `room.user.react` temporarily so we can see the stack trace.
 
 ```js
-  context('an unanticipated error from Middleware.expect', function() {
-    beforeEach(function() {
-      var impl = room.robot.middleware.receive.stack[0].impl;
-      impl.slackClient.client.getChannelByID = function() {
-        throw Error('forced error');
-      };
-      return room.user.react('mbland', helpers.REACTION);
-    });
+  it('should catch and log an unanticipated error', function(done) {
+    var impl = room.robot.middleware.receive.stack[0].impl;
 
-    it('should be caught and logged', function() {
-    });
+    impl.slackClient.client.getChannelByID = function() {
+      throw Error('forced error');
+    };
+
+    sendReaction(helpers.REACTION).should.be.fulfilled.then(function() {
+    }).should.notify(done);
   });
 ```
 
@@ -1438,23 +1444,19 @@ $ npm test -- --grep '^Integration '
 > 18f-unit-testing-node@0.0.0 test .../unit-testing-node
 > gulp test "--grep" "^Integration "
 
-[15:04:19] Using gulpfile .../unit-testing-node/gulpfile.js
-[15:04:19] Starting 'test'...
+[17:52:17] Using gulpfile .../unit-testing-node/gulpfile.js
+[17:52:17] Starting 'test'...
 
 
   Integration test
     ✓ should successfully load the application script
     ✓ should not register if the config file is invalid
-    an evergreen_tree reaction to a message
-      ✓ should create a GitHub issue
-    a evergreen_tree reaction to a message
-      ✓ should fail to create a GitHub issue
-    a message receiving an unknown reaction
-      ✓ should be ignored
-    an unanticipated error from Middleware.expect
-[Sun Jan 24 2016 15:04:19 GMT-0500 (EST)] ERROR Error: forced error
+    ✓ should create a GitHub issue given a valid reaction (62ms)
+    ✓ should fail to create a GitHub issue
+    ✓ should ignore a message receiving an unknown reaction
+[Sun Jan 24 2016 17:52:18 GMT-0500 (EST)] ERROR Error: forced error
   at Error (native)
-  at Object.impl.slackClient.client.getChannelByID (.../unit-testing-node/exercise/test/integration-test.js:242:15)
+  at Object.impl.slackClient.client.getChannelByID (.../unit-testing-node/exercise/test/integration-test.js:236:13)
   at SlackClient.getChannelName (.../unit-testing-node/exercise/lib/slack-client.js:26:22)
   at Rule.channelMatches (.../unit-testing-node/exercise/lib/rule.js:28:34)
   at Rule.match (.../unit-testing-node/exercise/lib/rule.js:17:10)
@@ -1466,12 +1468,12 @@ $ npm test -- --grep '^Integration '
   at .../unit-testing-node/node_modules/hubot/src/middleware.coffee:33:24
   [...snip Hubot stack frames...]
 
-      ✓ should be caught and logged
+    ✓ should catch and log an unanticipated error
 
 
-  6 passing (274ms)
+  6 passing (278ms)
 
-[15:04:19] Finished 'test' after
+[17:52:18] Finished 'test' after
 ```
 
 Note that while Hubot caught the `Error`, `execute` never invoked `next(done)`.
@@ -1502,21 +1504,17 @@ $ npm test -- --grep '^Integration '
 > 18f-unit-testing-node@0.0.0 test .../unit-testing-node
 > gulp test "--grep" "^Integration "
 
-[16:12:00] Using gulpfile .../unit-testing-node/gulpfile.js
-[16:12:00] Starting 'test'...
+[17:55:56] Using gulpfile .../unit-testing-node/gulpfile.js
+[17:55:56] Starting 'test'...
 
 
   Integration test
     ✓ should successfully load the application script
     ✓ should not register if the config file is invalid
-    an evergreen_tree reaction to a message
-      ✓ should create a GitHub issue
-    a evergreen_tree reaction to a message
-      ✓ should fail to create a GitHub issue
-    a message receiving an unknown reaction
-      ✓ should be ignored
-    an unanticipated error from Middleware.expect
-[Sun Jan 24 2016 16:12:01 GMT-0500 (EST)] ERROR 18f-unit-testing-node: unhandled error: forced error
+    ✓ should create a GitHub issue given a valid reaction (62ms)
+    ✓ should fail to create a GitHub issue
+    ✓ should ignore a message receiving an unknown reaction
+[Sun Jan 24 2016 17:55:57 GMT-0500 (EST)] ERROR 18f-unit-testing-node: unhandled error: forced error
 message: {
   "type": "reaction_added",
   "user": "U5150OU812",
@@ -1528,12 +1526,12 @@ message: {
   "reaction": "evergreen_tree",
   "event_ts": "1360782804.083113"
 }
-      ✓ should be caught and logged
+    ✓ should catch and log an unanticipated error
 
 
-  6 passing (300ms)
+  6 passing (274ms)
 
-[16:12:01] Finished 'test' after
+[17:55:57] Finished 'test' after
 ```
 
 This is arguably a lot more helpful than a stack trace, at least for people
@@ -1544,18 +1542,19 @@ Now let's update our test to validate the result programmatically. First,
 replace the `room.user.react` call from `beforeEach` with:
 
 ```js
-      return sendReaction(helpers.REACTION);
+    sendReaction(helpers.REACTION).should.be.fulfilled.then(function() {
+    }).should.notify(done);
 ```
 
 Then fill in the test case with:
 
 ```js
-    it('should be caught and logged', function() {
+    sendReaction(helpers.REACTION).should.be.fulfilled.then(function() {
       room.messages.should.eql([['mbland', helpers.REACTION]]);
       logHelper.filteredMessages().should.eql(
         initLogMessages().concat(['ERROR unhandled error: forced error '])
       );
-    });
+    }).should.notify(done);
 ```
 
 Run the test and ensure it passes. However, it'd be good to validate that the
@@ -1598,26 +1597,22 @@ $ npm test -- --grep '^Integration '
 > 18f-unit-testing-node@0.0.0 test .../unit-testing-node
 > gulp test "--grep" "^Integration "
 
-[16:17:18] Using gulpfile .../unit-testing-node/gulpfile.js
-[16:17:18] Starting 'test'...
+[17:59:19] Using gulpfile .../unit-testing-node/gulpfile.js
+[17:59:19] Starting 'test'...
 
 
   Integration test
     ✓ should successfully load the application script
     ✓ should not register if the config file is invalid
-    an evergreen_tree reaction to a message
-      ✓ should create a GitHub issue
-    a evergreen_tree reaction to a message
-      ✓ should fail to create a GitHub issue
-    a message receiving an unknown reaction
-      ✓ should be ignored
-    an unanticipated error from Middleware.expect
-      ✓ should be caught and logged
+    ✓ should create a GitHub issue given a valid reaction (62ms)
+    ✓ should fail to create a GitHub issue
+    ✓ should ignore a message receiving an unknown reaction
+    ✓ should catch and log an unanticipated error
 
 
-  6 passing (281ms)
+  6 passing (320ms)
 
-[16:17:19] Finished 'test' after
+[17:59:20] Finished 'test' after
 ```
 
 Now that you're all finished, compare your solutions to the code in

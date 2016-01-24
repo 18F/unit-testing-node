@@ -221,6 +221,7 @@ describe('Integration test', function() {
       response.statusCode = 500;
       response.payload = { message: 'should not happen' };
     });
+
     sendReaction('sad-face').should.be.fulfilled.then(function() {
       room.messages.should.eql([['mbland', 'sad-face']]);
       logHelper.filteredMessages().should.eql(initLogMessages());
@@ -229,9 +230,11 @@ describe('Integration test', function() {
 
   it('should catch and log an unanticipated error', function(done) {
     var impl = room.robot.middleware.receive.stack[0].impl;
+
     impl.slackClient.client.getChannelByID = function() {
       throw Error('forced error');
     };
+
     sendReaction(helpers.REACTION).should.be.fulfilled.then(function() {
       room.messages.should.eql([['mbland', helpers.REACTION]]);
       logHelper.filteredMessages().should.eql(
