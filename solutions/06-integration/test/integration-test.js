@@ -1,5 +1,6 @@
 /* jshint node: true */
 /* jshint mocha: true */
+/* jshint expr: true */
 
 'use strict';
 
@@ -11,23 +12,24 @@ var helpers = require('./helpers');
 var temp = require('temp');
 var fs = require('fs');
 var scriptName = require('../package.json').name;
+
 var chai = require('chai');
 
 chai.should();
 
 describe('Integration test', function() {
   var room, logHelper, apiStubServer, config, apiServerDefaults,
-      patchReactMethodOntoRoom;
+      patchReactMethodOntoRoom, initLogMessages, wrapInfoMessages,
+      matchingRule = 'Rule { reactionName: \'evergreen_tree\', ' +
+        'githubRepository: \'handbook\' }';
 
   before(function(done) {
     apiStubServer = new ApiStubServer();
     process.env.HUBOT_SLACK_TOKEN = '<18F-github-token>';
     process.env.HUBOT_GITHUB_TOKEN = '<18F-github-token>';
-
     config = helpers.baseConfig();
     config.slackApiBaseUrl = apiStubServer.address() + '/slack/';
     config.githubApiBaseUrl = apiStubServer.address() + '/github/';
-
     temp.open(scriptName + '-integration-test-config-', function(err, info) {
       if (err) {
         return done(err);
@@ -57,7 +59,6 @@ describe('Integration test', function() {
     logHelper.capture(function() {
       room = scriptHelper.createRoom({ httpd: false, name: 'handbook' });
     });
-
     patchReactMethodOntoRoom(room);
     room.robot.middleware.receive.stack[0].impl.slackClient.client = {
       getChannelByID: function() { return { name: 'handbook' }; },
@@ -65,6 +66,20 @@ describe('Integration test', function() {
     };
     apiStubServer.urlsToResponses = apiServerDefaults();
   });
+
+  patchReactMethodOntoRoom = function(room) {
+    room.user.react = function(userName, reaction) {
+      return new Promise(function(resolve) {
+        var reactionMessage = helpers.fullReactionAddedMessage(),
+            rawMessage = reactionMessage.rawMessage;
+
+        room.messages.push([userName, reaction]);
+        reactionMessage.user.name = userName;
+        rawMessage.reaction = reaction;
+        room.robot.receive(reactionMessage, resolve);
+      });
+    };
+  };
 
   apiServerDefaults = function() {
     var metadata = helpers.metadata();
@@ -102,24 +117,22 @@ describe('Integration test', function() {
     };
   };
 
-  patchReactMethodOntoRoom = function(room) {
-    room.user.react = function(userName, reaction) {
-      return new Promise(function(resolve) {
-        var reactionMessage = helpers.fullReactionAddedMessage(),
-            rawMessage = reactionMessage.rawMessage;
+  initLogMessages = function() {
+    return [
+      'INFO reading configuration from ' +
+        process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH,
+      'INFO registered receiveMiddleware'
+    ];
+  };
 
-        room.messages.push([userName, reaction]);
-        reactionMessage.user.name = userName;
-        rawMessage.reaction = reaction;
-        room.robot.receive(reactionMessage, resolve);
-      });
-    };
+  wrapInfoMessages = function(messages) {
+    return messages.map(function(message) {
+      return 'INFO ' + helpers.MESSAGE_ID + ': ' + message;
+    });
   };
 
   it('should successfully load the application script', function() {
-    logHelper.filteredMessages().should.eql([
-      'INFO registered receiveMiddleware'
-    ]);
+    logHelper.filteredMessages().should.eql(initLogMessages());
   });
 
   context('an evergreen_tree reaction to a message', function() {
@@ -134,6 +147,15 @@ describe('Integration test', function() {
         ['mikebland', 'evergreen_tree'],
         ['hubot', '@mikebland created: ' + helpers.ISSUE_URL]
       ]);
+      logHelper.filteredMessages().should.eql(
+        initLogMessages().concat(wrapInfoMessages([
+          'matches rule: ' + matchingRule,
+          'getting reactions for ' + helpers.PERMALINK,
+          'making GitHub request for ' + helpers.PERMALINK,
+          'adding ' + config.successReaction,
+          'created: ' + helpers.ISSUE_URL
+        ]))
+      );
     });
   });
 });

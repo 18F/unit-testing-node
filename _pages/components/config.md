@@ -23,7 +23,7 @@ $ ./go set-config
 
 Getting the configuration right is key to the proper and expected functioning
 of the application as a whole. Consequently, this will become one of the
-larger classes in the system, performing lots of detailed 
+larger classes in the system, performing lots of detailed
 [schema validation]({{ site.baseurl }}/concepts/schema-validation/) checks.
 However, it will also be one of the most straightforward to test, as:
 

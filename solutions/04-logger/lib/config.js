@@ -62,7 +62,7 @@ Config.prototype.validate = function() {
 function parseConfigFromEnvironmentVariablePathOrUseDefault(logger) {
   var configPath = (process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH ||
     'config/slack-github-issues.json');
-  logger.info(null, 'reading configuration from', configPath); 
+  logger.info(null, 'reading configuration from', configPath);
   return JSON.parse(fs.readFileSync(configPath, 'utf8'));
 }
 

@@ -6,9 +6,9 @@ var fs = require('fs');
 
 module.exports = Config;
 
-function Config(configuration) {
+function Config(configuration, logger) {
   var config = configuration ||
-        parseConfigFromEnvironmentVariablePathOrUseDefault();
+        parseConfigFromEnvironmentVariablePathOrUseDefault(logger);
 
   for (var fieldName in config) {
     if (config.hasOwnProperty(fieldName)) {
@@ -59,9 +59,10 @@ Config.prototype.validate = function() {
   }
 };
 
-function parseConfigFromEnvironmentVariablePathOrUseDefault() {
+function parseConfigFromEnvironmentVariablePathOrUseDefault(logger) {
   var configPath = (process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH ||
     'config/slack-github-issues.json');
+  logger.info(null, 'reading configuration from', configPath);
   return JSON.parse(fs.readFileSync(configPath, 'utf8'));
 }
 

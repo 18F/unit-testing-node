@@ -74,12 +74,13 @@ components together and register the `Middleware`:
 
 ```js
 module.exports = function(robot) {
-  var config = new Config(),
+  var logger = new Logger(robot.logger),
+      config = new Config(null, logger),
       impl = new Middleware(
         config,
         new SlackClient(robot.adapter.client, config),
         new GitHubClient(config),
-        new Logger(robot.logger));
+        logger);
 
   robot.receiveMiddleware(function(context, next, done) {
     impl.execute(context, next, done);
@@ -103,6 +104,7 @@ Open the `exercise/test/integration-test.js` file, which should look like:
 ```js
 /* jshint node: true */
 /* jshint mocha: true */
+/* jshint expr: true */
 
 'use strict';
 
@@ -148,20 +150,22 @@ $ npm test -- --grep '^Integration test '
 > 18f-unit-testing-node@0.0.0 test .../unit-testing-node
 > gulp test "--grep" "^Integration test "
 
-[12:40:12] Using gulpfile .../unit-testing-node/gulpfile.js
-[12:40:12] Starting 'test'...
+[19:28:42] Using gulpfile .../unit-testing-node/gulpfile.js
+[19:28:42] Starting 'test'...
 
 
   Integration test
     an evergreen_tree reaction to a message
-[Sat Jan 23 2016 12:40:13 GMT-0500 (EST)] INFO 18f-unit-testing-node:
+[Sat Jan 23 2016 19:28:42 GMT-0500 (EST)] INFO 18f-unit-testing-node: reading
+configuration from config/slack-github-issues.json
+[Sat Jan 23 2016 19:28:42 GMT-0500 (EST)] INFO 18f-unit-testing-node:
 registered receiveMiddleware
       ✓ should create a GitHub issue
 
 
-  1 passing (11ms)
+  1 passing (12ms)
 
-[12:40:13] Finished 'test' after 553 ms
+[19:28:42] Finished 'test' after 574 ms
 ```
 
 Notice the noisy log message in the middle of the test output. While we can
@@ -253,8 +257,8 @@ $ npm test -- --grep '^Integration test '
 > 18f-unit-testing-node@0.0.0 test .../unit-testing-node
 > gulp test "--grep" "^Integration test "
 
-[13:33:10] Using gulpfile .../unit-testing-node/gulpfile.js
-[13:33:10] Starting 'test'...
+[19:31:22] Using gulpfile .../unit-testing-node/gulpfile.js
+[19:31:22] Starting 'test'...
 
 
   Integration test
@@ -263,27 +267,30 @@ $ npm test -- --grep '^Integration test '
       ✓ should create a GitHub issue
 
 
-  1 passing (168ms)
+  1 passing (170ms)
   1 failing
 
   1) Integration test should successfully load the application script:
 
-      AssertionError: expected [ Array(1) ] to deeply equal []
+      AssertionError: expected [ Array(2) ] to deeply equal []
       + expected - actual
 
       -[
-      -  "[Sat Jan 23 2016 13:33:11 GMT-0500 (EST)] INFO
+      -  "[Sat Jan 23 2016 19:31:23 GMT-0500 (EST)] INFO
+         18f-unit-testing-node: reading configuration from
+config/slack-github-issues.json\n"
+      -  "[Sat Jan 23 2016 19:31:23 GMT-0500 (EST)] INFO
          18f-unit-testing-node: registered receiveMiddleware\n"
       -]
       +[]
 
-    at Context.<anonymous> (exercise/test/integration-test.js:24:31)
+    at Context.<anonymous> (exercise/test/integration-test.js:26:31)
 
 
 
 
-[13:33:11] 'test' errored after
-[13:33:11] Error in plugin 'gulp-mocha'
+[19:31:23] 'test' errored after 730 ms
+[19:31:23] Error in plugin 'gulp-mocha'
 Message:
     1 test failed.
 npm ERR! Test failed.  See above for more details.
@@ -326,6 +333,12 @@ doesn't match, or doesn't contain `LOGGER_PREFIX` as expected, the full
 message is returned. Otherwise we return just the material content of the
 message, prefixed with the log level.
 
+Change the test assertion to read:
+
+```js
+    logHelper.filteredMessages().should.eql([]);
+```
+
 Run the tests again, and now you should see:
 
 ```sh
@@ -334,8 +347,8 @@ $ npm test -- --grep '^Integration test '
 > 18f-unit-testing-node@0.0.0 test .../unit-testing-node
 > gulp test "--grep" "^Integration test "
 
-[13:58:46] Using gulpfile .../unit-testing-node/gulpfile.js
-[13:58:46] Starting 'test'...
+[19:35:03] Using .../unit-testing-node/gulpfile.js
+[19:35:03] Starting 'test'...
 
 
   Integration test
@@ -344,27 +357,27 @@ $ npm test -- --grep '^Integration test '
       ✓ should create a GitHub issue
 
 
-  1 passing (168ms)
+  1 passing (163ms)
   1 failing
 
   1) Integration test should successfully load the application script:
 
-      AssertionError: expected [ 'INFO registered receiveMiddleware' ] to
-      deeply equal []
+      AssertionError: expected [ Array(2) ] to deeply equal []
       + expected - actual
 
       -[
+      -  "INFO reading configuration from config/slack-github-issues.json"
       -  "INFO registered receiveMiddleware"
       -]
       +[]
 
-    at Context.<anonymous> (exercise/test/integration-test.js:24:41)
+    at Context.<anonymous> (exercise/test/integration-test.js:26:41)
 
 
 
 
-[13:58:47] 'test' errored after 717 ms
-[13:58:47] Error in plugin 'gulp-mocha'
+[19:35:04] 'test' errored after
+[19:35:04] Error in plugin 'gulp-mocha'
 Message:
     1 test failed.
 npm ERR! Test failed.  See above for more details.
@@ -405,13 +418,6 @@ describe('Integration test', function() {
     delete process.env.HUBOT_SLACK_TOKEN;
     delete process.env.HUBOT_GITHUB_TOKEN;
   });
-
-  beforeEach(function() {
-    logHelper = new LogHelper();
-    logHelper.capture(function() {
-      room = scriptHelper.createRoom({ httpd: false, name: 'handbook' });
-    });
-  });
 ```
 
 This is pretty standard setup by now, following the pattern of our
@@ -435,8 +441,8 @@ describe('Integration test', function() {
     process.env.HUBOT_SLACK_TOKEN = '<18F-github-token>';
     process.env.HUBOT_GITHUB_TOKEN = '<18F-github-token>';
     config = helpers.baseConfig();
-    config.slackApiBaseUrl = apiStubServer.address();
-    config.githubApiBaseUrl = apiStubServer.address();
+    config.slackApiBaseUrl = apiStubServer.address() + '/slack/';
+    config.githubApiBaseUrl = apiStubServer.address() + '/github/';
   });
 ```
 
@@ -459,6 +465,8 @@ like so:
 ```js
   before(function(done) {
     apiStubServer = new ApiStubServer();
+    process.env.HUBOT_SLACK_TOKEN = '<18F-github-token>';
+    process.env.HUBOT_GITHUB_TOKEN = '<18F-github-token>';
     config = helpers.baseConfig();
     config.slackApiBaseUrl = apiStubServer.address() + '/slack/';
     config.githubApiBaseUrl = apiStubServer.address() + '/github/';
@@ -531,7 +539,7 @@ Then a little further down, define it thus, borrowing values from our
         statusCode: 200,
         payload: helpers.messageWithReactions()
       },
-      '/github/repos/18f/handbook/issues': {
+      '/github/repos/18F/handbook/issues': {
         expectedParams: {
           title: metadata.title,
           body: metadata.url
@@ -553,6 +561,67 @@ Then a little further down, define it thus, borrowing values from our
       }
     };
   };
+```
+
+## Quick fixup
+
+Let's stop and run our tests again to make sure they still pass:
+
+```sh
+$ npm test -- --grep '^Integration test '
+
+> 18f-unit-testing-node@0.0.0 test .../unit-testing-node
+> gulp test "--grep" "^Integration test "
+
+[19:43:26] Using gulpfile .../unit-testing-node/gulpfile.js
+[19:43:26] Starting 'test'...
+
+
+  Integration test
+    1) should successfully load the application script
+    an evergreen_tree reaction to a message
+      ✓ should create a GitHub issue
+
+
+  1 passing (194ms)
+  1 failing
+
+  1) Integration test should successfully load the application script:
+
+      AssertionError: expected [ Array(2) ] to deeply equal [ Array(2) ]
+      + expected - actual
+
+       [
+      -  "INFO reading configuration from
+         .../18f-unit-testing-node-integration-test-config-116023-52840-1jwmn06"
+      +  "INFO reading configuration from config/slack-github-issues.json"
+         "INFO registered receiveMiddleware"
+       ]
+
+    at Context.<anonymous> (exercise/test/integration-test.js:99:41)
+
+
+
+
+[19:43:26] 'test' errored after
+[19:43:26] Error in plugin 'gulp-mocha'
+Message:
+    1 test failed.
+npm ERR! Test failed.  See above for more details.
+```
+
+Whoops! Now that we've defined the `HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH`
+environment variable to point to a temp file, `Config` is no longer reading
+from the default config path. This is an easy fix:
+
+```js
+  it('should successfully load the application script', function() {
+    logHelper.filteredMessages().should.eql([
+      'INFO reading configuration from ' +
+        process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH,
+      'INFO registered receiveMiddleware'
+    ]);
+  });
 ```
 
 ## Monkey patching the `hubot-test-helper` framework
@@ -654,32 +723,23 @@ $ npm test -- --grep '^Integration test '
 [Sat Jan 23 2016 16:54:45 GMT-0500 (EST)] ERROR TypeError: Cannot read
 property 'getChannelByID' of undefined
   at SlackClient.getChannelName
-(/Users/michaelbland/src/18F/unit-testing-node/exercise/lib/slack-client.js:26:21)
-  at Rule.channelMatches
-(/Users/michaelbland/src/18F/unit-testing-node/exercise/lib/rule.js:28:34)
-  at Rule.match
-(/Users/michaelbland/src/18F/unit-testing-node/exercise/lib/rule.js:17:10)
-  at
-/Users/michaelbland/src/18F/unit-testing-node/exercise/lib/middleware.js:54:19
+(.../unit-testing-node/exercise/lib/slack-client.js:26:21)
+  at Rule.channelMatches (.../unit-testing-node/exercise/lib/rule.js:28:34)
+  at Rule.match (.../unit-testing-node/exercise/lib/rule.js:17:10)
+  at .../unit-testing-node/exercise/lib/middleware.js:54:19
   at Array.find (native)
   at Middleware.findMatchingRule
-(/Users/michaelbland/src/18F/unit-testing-node/exercise/lib/middleware.js:53:23)
-  at Middleware.execute
-(/Users/michaelbland/src/18F/unit-testing-node/exercise/lib/middleware.js:24:19)
-  at
-/Users/michaelbland/src/18F/unit-testing-node/exercise/scripts/slack-github-issues.js:26:10
-  at
-/Users/michaelbland/src/18F/unit-testing-node/node_modules/hubot/src/middleware.coffee:33:24
-  at
-/Users/michaelbland/src/18F/unit-testing-node/node_modules/async/lib/async.js:269:13
-  at iterate
-(/Users/michaelbland/src/18F/unit-testing-node/node_modules/async/lib/async.js:146:13)
+(.../unit-testing-node/exercise/lib/middleware.js:53:23)
+  at Middleware.execute (.../unit-testing-node/exercise/lib/middleware.js:24:19)
+  at .../unit-testing-node/exercise/scripts/slack-github-issues.js:26:10
+  at .../unit-testing-node/node_modules/hubot/src/middleware.coffee:33:24
+  at .../unit-testing-node/node_modules/async/lib/async.js:269:13
+  at iterate (.../unit-testing-node/node_modules/async/lib/async.js:146:13)
   at Object.async.eachSeries
-(/Users/michaelbland/src/18F/unit-testing-node/node_modules/async/lib/async.js:162:9)
+(.../unit-testing-node/node_modules/async/lib/async.js:162:9)
   at Object.async.reduce
-(/Users/michaelbland/src/18F/unit-testing-node/node_modules/async/lib/async.js:268:15)
-  at
-/Users/michaelbland/src/18F/unit-testing-node/node_modules/hubot/src/middleware.coffee:46:13
+(.../unit-testing-node/node_modules/async/lib/async.js:268:15)
+  at .../unit-testing-node/node_modules/hubot/src/middleware.coffee:46:13
   at nextTickCallbackWith0Args (node.js:452:9)
   at process._tickDomainCallback (node.js:422:13)
 
@@ -715,12 +775,13 @@ isn't pretty, though. First, let's update our
 
 ```js
 module.exports = function(robot) {
-  var config = new Config(),
+  var logger = new Logger(robot.logger),
+      config = new Config(null, logger),
       impl = new Middleware(
         config,
         new SlackClient(robot.adapter.client, config),
         new GitHubClient(config),
-        new Logger(robot.logger)),
+        logger),
       middleware;
 
   middleware = function(context, next, done) {
@@ -756,37 +817,36 @@ Run the test now and watch what happens:
 ```sh
 $ npm test -- --grep '^Integration test '
 
-> 18f-unit-testing-node@0.0.0 test
-> /Users/michaelbland/src/18F/unit-testing-node
+> 18f-unit-testing-node@0.0.0 test .../unit-testing-node
 > gulp test "--grep" "^Integration test "
 
-[17:34:42] Using gulpfile ~/src/18F/unit-testing-node/gulpfile.js
-[17:34:42] Starting 'test'...
+[19:51:31] Using gulpfile .../unit-testing-node/gulpfile.js
+[19:51:31] Starting 'test'...
 
 
   Integration test
     ✓ should successfully load the application script
     an evergreen_tree reaction to a message
-[Sat Jan 23 2016 17:34:42 GMT-0500 (EST)] INFO 18f-unit-testing-node:
+[Sat Jan 23 2016 19:51:32 GMT-0500 (EST)] INFO 18f-unit-testing-node:
 C5150OU812:1360782804.083113: matches rule: Rule { reactionName:
 'evergreen_tree', githubRepository: 'handbook' }
-[Sat Jan 23 2016 17:34:42 GMT-0500 (EST)] INFO 18f-unit-testing-node:
+[Sat Jan 23 2016 19:51:32 GMT-0500 (EST)] INFO 18f-unit-testing-node:
 C5150OU812:1360782804.083113: getting reactions for
 https://18f.slack.com/archives/handbook/p1360782804083113
-[Sat Jan 23 2016 17:34:42 GMT-0500 (EST)] INFO 18f-unit-testing-node:
+[Sat Jan 23 2016 19:51:32 GMT-0500 (EST)] INFO 18f-unit-testing-node:
 C5150OU812:1360782804.083113: making GitHub request for
 https://18f.slack.com/archives/handbook/p1360782804083113
-[Sat Jan 23 2016 17:34:42 GMT-0500 (EST)] INFO 18f-unit-testing-node:
+[Sat Jan 23 2016 19:51:32 GMT-0500 (EST)] INFO 18f-unit-testing-node:
 C5150OU812:1360782804.083113: adding heavy_check_mark
-[Sat Jan 23 2016 17:34:42 GMT-0500 (EST)] INFO 18f-unit-testing-node:
+[Sat Jan 23 2016 19:51:32 GMT-0500 (EST)] INFO 18f-unit-testing-node:
 C5150OU812:1360782804.083113: created:
 https://github.com/18F/handbook/issues/1
       ✓ should create a GitHub issue
 
 
-  2 passing (242ms)
+  2 passing (232ms)
 
-[17:34:42] Finished 'test' after
+[19:51:32] Finished 'test' after 791 ms
 ```
 
 Now it looks like the test and the code is doing exactly what it should. All
@@ -865,7 +925,7 @@ the `room` object during the course of the application flow:
 
 ```js
     it('should create a GitHub issue', function() {
-      this.room.messages.should.eql([
+      room.messages.should.eql([
         ['mikebland', 'evergreen_tree'],
         ['hubot', '@mikebland created: ' + helpers.ISSUE_URL]
       ]);
@@ -874,6 +934,155 @@ the `room` object during the course of the application flow:
 
 Run the test and make sure it passes. Change one of the messages in the
 assertion, and make sure the test fails.
+
+Now let's figure out how to validate the log messages. Let's start with an
+empty assertion:
+
+```js
+    it('should create a GitHub issue', function() {
+      room.messages.should.eql([
+        ['mikebland', 'evergreen_tree'],
+        ['hubot', '@mikebland created: ' + helpers.ISSUE_URL]
+      ]);
+      logHelper.filteredMessages().should.eql([
+      ]);
+    });
+```
+
+Run the test to see what we're in for:
+
+```sh
+$ npm test -- --grep '^Integration test '
+
+> 18f-unit-testing-node@0.0.0 test
+> /Users/michaelbland/src/18F/unit-testing-node
+> gulp test "--grep" "^Integration test "
+
+[20:00:04] Using gulpfile ~/src/18F/unit-testing-node/gulpfile.js
+[20:00:04] Starting 'test'...
+
+
+  Integration test
+    ✓ should successfully load the application script
+    an evergreen_tree reaction to a message
+      1) should create a GitHub issue
+
+
+  1 passing (262ms)
+  1 failing
+
+  1) Integration test an evergreen_tree reaction to a message should create a
+GitHub issue:
+
+      AssertionError: expected [ Array(7) ] to deeply equal []
+      + expected - actual
+
+      -[
+      -  "INFO reading configuration from
+         /var/folders/kr/qnjc102n0wg_b89_g0jsfbnh0000gp/T/18f-unit-testing-node-integration-test-config-116023-53210-jt7nf5"
+      -  "INFO registered receiveMiddleware"
+      -  "INFO C5150OU812:1360782804.083113: matches rule: Rule {
+         reactionName: 'evergreen_tree', githubRepository: 'handbook' }"
+      -  "INFO C5150OU812:1360782804.083113: getting reactions for
+         https://18f.slack.com/archives/handbook/p1360782804083113"
+      -  "INFO C5150OU812:1360782804.083113: making GitHub request for
+         https://18f.slack.com/archives/handbook/p1360782804083113"
+      -  "INFO C5150OU812:1360782804.083113: adding heavy_check_mark"
+      -  "INFO C5150OU812:1360782804.083113: created:
+         https://github.com/18F/handbook/issues/1"
+      -]
+      +[]
+
+    at Context.<anonymous> (exercise/test/integration-test.js:138:43)
+
+
+
+
+[20:00:05] 'test' errored after
+[20:00:05] Error in plugin 'gulp-mocha'
+Message:
+    1 test failed.
+npm ERR! Test failed.  See above for more details.
+```
+
+Lots of repetitive stuff there. Let's start by creating a helper variable for
+those first two messages, which are identical across the two tests we have so
+far:
+
+```js
+describe('Integration test', function() {
+  var room, logHelper, apiStubServer, config, apiServerDefaults,
+      patchReactMethodOntoRoom, initLogMessages;
+
+  // ...existing implementation...
+
+  initLogMessages = function() {
+    return [
+      'INFO reading configuration from ' +
+        process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH,
+      'INFO registered receiveMiddleware'
+    ];
+  };
+
+  it('should successfully load the application script', function() {
+    logHelper.filteredMessages().should.eql(initLogMessages());
+  });
+
+  context('an evergreen_tree reaction to a message', function() {
+    // ...beforeEach hook...
+
+    it('should create a GitHub issue', function() {
+      room.messages.should.eql([
+        ['mikebland', 'evergreen_tree'],
+        ['hubot', '@mikebland created: ' + helpers.ISSUE_URL]
+      ]);
+      logHelper.filteredMessages().should.eql(
+        initLogMessages().concat([
+      ]));
+    });
+```
+
+Run the tests, and the first two messages should now match. Of the messages
+that remain, all are of the form `INFO helpers.MESSAGE_ID: ...`. Let's make
+another helper function to wrap a series of messages with this prefix, so the
+test case can focus on the unique content of each message. We'll also define
+`matchingRule` to avoid repeating it in every test that needs it:
+
+```js
+describe('Integration test', function() {
+  var room, logHelper, apiStubServer, config, apiServerDefaults,
+      patchReactMethodOntoRoom, initLogMessages, wrapInfoMessages,
+      matchingRule = 'Rule { reactionName: \'evergreen_tree\', ' +
+        'githubRepository: \'handbook\' }';
+
+  // ...
+
+  wrapInfoMessages = function(messages) {
+    return messages.map(function(message) {
+      return 'INFO ' + helpers.MESSAGE_ID + ': ' + message;
+    });
+  };
+
+  // ...
+
+    it('should create a GitHub issue', function() {
+      room.messages.should.eql([
+        ['mikebland', 'evergreen_tree'],
+        ['hubot', '@mikebland created: ' + helpers.ISSUE_URL]
+      ]);
+      logHelper.filteredMessages().should.eql(
+        initLogMessages().concat(wrapInfoMessages([
+          'matches rule: ' + matchingRule,
+          'getting reactions for ' + helpers.PERMALINK,
+          'making GitHub request for ' + helpers.PERMALINK,
+          'adding ' + config.successReaction,
+          'created: ' + helpers.ISSUE_URL
+        ]))
+      );
+    });
+```
+
+Run the tests again, and ensure they all pass.
 
 ## Think about it
 

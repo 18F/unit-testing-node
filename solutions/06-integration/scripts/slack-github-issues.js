@@ -15,12 +15,13 @@ var Logger = require('../lib/logger');
 var Middleware = require('../lib/middleware');
 
 module.exports = function(robot) {
-  var config = new Config(),
+  var logger = new Logger(robot.logger),
+      config = new Config(null, logger),
       impl = new Middleware(
         config,
         new SlackClient(robot.adapter.client, config),
         new GitHubClient(config),
-        new Logger(robot.logger)),
+        logger),
       middleware;
 
   middleware = function(context, next, done) {
