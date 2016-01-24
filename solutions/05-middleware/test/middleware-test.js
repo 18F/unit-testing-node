@@ -250,5 +250,16 @@ describe('Middleware', function() {
         checkErrorResponse(errorMessage);
       }).should.notify(done);
     });
+
+    it('should catch and log unanticipated errors', function() {
+      var errorMessage = 'unhandled error: Error\nmessage: ' +
+            JSON.stringify(helpers.reactionAddedMessage(), null, 2);
+
+      slackClient.getChannelName.throws();
+      expect(middleware.execute(context, next, hubotDone)).to.be.undefined;
+      next.calledWith(hubotDone).should.be.true;
+      context.response.reply.args.should.eql([[errorMessage]]);
+      logger.error.args.should.eql([[null, errorMessage]]);
+    });
   });
 });

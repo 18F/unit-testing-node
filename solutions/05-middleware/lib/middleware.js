@@ -19,9 +19,25 @@ function Middleware(config, slackClient, githubClient, logger) {
 }
 
 Middleware.prototype.execute = function(context, next, done) {
+  var errorMessage;
+
+  try {
+    return doExecute(this, context, next, done);
+
+  } catch (err) {
+    errorMessage = 'unhandled error: ' +
+      (err instanceof Error ? err.message : err) + '\nmessage: ' +
+        JSON.stringify(context.response.message.rawMessage, null, 2);
+    this.logger.error(null, errorMessage);
+    context.response.reply(errorMessage);
+    return next(done);
+  }
+};
+
+function doExecute(middleware, context, next, done) {
   var response = context.response,
       message = response.message.rawMessage,
-      rule = this.findMatchingRule(message),
+      rule = middleware.findMatchingRule(message),
       msgId,
       finish;
 
@@ -30,20 +46,20 @@ Middleware.prototype.execute = function(context, next, done) {
   }
 
   msgId = messageId(message);
-  if (this.inProgress[msgId]) {
-    this.logger.info(msgId, 'already in progress');
+  if (middleware.inProgress[msgId]) {
+    middleware.logger.info(msgId, 'already in progress');
     return next(done);
   }
-  this.inProgress[msgId] = true;
+  middleware.inProgress[msgId] = true;
 
-  this.logger.info(msgId, 'matches rule:', rule);
-  finish = handleFinish(msgId, this, response, next, done);
+  middleware.logger.info(msgId, 'matches rule:', rule);
+  finish = handleFinish(msgId, middleware, response, next, done);
 
-  return getReactions(this, msgId, message)
-    .then(fileGitHubIssue(this, msgId, rule.githubRepository))
-    .then(addSuccessReaction(this, msgId, message))
+  return getReactions(middleware, msgId, message)
+    .then(fileGitHubIssue(middleware, msgId, rule.githubRepository))
+    .then(addSuccessReaction(middleware, msgId, message))
     .then(handleSuccess(finish), handleFailure(finish));
-};
+}
 
 Middleware.prototype.findMatchingRule = function(message) {
   var slackClient = this.slackClient;

@@ -227,29 +227,4 @@ describe('Integration test', function() {
       logHelper.filteredMessages().should.eql(initLogMessages());
     }).should.notify(done);
   });
-
-  it('should catch and log an unanticipated error', function(done) {
-    var impl = room.robot.middleware.receive.stack[0].impl;
-
-    impl.slackClient.client.getChannelByID = function() {
-      throw Error('forced error');
-    };
-
-    sendReaction(helpers.REACTION).should.be.fulfilled.then(function() {
-      var errorMessage = 'unhandled error: forced error',
-          message = JSON.stringify(helpers.reactionAddedMessage(), null, 2),
-          completeMessage = errorMessage + '\nmessage: ' + message;
-
-      room.messages.should.eql([
-        ['mbland', helpers.REACTION],
-        ['hubot', '@mbland ' + completeMessage]
-      ]);
-
-      logHelper.filteredMessages().should.eql(
-        initLogMessages().concat(['ERROR ' + errorMessage])
-      );
-      logHelper.messages[logHelper.messages.length - 1].should.have.string(
-        completeMessage);
-    }).should.notify(done);
-  });
 });
