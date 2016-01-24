@@ -19,7 +19,7 @@ chai.should();
 
 describe('Integration test', function() {
   var room, logHelper, apiStubServer, config, apiServerDefaults,
-      patchReactMethodOntoRoom, initLogMessages, wrapInfoMessages,
+      patchReactMethodOntoRoom, sendReaction, initLogMessages, wrapInfoMessages,
       matchingRule = 'Rule { reactionName: \'evergreen_tree\', ' +
         'githubRepository: \'handbook\' }';
 
@@ -131,16 +131,18 @@ describe('Integration test', function() {
     });
   };
 
+  sendReaction = function() {
+    logHelper.beginCapture();
+    return room.user.react('mikebland', 'evergreen_tree')
+      .then(logHelper.endCaptureResolve(), logHelper.endCaptureReject());
+  };
+
   it('should successfully load the application script', function() {
     logHelper.filteredMessages().should.eql(initLogMessages());
   });
 
   context('an evergreen_tree reaction to a message', function() {
-    beforeEach(function() {
-      logHelper.beginCapture();
-      return room.user.react('mikebland', 'evergreen_tree')
-        .then(logHelper.endCaptureResolve(), logHelper.endCaptureReject());
-    });
+    beforeEach(sendReaction);
 
     it('should create a GitHub issue', function() {
       room.messages.should.eql([
@@ -168,31 +170,27 @@ describe('Integration test', function() {
 
       response.statusCode = 500;
       response.payload = payload;
-
-      logHelper.beginCapture();
-      return room.user.react('mikebland', 'evergreen_tree')
-        .then(logHelper.endCaptureResolve(), logHelper.endCaptureReject());
+      return sendReaction();
     });
 
     it('should fail to create a GitHub issue', function() {
       var errorReply = 'failed to create a GitHub issue in ' +
             '18F/handbook: received 500 response from GitHub API: ' +
             JSON.stringify(payload),
-          expected;
+          logMessages;
 
       room.messages.should.eql([
         ['mikebland', 'evergreen_tree'],
         ['hubot', '@mikebland Error: ' + errorReply]
       ]);
 
-      expected = initLogMessages();
-      expected = expected.concat(wrapInfoMessages([
+      logMessages = initLogMessages().concat(wrapInfoMessages([
         'matches rule: ' + matchingRule,
         'getting reactions for ' + helpers.PERMALINK,
         'making GitHub request for ' + helpers.PERMALINK
       ]));
-      expected.push('ERROR ' + helpers.MESSAGE_ID + ': ' + errorReply);
-      logHelper.filteredMessages().should.eql(expected);
+      logMessages.push('ERROR ' + helpers.MESSAGE_ID + ': ' + errorReply);
+      logHelper.filteredMessages().should.eql(logMessages);
     });
   });
 });

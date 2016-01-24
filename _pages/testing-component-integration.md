@@ -1084,6 +1084,115 @@ describe('Integration test', function() {
 
 Run the tests again, and ensure they all pass.
 
+## Testing a failure case
+
+So much for the happy path. Now let's see what happens when the operation
+fails.
+
+The test fixture follows the pattern of returning a `Promise` from
+`beforeEach`, and this `Promise` will invoke our middleware. Consequently, we
+need to configure a new sub-fixture to test a new scenario. Let's get started
+with that, but we'll use the same fixture name as before:
+
+```js
+  context('a evergreen_tree reaction to a message', function() {
+    var payload = { message: 'test failure' };
+
+    beforeEach(function() {
+      var url = '/github/repos/18F/handbook/issues',
+          response = apiStubServer.urlsToResponses[url];
+
+      response.statusCode = 500;
+      response.payload = payload;
+
+      logHelper.beginCapture();
+      return room.user.react('mikebland', 'evergreen_tree')
+        .then(logHelper.endCaptureResolve(), logHelper.endCaptureReject());
+    });
+```
+
+Notice that all we're doing is configuring the GitHub endpoint of the
+`apiStubServer` to send a failure response. There is that annoying bit of
+repetition with invoking the `logHelper` and `room.user.react`. Let's create a
+new helper function in the top level fixture and call it `sendReaction`:
+
+```js
+describe('Integration test', function() {
+  var room, logHelper, apiStubServer, config, apiServerDefaults,
+      patchReactMethodOntoRoom, sendReaction, initLogMessages, wrapInfoMessages,
+      // ...other declarations...
+
+  // ...other fixture functions...
+
+  sendReaction = function() {
+    logHelper.beginCapture();
+    return room.user.react('mikebland', 'evergreen_tree')
+      .then(logHelper.endCaptureResolve(), logHelper.endCaptureReject());
+  };
+
+  // ...
+
+  context('an evergreen_tree reaction to a message', function() {
+    beforeEach(sendReaction);
+
+    // ...should create a GitHub issue test case...
+
+  });
+
+  context('a evergreen_tree reaction to a message', function() {
+    var payload = { message: 'test failure' };
+
+    beforeEach(function() {
+      var url = '/github/repos/18F/handbook/issues',
+          response = apiStubServer.urlsToResponses[url];
+
+      response.statusCode = 500;
+      response.payload = payload;
+      return sendReaction();
+    });
+```
+
+Run the test to make sure everything passes first. The previous `should create
+a GitHub issue` test case should still pass. Now let's get on with our `should
+fail to create a GitHub issue` test case. First, let's format our expected
+error reply and declare a variable to hold our expected log messages:
+
+```js
+    it('should fail to create a GitHub issue', function() {
+      var errorReply = 'failed to create a GitHub issue in ' +
+            '18F/handbook: received 500 response from GitHub API: ' +
+            JSON.stringify(payload),
+          logMessages;
+```
+
+The asssertion for the room messages is pretty straightforward:
+
+```js
+      room.messages.should.eql([
+        ['mikebland', 'evergreen_tree'],
+        ['hubot', '@mikebland Error: ' + errorReply]
+      ]);
+```
+
+Building up the `logMessages` is slightly messy, because the last message
+containing the error is a little different from the rest. It's not too bad,
+though:
+
+```js
+      logMessages = initLogMessages().concat(wrapInfoMessages([
+        'matches rule: ' + matchingRule,
+        'getting reactions for ' + helpers.PERMALINK,
+        'making GitHub request for ' + helpers.PERMALINK
+      ]));
+      logMessages.push('ERROR ' + helpers.MESSAGE_ID + ': ' + errorReply);
+      logHelper.filteredMessages().should.eql(logMessages);
+    });
+```
+
+Run the test, and ensure that it passes.
+
+## Testing the unknown reaction case
+
 ## Think about it
 
 This may have seemed like a lot of work for just a few tests, but consider a
