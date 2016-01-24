@@ -27,7 +27,16 @@ module.exports = function(robot) {
       logger);
 
     middleware = function(context, next, done) {
-      impl.execute(context, next, done);
+      try {
+        impl.execute(context, next, done);
+
+      } catch (err) {
+        logger.error(null, 'unhandled error:',
+          err instanceof Error ? err.message : err,
+          '\nmessage:', JSON.stringify(
+              context.response.envelope.message.rawMessage, null, 2));
+        next(done);
+      }
     };
     middleware.impl = impl;
     robot.receiveMiddleware(middleware);

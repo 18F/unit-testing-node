@@ -635,14 +635,34 @@ config file is missing or invalid. Allowing an error from our application to
 cross an interface boundary is a bad habit.
 
 Let's see why by writing a test that will fail because the config file isn't
-valid (by setting the path as the test's parent directory):
+valid. First let's write the following to a new test helper file,
+`exercise/test/helpers/test-config-invalid.json`:
+
+```json
+{
+  "githubUser": "18F",
+  "githubTimeout": 5000,
+  "slackTimeout": 5000,
+  "successReaction": "heavy_check_mark"
+}
+```
+
+This file if valid except that it's missing the `rules` field. Then add the
+[`path` module](https://nodejs.org/api/path.html) from the standard library to
+the test file:
+
+```js
+var path = require('path');
+```
 
 ```js
   it('should not register if the config file is invalid', function() {
-    var origPath = process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH;
+    var origPath = process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH,
+        invalidConfigPath = path.join(
+          __dirname, 'helpers', 'test-config-invalid.json');
 
     try {
-      process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH = __dirname;
+      process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH = invalidConfigPath;
       room = scriptHelper.createRoom({ httpd: false, name: 'handbook' });
     } finally {
       process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH = origPath;
@@ -653,32 +673,26 @@ valid (by setting the path as the test's parent directory):
 Now run the test and see what happens:
 
 ```sh
-$ npm test -- --grep '^Integration test '
+$ npm test -- --grep '^Integration '
 
 > 18f-unit-testing-node@0.0.0 test .../unit-testing-node
-> gulp test "--grep" "^Integration test "
+> gulp test "--grep" "^Integration "
 
-[11:17:22] Using gulpfile .../unit-testing-node/gulpfile.js
-[11:17:22] Starting 'test'...
+[14:08:23] Using gulpfile .../unit-testing-node/gulpfile.js
+[14:08:23] Starting 'test'...
 
 
   Integration test
     ✓ should successfully load the application script
-[Sun Jan 24 2016 11:17:23 GMT-0500 (EST)] INFO 18f-unit-testing-node: reading
-configuration from .../unit-testing-node/exercise/test
-[Sun Jan 24 2016 11:17:23 GMT-0500 (EST)] ERROR Unable to load
-.../unit-testing-node/exercise/scripts/slack-github-issues:
-Error: EISDIR: illegal operation on a directory, read
-  at Error (native)
-  at Object.fs.readSync (fs.js:651:19)
-  at Object.fs.readSync (.../unit-testing-node/node_modules/mocha/node_modules/graceful-fs/polyfills.js:218:23)
-  at Object.fs.readFileSync (fs.js:472:24)
-  at parseConfigFromEnvironmentVariablePathOrUseDefault (.../unit-testing-node/exercise/lib/config.js:66:24)
-  at new Config (.../unit-testing-node/exercise/lib/config.js:11:9)
-  at module.exports (.../unit-testing-node/exercise/scripts/slack-github-issues.js:19:16)
+[Sun Jan 24 2016 14:08:23 GMT-0500 (EST)] INFO 18f-unit-testing-node: reading configuration from .../unit-testing-node/exercise/test/helpers/test-config-invalid.json
+[Sun Jan 24 2016 14:08:23 GMT-0500 (EST)] ERROR Unable to load .../unit-testing-node/exercise/scripts/slack-github-issues: Error: Invalid configuration:
+  missing rules
+  at validate (.../unit-testing-node/exercise/lib/config.js:58:11)
+  at new Config (.../unit-testing-node/exercise/lib/config.js:13:3)
+  at module.exports (.../unit-testing-node/exercise/scripts/slack-github-issues.js:22:14)
   at MockRobot.Robot.loadFile (.../unit-testing-node/node_modules/hubot/src/robot.coffee:356:11)
   at Helper.createRoom (.../unit-testing-node/node_modules/hubot-test-helper/src/index.coffee:85:13)
-  at Context.<anonymous> (.../unit-testing-node/exercise/test/integration-test.js:111:27)
+  at Context.<anonymous> (.../unit-testing-node/exercise/test/integration-test.js:116:29)
   [...snip Mocha stack frames...]
 
 npm ERR! Test failed.  See above for more details.
@@ -726,8 +740,7 @@ $ npm test -- --grep '^Integration test '
 
   Integration test
     ✓ should successfully load the application script
-[Sun Jan 24 2016 11:25:38 GMT-0500 (EST)] INFO 18f-unit-testing-node: reading
-configuration from .../unit-testing-node/exercise/test
+[Sun Jan 24 2016 14:11:08 GMT-0500 (EST)] INFO 18f-unit-testing-node: reading configuration from .../unit-testing-node/exercise/test/helpers/test-config-invalid.json
     ✓ should not register if the config file is invalid
     an evergreen_tree reaction to a message
       ✓ should create a GitHub issue
@@ -747,6 +760,63 @@ problem. Add the following to the `catch` block of the script:
       err instanceof Error ? err.message : err);
   }
 ```
+
+Run the test again, and _now_ we see:
+
+```sh
+$ npm test -- --grep '^Integration '
+
+> 18f-unit-testing-node@0.0.0 test .../unit-testing-node
+> gulp test "--grep" "^Integration "
+
+[13:34:22] Using gulpfile .../unit-testing-node/gulpfile.js
+[13:34:22] Starting 'test'...
+
+
+  Integration test
+    ✓ should successfully load the application script
+[Sun Jan 24 2016 14:11:37 GMT-0500 (EST)] INFO 18f-unit-testing-node: reading configuration from .../unit-testing-node/exercise/test/helpers/test-config-invalid.json
+[Sun Jan 24 2016 14:11:37 GMT-0500 (EST)] ERROR 18f-unit-testing-node: receiveMiddleware registration failed: Invalid configuration:
+  missing rules
+    ✓ should not register if the config file is invalid
+    an evergreen_tree reaction to a message
+      ✓ should create a GitHub issue
+
+
+  3 passing (191ms)
+
+[13:34:23] Finished 'test' after 739 ms
+```
+
+That message looks right, keeps the logs clean, and might be of more use than
+a stack trace to someone trying to diagnose a problem. Now let's update the
+test to check these messages programmatically and keep them out of the test
+runner output:
+
+```js
+  it('should not register if the config file is invalid', function() {
+    var origPath = process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH,
+        invalidConfigPath = path.join(
+          __dirname, 'helpers', 'test-config-invalid.json');
+
+    try {
+      process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH = invalidConfigPath;
+      logHelper = new LogHelper();
+      logHelper.capture(function() {
+        room = scriptHelper.createRoom({ httpd: false, name: 'handbook' });
+      });
+      logHelper.filteredMessages().should.eql([
+        'INFO reading configuration from ' + invalidConfigPath,
+        'ERROR receiveMiddleware registration failed: Invalid configuration:'
+      ]);
+    } finally {
+      process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH = origPath;
+    }
+  });
+```
+
+Note that `logHelper.filteredMessages()` cuts off the error message after
+`Invalid configuration` because it contains a newline character.
 
 ## Monkey patching the `hubot-test-helper` framework
 
@@ -785,12 +855,11 @@ Then define the function thus:
   patchReactMethodOntoRoom = function(room) {
     room.user.react = function(userName, reaction) {
       return new Promise(function(resolve) {
-        var reactionMessage = helpers.fullReactionAddedMessage(),
-            rawMessage = reactionMessage.rawMessage;
+        var reactionMessage = helpers.fullReactionAddedMessage();
 
         room.messages.push([userName, reaction]);
         reactionMessage.user.name = userName;
-        rawMessage.reaction = reaction;
+        reactionMessage.rawMessage.reaction = reaction;
         room.robot.receive(reactionMessage, resolve);
       });
     };
@@ -832,47 +901,37 @@ the reaction message:
 Now let's try running the test as-is to see what happens:
 
 ```sh
-$ npm test -- --grep '^Integration test '
+$ npm test -- --grep '^Integration '
 
 > 18f-unit-testing-node@0.0.0 test .../unit-testing-node
-> gulp test "--grep" "^Integration test "
+> gulp test "--grep" "^Integration "
 
-[16:54:45] Using gulpfile .../unit-testing-node/gulpfile.js
-[16:54:45] Starting 'test'...
+[14:23:49] Using gulpfile .../unit-testing-node/gulpfile.js
+[14:23:49] Starting 'test'...
 
 
   Integration test
     ✓ should successfully load the application script
+    ✓ should not register if the config file is invalid
     an evergreen_tree reaction to a message
-[Sat Jan 23 2016 16:54:45 GMT-0500 (EST)] ERROR TypeError: Cannot read
-property 'getChannelByID' of undefined
-  at SlackClient.getChannelName
-(.../unit-testing-node/exercise/lib/slack-client.js:26:21)
+[Sun Jan 24 2016 14:23:50 GMT-0500 (EST)] ERROR TypeError: Cannot read property 'getChannelByID' of undefined
+  at SlackClient.getChannelName (.../unit-testing-node/exercise/lib/slack-client.js:26:21)
   at Rule.channelMatches (.../unit-testing-node/exercise/lib/rule.js:28:34)
   at Rule.match (.../unit-testing-node/exercise/lib/rule.js:17:10)
   at .../unit-testing-node/exercise/lib/middleware.js:54:19
   at Array.find (native)
-  at Middleware.findMatchingRule
-(.../unit-testing-node/exercise/lib/middleware.js:53:23)
+  at Middleware.findMatchingRule (.../unit-testing-node/exercise/lib/middleware.js:53:23)
   at Middleware.execute (.../unit-testing-node/exercise/lib/middleware.js:24:19)
-  at .../unit-testing-node/exercise/scripts/slack-github-issues.js:26:10
+  at .../unit-testing-node/exercise/scripts/slack-github-issues.js:30:12
   at .../unit-testing-node/node_modules/hubot/src/middleware.coffee:33:24
-  at .../unit-testing-node/node_modules/async/lib/async.js:269:13
-  at iterate (.../unit-testing-node/node_modules/async/lib/async.js:146:13)
-  at Object.async.eachSeries
-(.../unit-testing-node/node_modules/async/lib/async.js:162:9)
-  at Object.async.reduce
-(.../unit-testing-node/node_modules/async/lib/async.js:268:15)
-  at .../unit-testing-node/node_modules/hubot/src/middleware.coffee:46:13
-  at nextTickCallbackWith0Args (node.js:452:9)
-  at process._tickDomainCallback (node.js:422:13)
+  [...snip Mocha stack frames...]
 
       ✓ should create a GitHub issue
 
 
-  2 passing (203ms)
+  3 passing (215ms)
 
-[16:54:45] Finished 'test' after
+[14:23:50] Finished 'test' after 790 ms
 ```
 
 ## Appreciating the invention of dependency injection
@@ -930,7 +989,9 @@ function itself. That allows us to do this in our top-level `beforeEach` hook:
 ```js
     patchReactMethodOntoRoom(room);
     room.robot.middleware.receive.stack[0].impl.slackClient.client = {
-      getChannelByID: function() { return { name: 'handbook' }; },
+      getChannelByID: function() {
+        return { name: 'handbook' };
+      },
       team: { domain: '18f' }
     };
     apiStubServer.urlsToResponses = apiServerDefaults();
@@ -945,38 +1006,30 @@ Ugly, but effective.
 Run the test now and watch what happens:
 
 ```sh
-$ npm test -- --grep '^Integration test '
+$ npm test -- --grep '^Integration '
 
 > 18f-unit-testing-node@0.0.0 test .../unit-testing-node
-> gulp test "--grep" "^Integration test "
+> gulp test "--grep" "^Integration "
 
-[19:51:31] Using gulpfile .../unit-testing-node/gulpfile.js
-[19:51:31] Starting 'test'...
+[14:30:03] Using gulpfile .../unit-testing-node/gulpfile.js
+[14:30:03] Starting 'test'...
 
 
   Integration test
     ✓ should successfully load the application script
+    ✓ should not register if the config file is invalid
     an evergreen_tree reaction to a message
-[Sat Jan 23 2016 19:51:32 GMT-0500 (EST)] INFO 18f-unit-testing-node:
-C5150OU812:1360782804.083113: matches rule: Rule { reactionName:
-'evergreen_tree', githubRepository: 'handbook' }
-[Sat Jan 23 2016 19:51:32 GMT-0500 (EST)] INFO 18f-unit-testing-node:
-C5150OU812:1360782804.083113: getting reactions for
-https://18f.slack.com/archives/handbook/p1360782804083113
-[Sat Jan 23 2016 19:51:32 GMT-0500 (EST)] INFO 18f-unit-testing-node:
-C5150OU812:1360782804.083113: making GitHub request for
-https://18f.slack.com/archives/handbook/p1360782804083113
-[Sat Jan 23 2016 19:51:32 GMT-0500 (EST)] INFO 18f-unit-testing-node:
-C5150OU812:1360782804.083113: adding heavy_check_mark
-[Sat Jan 23 2016 19:51:32 GMT-0500 (EST)] INFO 18f-unit-testing-node:
-C5150OU812:1360782804.083113: created:
-https://github.com/18F/handbook/issues/1
+[Sun Jan 24 2016 14:30:04 GMT-0500 (EST)] INFO 18f-unit-testing-node: C5150OU812:1360782804.083113: matches rule: Rule { reactionName: 'evergreen_tree', githubRepository: 'handbook' }
+[Sun Jan 24 2016 14:30:04 GMT-0500 (EST)] INFO 18f-unit-testing-node: C5150OU812:1360782804.083113: getting reactions for https://18f.slack.com/archives/handbook/p1360782804083113
+[Sun Jan 24 2016 14:30:04 GMT-0500 (EST)] INFO 18f-unit-testing-node: C5150OU812:1360782804.083113: making GitHub request for https://18f.slack.com/archives/handbook/p1360782804083113
+[Sun Jan 24 2016 14:30:04 GMT-0500 (EST)] INFO 18f-unit-testing-node: C5150OU812:1360782804.083113: adding heavy_check_mark
+[Sun Jan 24 2016 14:30:04 GMT-0500 (EST)] INFO 18f-unit-testing-node: C5150OU812:1360782804.083113: created: https://github.com/18F/handbook/issues/1
       ✓ should create a GitHub issue
 
 
-  2 passing (232ms)
+  3 passing (251ms)
 
-[19:51:32] Finished 'test' after 791 ms
+[14:30:04] Finished 'test' after 791 ms
 ```
 
 Now it looks like the test and the code is doing exactly what it should. All
@@ -1082,53 +1135,48 @@ empty assertion:
 Run the test to see what we're in for:
 
 ```sh
-$ npm test -- --grep '^Integration test '
+$ npm test -- --grep '^Integration '
 
 > 18f-unit-testing-node@0.0.0 test .../unit-testing-node
-> gulp test "--grep" "^Integration test "
+> gulp test "--grep" "^Integration "
 
-[20:00:04] Using gulpfile .../unit-testing-node/gulpfile.js
-[20:00:04] Starting 'test'...
+[14:32:37] Using gulpfile .../unit-testing-node/gulpfile.js
+[14:32:37] Starting 'test'...
 
 
   Integration test
     ✓ should successfully load the application script
+    ✓ should not register if the config file is invalid
     an evergreen_tree reaction to a message
       1) should create a GitHub issue
 
 
-  1 passing (262ms)
+  2 passing (299ms)
   1 failing
 
-  1) Integration test an evergreen_tree reaction to a message should create a
-GitHub issue:
+  1) Integration test an evergreen_tree reaction to a message should create a GitHub issue:
 
       AssertionError: expected [ Array(7) ] to deeply equal []
       + expected - actual
 
       -[
-      -  "INFO reading configuration from
-         /var/folders/kr/qnjc102n0wg_b89_g0jsfbnh0000gp/T/18f-unit-testing-node-integration-test-config-116023-53210-jt7nf5"
+      -  "INFO reading configuration from .../18f-unit-testing-node-integration-test-config-116024-62199-1gov2lz"
       -  "INFO registered receiveMiddleware"
-      -  "INFO C5150OU812:1360782804.083113: matches rule: Rule {
-         reactionName: 'evergreen_tree', githubRepository: 'handbook' }"
-      -  "INFO C5150OU812:1360782804.083113: getting reactions for
-         https://18f.slack.com/archives/handbook/p1360782804083113"
-      -  "INFO C5150OU812:1360782804.083113: making GitHub request for
-         https://18f.slack.com/archives/handbook/p1360782804083113"
+      -  "INFO C5150OU812:1360782804.083113: matches rule: Rule { reactionName: 'evergreen_tree', githubRepository: 'handbook' }"
+      -  "INFO C5150OU812:1360782804.083113: getting reactions for https://18f.slack.com/archives/handbook/p1360782804083113"
+      -  "INFO C5150OU812:1360782804.083113: making GitHub request for https://18f.slack.com/archives/handbook/p1360782804083113"
       -  "INFO C5150OU812:1360782804.083113: adding heavy_check_mark"
-      -  "INFO C5150OU812:1360782804.083113: created:
-         https://github.com/18F/handbook/issues/1"
+      -  "INFO C5150OU812:1360782804.083113: created: https://github.com/18F/handbook/issues/1"
       -]
       +[]
 
-    at Context.<anonymous> (exercise/test/integration-test.js:138:43)
+    at Context.<anonymous> (exercise/test/integration-test.js:160:43)
 
 
 
 
-[20:00:05] 'test' errored after
-[20:00:05] Error in plugin 'gulp-mocha'
+[14:32:38] 'test' errored after
+[14:32:38] Error in plugin 'gulp-mocha'
 Message:
     1 test failed.
 npm ERR! Test failed.  See above for more details.
@@ -1157,6 +1205,8 @@ describe('Integration test', function() {
     logHelper.filteredMessages().should.eql(initLogMessages());
   });
 
+  // ...invalid config file test case...
+
   context('an evergreen_tree reaction to a message', function() {
     // ...beforeEach hook...
 
@@ -1167,7 +1217,8 @@ describe('Integration test', function() {
       ]);
       logHelper.filteredMessages().should.eql(
         initLogMessages().concat([
-      ]));
+        ])
+      );
     });
 ```
 
@@ -1238,6 +1289,7 @@ with that, but we'll use the same fixture name as before:
       return room.user.react('mbland', 'evergreen_tree')
         .then(logHelper.endCaptureResolve(), logHelper.endCaptureReject());
     });
+  });
 ```
 
 Notice that all we're doing is configuring the GitHub endpoint of the
@@ -1305,7 +1357,7 @@ The asssertion for the room messages is pretty straightforward:
       ]);
 ```
 
-Building up the `logMessages` is slightly messy, because the last message
+Building up the `logMessages` is slightly messier, because the last message
 containing the error is a little different from the rest. It's not too bad,
 though:
 
@@ -1350,10 +1402,173 @@ to make any API requests.
 
 ## Testing unexpected errors
 
-TODO(mbland)
-Though we've done a good job ensuring our `Middleware` function  
+We've done a good job ensuring our `Middleware` function passes `Errors` by
+calling `reject` handlers in each `Promise`. Also, the `handleFailure` error
+handler function from `Middleware` will convert thrown `Errors` into rejected
+`Promises` that get logged by `handleFinish`, which also calls `next(done)`.
 
-And that's it!
+However, we can never be completely positive that an `Error` will ever get
+thrown, due to changes or errors in the application or its dependencies. If
+that happens, we'll pollute the log with a nasty stack trace, and `next(done)`
+won't get called.
+
+To simulate this, let's add this new test case, relying on the dirty trick of
+reaching into `room.robot.middleware.receive.stack` to force an `Error`:
+
+```js
+  context('an unanticipated error from Middleware.expect', function() {
+    beforeEach(function() {
+      var impl = room.robot.middleware.receive.stack[0].impl;
+      impl.slackClient.client.getChannelByID = function() {
+        throw Error('forced error');
+      };
+      return room.user.react('mbland', helpers.REACTION);
+    });
+
+    it('should be caught and logged', function() {
+    });
+  });
+```
+
+Running the test should produce:
+
+```sh
+$ npm test -- --grep '^Integration '
+
+> 18f-unit-testing-node@0.0.0 test .../unit-testing-node
+> gulp test "--grep" "^Integration "
+
+[15:04:19] Using gulpfile .../unit-testing-node/gulpfile.js
+[15:04:19] Starting 'test'...
+
+
+  Integration test
+    ✓ should successfully load the application script
+    ✓ should not register if the config file is invalid
+    an evergreen_tree reaction to a message
+      ✓ should create a GitHub issue
+    a evergreen_tree reaction to a message
+      ✓ should fail to create a GitHub issue
+    a message receiving an unknown reaction
+      ✓ should be ignored
+    an unanticipated error from Middleware.expect
+[Sun Jan 24 2016 15:04:19 GMT-0500 (EST)] ERROR Error: forced error
+  at Error (native)
+  at Object.impl.slackClient.client.getChannelByID (.../unit-testing-node/exercise/test/integration-test.js:242:15)
+  at SlackClient.getChannelName (.../unit-testing-node/exercise/lib/slack-client.js:26:22)
+  at Rule.channelMatches (.../unit-testing-node/exercise/lib/rule.js:28:34)
+  at Rule.match (.../unit-testing-node/exercise/lib/rule.js:17:10)
+  at .../unit-testing-node/exercise/lib/middleware.js:54:19
+  at Array.find (native)
+  at Middleware.findMatchingRule (.../unit-testing-node/exercise/lib/middleware.js:53:23)
+  at Middleware.execute (.../unit-testing-node/exercise/lib/middleware.js:24:19)
+  at middleware (.../unit-testing-node/exercise/scripts/slack-github-issues.js:30:12)
+  at .../unit-testing-node/node_modules/hubot/src/middleware.coffee:33:24
+  [...snip Hubot stack frames...]
+
+      ✓ should be caught and logged
+
+
+  6 passing (274ms)
+
+[15:04:19] Finished 'test' after
+```
+
+Note that while Hubot caught the `Error`, `execute` never invoked `next(done)`.
+
+To rectify this and clean up the log, let's add a `try...catch` block inside
+the `middleware` function of our script:
+
+```js
+    middleware = function(context, next, done) {
+      try {
+        impl.execute(context, next, done);
+
+      } catch (err) {
+        logger.error(null, 'unhandled error:',
+          err instanceof Error ? err.message : err,
+          '\nmessage:', JSON.stringify(
+              context.response.envelope.message.rawMessage, null, 2));
+        next(done);
+      }
+    };
+```
+
+Run the test again and you should see:
+
+```sh
+$ npm test -- --grep '^Integration '
+
+> 18f-unit-testing-node@0.0.0 test .../unit-testing-node
+> gulp test "--grep" "^Integration "
+
+[16:12:00] Using gulpfile .../unit-testing-node/gulpfile.js
+[16:12:00] Starting 'test'...
+
+
+  Integration test
+    ✓ should successfully load the application script
+    ✓ should not register if the config file is invalid
+    an evergreen_tree reaction to a message
+      ✓ should create a GitHub issue
+    a evergreen_tree reaction to a message
+      ✓ should fail to create a GitHub issue
+    a message receiving an unknown reaction
+      ✓ should be ignored
+    an unanticipated error from Middleware.expect
+[Sun Jan 24 2016 16:12:01 GMT-0500 (EST)] ERROR 18f-unit-testing-node: unhandled error: forced error
+message: {
+  "type": "reaction_added",
+  "user": "U5150OU812",
+  "item": {
+    "type": "message",
+    "channel": "C5150OU812",
+    "ts": "1360782804.083113"
+  },
+  "reaction": "evergreen_tree",
+  "event_ts": "1360782804.083113"
+}
+      ✓ should be caught and logged
+
+
+  6 passing (300ms)
+
+[16:12:01] Finished 'test' after
+```
+
+This is arguably a lot more helpful than a stack trace, at least for people
+trying to report the error. The developer can then try to reproduce the error
+by writing a test using the same input.
+
+Now let's update our test to validate the result programmatically. First,
+replace the `room.user.react` call from `beforeEach` with:
+
+```js
+      return sendReaction(helpers.REACTION);
+```
+
+Then fill in the test case with:
+
+```js
+    it('should be caught and logged', function() {
+      room.messages.should.eql([['mbland', helpers.REACTION]]);
+      logHelper.filteredMessages().should.eql(
+        initLogMessages().concat(['ERROR unhandled error: forced error '])
+      );
+    });
+```
+
+Run the test and ensure it passes. However, it'd be good to validate that the
+final log message contains the string representation of the raw message. Add
+this one last assertion to inspect the final raw log message:
+
+```js
+      logHelper.messages[logHelper.messages.length - 1].should.have.string(
+        '\nmessage: ' + JSON.stringify(
+          helpers.reactionAddedMessage(), null, 2));
+```
+
+Run the tests, and ensure they all pass. And that's it!
 
 ## Think about it
 
@@ -1378,28 +1593,31 @@ few points:
 By this point, all of the integration tests should be passing:
 
 ```sh
-$ npm test -- --grep '^Integration test '
+$ npm test -- --grep '^Integration '
 
 > 18f-unit-testing-node@0.0.0 test .../unit-testing-node
-> gulp test "--grep" "^Integration test "
+> gulp test "--grep" "^Integration "
 
-[21:15:54] Using gulpfile .../unit-testing-node/gulpfile.js
-[21:15:54] Starting 'test'...
+[16:17:18] Using gulpfile .../unit-testing-node/gulpfile.js
+[16:17:18] Starting 'test'...
 
 
   Integration test
     ✓ should successfully load the application script
+    ✓ should not register if the config file is invalid
     an evergreen_tree reaction to a message
       ✓ should create a GitHub issue
     a evergreen_tree reaction to a message
       ✓ should fail to create a GitHub issue
     a message receiving an unknown reaction
       ✓ should be ignored
+    an unanticipated error from Middleware.expect
+      ✓ should be caught and logged
 
 
-  4 passing (263ms)
+  6 passing (281ms)
 
-[21:15:55] Finished 'test' after 811 ms
+[16:17:19] Finished 'test' after
 ```
 
 Now that you're all finished, compare your solutions to the code in
