@@ -158,4 +158,41 @@ describe('Integration test', function() {
       );
     });
   });
+
+  context('a evergreen_tree reaction to a message', function() {
+    var payload = { message: 'test failure' };
+
+    beforeEach(function() {
+      var url = '/github/repos/18F/handbook/issues',
+          response = apiStubServer.urlsToResponses[url];
+
+      response.statusCode = 500;
+      response.payload = payload;
+
+      logHelper.beginCapture();
+      return room.user.react('mikebland', 'evergreen_tree')
+        .then(logHelper.endCaptureResolve(), logHelper.endCaptureReject());
+    });
+
+    it('should fail to create a GitHub issue', function() {
+      var errorReply = 'failed to create a GitHub issue in ' +
+            '18F/handbook: received 500 response from GitHub API: ' +
+            JSON.stringify(payload),
+          expected;
+
+      room.messages.should.eql([
+        ['mikebland', 'evergreen_tree'],
+        ['hubot', '@mikebland Error: ' + errorReply]
+      ]);
+
+      expected = initLogMessages();
+      expected = expected.concat(wrapInfoMessages([
+        'matches rule: ' + matchingRule,
+        'getting reactions for ' + helpers.PERMALINK,
+        'making GitHub request for ' + helpers.PERMALINK
+      ]));
+      expected.push('ERROR ' + helpers.MESSAGE_ID + ': ' + errorReply);
+      logHelper.filteredMessages().should.eql(expected);
+    });
+  });
 });

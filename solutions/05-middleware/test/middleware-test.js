@@ -198,10 +198,8 @@ describe('Middleware', function() {
     checkErrorResponse = function(errorMessage) {
       context.response.reply.args.should.have.deep.property(
         '[0][0].message', errorMessage);
-      logger.error.args.should.have.deep.property(
-        '[0][0]', helpers.MESSAGE_ID);
-      logger.error.args.should.have.deep.property(
-        '[0][1].message', errorMessage);
+      logger.error.args.should.have.deep.property('[0][0]', helpers.MESSAGE_ID);
+      logger.error.args.should.have.deep.property('[0][1]', errorMessage);
     };
 
     it('should receive a message but fail to get reactions', function(done) {

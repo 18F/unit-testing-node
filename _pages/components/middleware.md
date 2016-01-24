@@ -1789,12 +1789,12 @@ just wrote in the previous section:
 ```
 
 Note that we're now checking `logger.error.args`, not `logger.info.args`.
-Also, since we're validating result that contain `Error` objects, we have to
-be more deliberate with the `context.response.reply` and `logger.error`
-assertions. This is because no two `Error` objects are equal to one another,
-so we can't create a `new Error` as an assertion argument. We have to check
-the `message` field of each Error explicitly. For both stubs, `args[0]` is the
-argument list for the first call to the stub.
+Also, since we're validating a result that contains an `Error` object, we have
+to be more deliberate with the `context.response.reply` assertion. This is
+because no two `Error` objects are equal to one another, so we can't create a
+`new Error` as an assertion argument. We have to check the `message` field of
+each Error explicitly. For both stubs, `args[0]` is the argument list for the
+first call to the stub.
 
 Now let's run the test to see what shakes out:
 
@@ -1850,7 +1850,7 @@ All we have to do to get the test to pass is update the function returned by
 function handleFinish(messageId, middleware, response, next, done) {
   return function(message) {
     if (message instanceof Error) {
-      middleware.logger.error(messageId, message);
+      middleware.logger.error(messageId, message.message);
     } else {
       middleware.logger.info(messageId, message);
     }
@@ -1864,11 +1864,15 @@ function handleFinish(messageId, middleware, response, next, done) {
 }
 ```
 
+Notice that in the `message instanceof Error` case, we explicitly log the
+`message.message` field. This is because logging the actual `Error` object
+will include the class name in the output, which we don't need or want.
+
 Run the tests, and verify that the new test passes. Then, add this next 
 test, which validates the behavior when the request to file a GitHub issue
 fails. It is nearly identical to the previous one except that
 `githubClient.fileNewIssue` produces the failure (notice
-`called.should.be.true`):
+`calledOnce.should.be.true`):
 
 ```js
     it('should get reactions but fail to file an issue', function(done) {
@@ -1889,7 +1893,7 @@ fails. It is nearly identical to the previous one except that
         logger.error.args.should.have.deep.property(
           '[0][0]', helpers.MESSAGE_ID);
         logger.error.args.should.have.deep.property(
-          '[0][1].message', errorMessage);
+          '[0][1]', errorMessage);
       }).should.notify(done);
     });
 ```
@@ -1913,10 +1917,8 @@ Let's call this helper function `checkErrorResponse`:
     checkErrorResponse = function(errorMessage) {
       context.response.reply.args.should.have.deep.property(
         '[0][0].message', errorMessage);
-      logger.error.args.should.have.deep.property(
-        '[0][0]', helpers.MESSAGE_ID);
-      logger.error.args.should.have.deep.property(
-        '[0][1].message', errorMessage);
+      logger.error.args.should.have.deep.property('[0][0]', helpers.MESSAGE_ID);
+      logger.error.args.should.have.deep.property('[0][1]', errorMessage);
     };
 ```
 
@@ -1931,7 +1933,7 @@ Run the test, and verify that the new test passes. Then, add this one final
 test, which validates the behavior when the GitHub issue request succeeds, but
 adding the success reaction to the message fails. It is nearly identical to
 the previous one except that `slackClient.addSuccessReaction` produces the
-failure (notice `called.should.be.true`):
+failure (notice `calledOnce.should.be.true`):
 
 ```js
     it('should file an issue but fail to add a reaction', function(done) {

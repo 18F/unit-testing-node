@@ -158,7 +158,7 @@ function handleFailure(finish) {
 function handleFinish(messageId, middleware, response, next, done) {
   return function(message) {
     if (message instanceof Error) {
-      middleware.logger.error(messageId, message);
+      middleware.logger.error(messageId, message.message);
     } else {
       middleware.logger.info(messageId, message);
     }
