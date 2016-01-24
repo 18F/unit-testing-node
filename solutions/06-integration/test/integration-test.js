@@ -131,9 +131,9 @@ describe('Integration test', function() {
     });
   };
 
-  sendReaction = function() {
+  sendReaction = function(reactionName) {
     logHelper.beginCapture();
-    return room.user.react('mikebland', 'evergreen_tree')
+    return room.user.react('mikebland', reactionName)
       .then(logHelper.endCaptureResolve(), logHelper.endCaptureReject());
   };
 
@@ -142,7 +142,9 @@ describe('Integration test', function() {
   });
 
   context('an evergreen_tree reaction to a message', function() {
-    beforeEach(sendReaction);
+    beforeEach(function() {
+      return sendReaction(helpers.REACTION);
+    });
 
     it('should create a GitHub issue', function() {
       room.messages.should.eql([
@@ -170,7 +172,7 @@ describe('Integration test', function() {
 
       response.statusCode = 500;
       response.payload = payload;
-      return sendReaction();
+      return sendReaction(helpers.REACTION);
     });
 
     it('should fail to create a GitHub issue', function() {
@@ -191,6 +193,22 @@ describe('Integration test', function() {
       ]));
       logMessages.push('ERROR ' + helpers.MESSAGE_ID + ': ' + errorReply);
       logHelper.filteredMessages().should.eql(logMessages);
+    });
+  });
+
+  context('a message receiving an unknown reaction', function() {
+    beforeEach(function() {
+      var url = '/github/repos/18F/handbook/issues',
+          response = apiStubServer.urlsToResponses[url];
+
+      response.statusCode = 500;
+      response.payload = { message: 'should not happen' };
+      return sendReaction('sad-face');
+    });
+
+    it('should be ignored', function() {
+      room.messages.should.eql([['mikebland', 'sad-face']]);
+      logHelper.filteredMessages().should.eql(initLogMessages());
     });
   });
 });
