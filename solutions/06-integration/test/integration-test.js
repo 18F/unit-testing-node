@@ -236,13 +236,20 @@ describe('Integration test', function() {
     };
 
     sendReaction(helpers.REACTION).should.be.fulfilled.then(function() {
-      room.messages.should.eql([['mbland', helpers.REACTION]]);
+      var errorMessage = 'unhandled error: forced error',
+          message = JSON.stringify(helpers.reactionAddedMessage(), null, 2),
+          completeMessage = errorMessage + '\nmessage: ' + message;
+
+      room.messages.should.eql([
+        ['mbland', helpers.REACTION],
+        ['hubot', '@mbland ' + completeMessage]
+      ]);
+
       logHelper.filteredMessages().should.eql(
-        initLogMessages().concat(['ERROR unhandled error: forced error '])
+        initLogMessages().concat(['ERROR ' + errorMessage])
       );
       logHelper.messages[logHelper.messages.length - 1].should.have.string(
-        '\nmessage: ' + JSON.stringify(
-          helpers.reactionAddedMessage(), null, 2));
+        completeMessage);
     }).should.notify(done);
   });
 });

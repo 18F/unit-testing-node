@@ -1483,14 +1483,18 @@ the `middleware` function of our script:
 
 ```js
     middleware = function(context, next, done) {
+      var errorMessage;
+
       try {
         impl.execute(context, next, done);
 
       } catch (err) {
-        logger.error(null, 'unhandled error:',
-          err instanceof Error ? err.message : err,
-          '\nmessage:', JSON.stringify(
-              context.response.envelope.message.rawMessage, null, 2));
+        errorMessage = 'unhandled error: ' +
+          (err instanceof Error ? err.message : err) +
+          '\nmessage: ' + JSON.stringify(
+              context.response.envelope.message.rawMessage, null, 2);
+        logger.error(null, errorMessage);
+        context.response.reply(errorMessage);
         next(done);
       }
     };
@@ -1550,9 +1554,17 @@ Then fill in the test case with:
 
 ```js
     sendReaction(helpers.REACTION).should.be.fulfilled.then(function() {
-      room.messages.should.eql([['mbland', helpers.REACTION]]);
+      var errorMessage = 'unhandled error: forced error',
+          message = JSON.stringify(helpers.reactionAddedMessage(), null, 2),
+          completeMessage = errorMessage + '\nmessage: ' + message;
+
+      room.messages.should.eql([
+        ['mbland', helpers.REACTION],
+        ['hubot', '@mbland ' + completeMessage]
+      ]);
+
       logHelper.filteredMessages().should.eql(
-        initLogMessages().concat(['ERROR unhandled error: forced error '])
+        initLogMessages().concat(['ERROR ' + errorMessage])
       );
     }).should.notify(done);
 ```
@@ -1563,8 +1575,7 @@ this one last assertion to inspect the final raw log message:
 
 ```js
       logHelper.messages[logHelper.messages.length - 1].should.have.string(
-        '\nmessage: ' + JSON.stringify(
-          helpers.reactionAddedMessage(), null, 2));
+        completeMessage);
 ```
 
 Run the tests, and ensure they all pass. And that's it!
