@@ -117,8 +117,7 @@ describe('Config', function() {
   it('should raise an error if the config file does not exist', function() {
     var logger = new Logger(console),
         configPath = path.join(__dirname, 'nonexistent-config-file'),
-        errorMessage = 'failed to load configuration from ' + configPath +
-          ': ENOENT: no such file or directory';
+        errorMessage = 'failed to load configuration from ' + configPath + ': ';
 
     process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH = configPath;
     sinon.stub(logger, 'info');
@@ -132,7 +131,7 @@ describe('Config', function() {
   it('should raise an error if the config file isn\'t valid JSON', function() {
     var logger = new Logger(console),
         errorMessage = 'failed to load configuration from ' + __filename +
-          ': invalid JSON: Unexpected token /';
+          ': invalid JSON: ';
 
     process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH = __filename;
     sinon.stub(logger, 'info');
