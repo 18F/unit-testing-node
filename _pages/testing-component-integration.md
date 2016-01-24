@@ -17,9 +17,9 @@ $ ./go set-integration
 
 Since we've exhaustively tested every corner of our application logic using
 small, fast, isolated tests, we only need to validate a few high-level
-integration cases. The setup will be a little more complex, and the test cases
-may not run as fast, but we will not need nearly as many. Should any of these
-tests fail, it may indicate a misunderstanding of the system boundary. This
+integration cases. The setup will be more complex, and the test cases may not
+run as fast, but we will not need nearly as many. Should any of these tests
+fail, it may indicate a misunderstanding of the system boundary. This
 misunderstanding may also signal a gap in our component level coverage that we
 need to fill.
 
@@ -85,7 +85,7 @@ module.exports = function(robot) {
   robot.receiveMiddleware(function(context, next, done) {
     impl.execute(context, next, done);
   });
-  impl.logger.info(null, 'registered receiveMiddleware');
+  logger.info(null, 'registered receiveMiddleware');
 };
 ```
 
@@ -624,6 +624,130 @@ from the default config path. This is an easy fix:
   });
 ```
 
+Run the test and make sure it passes before moving on.
+
+## Testing a configuration error
+
+There is an issue with our script as written. As we learned from the
+[`Config` class chapter]({{ site.baseurl }}/components/config/), the `Config`
+constructor may throw an [`Error`](https://nodejs.org/api/errors.html) if the
+config file is missing or invalid. Allowing an error from our application to
+cross an interface boundary is a bad habit.
+
+Let's see why by writing a test that will fail because the config file isn't
+valid (by setting the path as the test's parent directory):
+
+```js
+  it('should not register if the config file is invalid', function() {
+    var origPath = process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH;
+
+    try {
+      process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH = __dirname;
+      room = scriptHelper.createRoom({ httpd: false, name: 'handbook' });
+    } finally {
+      process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH = origPath;
+    }
+  });
+```
+
+Now run the test and see what happens:
+
+```sh
+$ npm test -- --grep '^Integration test '
+
+> 18f-unit-testing-node@0.0.0 test .../unit-testing-node
+> gulp test "--grep" "^Integration test "
+
+[11:17:22] Using gulpfile .../unit-testing-node/gulpfile.js
+[11:17:22] Starting 'test'...
+
+
+  Integration test
+    ✓ should successfully load the application script
+[Sun Jan 24 2016 11:17:23 GMT-0500 (EST)] INFO 18f-unit-testing-node: reading
+configuration from .../unit-testing-node/exercise/test
+[Sun Jan 24 2016 11:17:23 GMT-0500 (EST)] ERROR Unable to load
+.../unit-testing-node/exercise/scripts/slack-github-issues:
+Error: EISDIR: illegal operation on a directory, read
+  at Error (native)
+  at Object.fs.readSync (fs.js:651:19)
+  at Object.fs.readSync (.../unit-testing-node/node_modules/mocha/node_modules/graceful-fs/polyfills.js:218:23)
+  at Object.fs.readFileSync (fs.js:472:24)
+  at parseConfigFromEnvironmentVariablePathOrUseDefault (.../unit-testing-node/exercise/lib/config.js:66:24)
+  at new Config (.../unit-testing-node/exercise/lib/config.js:11:9)
+  at module.exports (.../unit-testing-node/exercise/scripts/slack-github-issues.js:19:16)
+  at MockRobot.Robot.loadFile (.../unit-testing-node/node_modules/hubot/src/robot.coffee:356:11)
+  at Helper.createRoom (.../unit-testing-node/node_modules/hubot-test-helper/src/index.coffee:85:13)
+  at Context.<anonymous> (.../unit-testing-node/exercise/test/integration-test.js:111:27)
+  [...snip Mocha stack frames...]
+
+npm ERR! Test failed.  See above for more details.
+```
+
+Ugh, that's a lot of gunk to dump into a log file. Surely we can do better.
+First let's update our script to wrap our behavior in a [`try...catch`
+block](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/try...catch):
+
+```js
+module.exports = function(robot) {
+  var logger, config, impl;
+
+  try {
+    logger = new Logger(robot.logger);
+    config = new Config(null, logger);
+    impl = new Middleware(
+      config,
+      new SlackClient(robot.adapter.client, config),
+      new GitHubClient(config),
+      logger);
+
+    robot.receiveMiddleware(function(context, next, done) {
+      impl.execute(context, next, done);
+    });
+    logger.info(null, 'registered receiveMiddleware');
+
+  } catch (err) {
+  }
+};
+```
+
+Run the test again, and it should pass with no hint of the stack trace in the
+output:
+
+```sh
+$ npm test -- --grep '^Integration test '
+
+> 18f-unit-testing-node@0.0.0 test .../unit-testing-node
+> gulp test "--grep" "^Integration test "
+
+[11:25:37] Using gulpfile .../unit-testing-node/gulpfile.js
+[11:25:37] Starting 'test'...
+
+
+  Integration test
+    ✓ should successfully load the application script
+[Sun Jan 24 2016 11:25:38 GMT-0500 (EST)] INFO 18f-unit-testing-node: reading
+configuration from .../unit-testing-node/exercise/test
+    ✓ should not register if the config file is invalid
+    an evergreen_tree reaction to a message
+      ✓ should create a GitHub issue
+
+
+  3 passing (210ms)
+
+[11:25:38] Finished 'test' after
+```
+
+This is progress, but we'd like to see an error message explaining the
+problem. Add the following to the `catch` block of the script:
+
+```js
+  } catch (err) {
+    logger.error(null, 'receiveMiddleware registration failed:',
+      err instanceof Error ? err.message : err);
+  }
+```
+
 ## Monkey patching the `hubot-test-helper` framework
 
 There's another thing we need to prepare to write our test cases, and it's
@@ -697,7 +821,7 @@ the reaction message:
 ```js
   context('an evergreen_tree reaction to a message', function() {
     beforeEach(function() {
-      return room.user.react('mikebland', 'evergreen_tree');
+      return room.user.react('mbland', 'evergreen_tree');
     });
 
     it('should create a GitHub issue', function() {
@@ -758,12 +882,12 @@ executed until it tries to call `SlackClient.getChannelName`.
 
 Of course! This function depends on `SlackClient.client`, which gets
 initialized with `robot.adapter.client` in our
-`exercise/scripts/slack-github-issues.js` script. Only problem is, _the
+`exercise/scripts/slack-github-issues.js` script. Only problem is, the
 `MockRobot` inside the hubot-test-helper doesn't have such a member, so
-`SlackClient.client` remains `undefined`_.
+`SlackClient.client` remains `undefined`.
 
 This is why we use [dependency
-injection]({{ site.baseurl }}/concepts/dependency-injection/)), folks. If the
+injection]({{ site.baseurl }}/concepts/dependency-injection/), folks. If the
 hubot-test-helper permitted us to pass in a robot object, we could decorate it
 with whatever we needed before instantiating our middleware. Since it creates
 its own `MockRobot` instance directly, we have to resort to less elegant
@@ -775,27 +899,33 @@ isn't pretty, though. First, let's update our
 
 ```js
 module.exports = function(robot) {
-  var logger = new Logger(robot.logger),
-      config = new Config(null, logger),
-      impl = new Middleware(
-        config,
-        new SlackClient(robot.adapter.client, config),
-        new GitHubClient(config),
-        logger),
-      middleware;
+  var logger, config, impl, middleware;
 
-  middleware = function(context, next, done) {
-    impl.execute(context, next, done);
-  };
-  middleware.impl = impl;
-  robot.receiveMiddleware(middleware);
-  impl.logger.info(null, 'registered receiveMiddleware');
+  try {
+    logger = new Logger(robot.logger);
+    config = new Config(null, logger);
+    impl = new Middleware(
+      config,
+      new SlackClient(robot.adapter.client, config),
+      new GitHubClient(config),
+      logger);
+
+    middleware = function(context, next, done) {
+      impl.execute(context, next, done);
+    };
+    middleware.impl = impl;
+    robot.receiveMiddleware(middleware);
+    logger.info(null, 'registered receiveMiddleware');
+
+  } catch (err) {
+    logger.error(null, 'receiveMiddleware registration failed:',
+      err instanceof Error ? err.message : err);
+  }
 };
 ```
 
 What we're doing is making the `impl` object a property of the `middleware`
 function itself. That allows us to do this in our top-level `beforeEach` hook:
-(after adding `var sinon = require('sinon');` at the top of the file):
 
 ```js
     patchReactMethodOntoRoom(room);
@@ -909,7 +1039,7 @@ evergreen_tree reaction to a message` fixture `beforeEach` hook to read:
 ```js
     beforeEach(function() {
       logHelper.beginCapture();
-      return room.user.react('mikebland', 'evergreen_tree')
+      return room.user.react('mbland', 'evergreen_tree')
         .then(logHelper.endCaptureResolve(), logHelper.endCaptureReject());
     });
 ```
@@ -926,8 +1056,8 @@ the `room` object during the course of the application flow:
 ```js
     it('should create a GitHub issue', function() {
       room.messages.should.eql([
-        ['mikebland', 'evergreen_tree'],
-        ['hubot', '@mikebland created: ' + helpers.ISSUE_URL]
+        ['mbland', 'evergreen_tree'],
+        ['hubot', '@mbland created: ' + helpers.ISSUE_URL]
       ]);
     });
 ```
@@ -941,8 +1071,8 @@ empty assertion:
 ```js
     it('should create a GitHub issue', function() {
       room.messages.should.eql([
-        ['mikebland', 'evergreen_tree'],
-        ['hubot', '@mikebland created: ' + helpers.ISSUE_URL]
+        ['mbland', 'evergreen_tree'],
+        ['hubot', '@mbland created: ' + helpers.ISSUE_URL]
       ]);
       logHelper.filteredMessages().should.eql([
       ]);
@@ -954,11 +1084,10 @@ Run the test to see what we're in for:
 ```sh
 $ npm test -- --grep '^Integration test '
 
-> 18f-unit-testing-node@0.0.0 test
-> /Users/michaelbland/src/18F/unit-testing-node
+> 18f-unit-testing-node@0.0.0 test .../unit-testing-node
 > gulp test "--grep" "^Integration test "
 
-[20:00:04] Using gulpfile ~/src/18F/unit-testing-node/gulpfile.js
+[20:00:04] Using gulpfile .../unit-testing-node/gulpfile.js
 [20:00:04] Starting 'test'...
 
 
@@ -1033,8 +1162,8 @@ describe('Integration test', function() {
 
     it('should create a GitHub issue', function() {
       room.messages.should.eql([
-        ['mikebland', 'evergreen_tree'],
-        ['hubot', '@mikebland created: ' + helpers.ISSUE_URL]
+        ['mbland', 'evergreen_tree'],
+        ['hubot', '@mbland created: ' + helpers.ISSUE_URL]
       ]);
       logHelper.filteredMessages().should.eql(
         initLogMessages().concat([
@@ -1067,8 +1196,8 @@ describe('Integration test', function() {
 
     it('should create a GitHub issue', function() {
       room.messages.should.eql([
-        ['mikebland', 'evergreen_tree'],
-        ['hubot', '@mikebland created: ' + helpers.ISSUE_URL]
+        ['mbland', 'evergreen_tree'],
+        ['hubot', '@mbland created: ' + helpers.ISSUE_URL]
       ]);
       logHelper.filteredMessages().should.eql(
         initLogMessages().concat(wrapInfoMessages([
@@ -1106,7 +1235,7 @@ with that, but we'll use the same fixture name as before:
       response.payload = payload;
 
       logHelper.beginCapture();
-      return room.user.react('mikebland', 'evergreen_tree')
+      return room.user.react('mbland', 'evergreen_tree')
         .then(logHelper.endCaptureResolve(), logHelper.endCaptureReject());
     });
 ```
@@ -1126,7 +1255,7 @@ describe('Integration test', function() {
 
   sendReaction = function(reactionName) {
     logHelper.beginCapture();
-    return room.user.react('mikebland', reactionName)
+    return room.user.react('mbland', reactionName)
       .then(logHelper.endCaptureResolve(), logHelper.endCaptureReject());
   };
 
@@ -1171,8 +1300,8 @@ The asssertion for the room messages is pretty straightforward:
 
 ```js
       room.messages.should.eql([
-        ['mikebland', 'evergreen_tree'],
-        ['hubot', '@mikebland Error: ' + errorReply]
+        ['mbland', 'evergreen_tree'],
+        ['hubot', '@mbland Error: ' + errorReply]
       ]);
 ```
 
@@ -1195,26 +1324,34 @@ Run the test, and ensure that it passes.
 
 ## Testing the unknown reaction case
 
-Here we have our final test case. The error response from the GitHub endpoint
-is just to verify that the middleware never attempts to file an issue.
+Now it's time to test what happens when our middleware receives a reaction
+that doesn't match any configuration rules. It should silently ignore the
+message. The error responses are to verify that the middleware never attempts
+to make any API requests.
 
 ```js
   context('a message receiving an unknown reaction', function() {
     beforeEach(function() {
-      var url = '/github/repos/18F/handbook/issues',
-          response = apiStubServer.urlsToResponses[url];
+      Object.keys(apiStubServer.urlsToResponses).forEach(function(url) {
+        var response = apiStubServer.urlsToResponses[url];
 
-      response.statusCode = 500;
-      response.payload = { message: 'should not happen' };
+        response.statusCode = 500;
+        response.payload = { message: 'should not happen' };
+      });
       return sendReaction('sad-face');
     });
 
     it('should be ignored', function() {
-      room.messages.should.eql([['mikebland', 'sad-face']]);
+      room.messages.should.eql([['mbland', 'sad-face']]);
       logHelper.filteredMessages().should.eql(initLogMessages());
     });
   });
 ```
+
+## Testing unexpected errors
+
+TODO(mbland)
+Though we've done a good job ensuring our `Middleware` function  
 
 And that's it!
 

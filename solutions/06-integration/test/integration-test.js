@@ -141,6 +141,17 @@ describe('Integration test', function() {
     logHelper.filteredMessages().should.eql(initLogMessages());
   });
 
+  it('should not register if the config file is invalid', function() {
+    var origPath = process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH;
+
+    try {
+      process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH = __dirname;
+      room = scriptHelper.createRoom({ httpd: false, name: 'handbook' });
+    } finally {
+      process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH = origPath;
+    }
+  });
+
   context('an evergreen_tree reaction to a message', function() {
     beforeEach(function() {
       return sendReaction(helpers.REACTION);
