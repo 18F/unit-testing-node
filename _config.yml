@@ -91,6 +91,9 @@ navigation:
   - text: Dependency injection
     url: dependency-injection/
     internal: true
+  - text: Ensuring valid objects by contract
+    url: valid-by-contract/
+    internal: true
   - text: Exploration, vision, and settlement
     url: exploration-vision-and-settlement/
     internal: true

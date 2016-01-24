@@ -50,13 +50,13 @@ function Config(configuration) {
   var config = configuration ||
         parseConfigFromEnvironmentVariablePathOrUseDefault();
 
+  validate(config);
+
   for (var fieldName in config) {
     if (config.hasOwnProperty(fieldName)) {
       this[fieldName] = config[fieldName];
     }
   }
-  this.validate();
-
 }
 ```
 
@@ -66,13 +66,9 @@ and the
 ['use strict' directive](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Strict_mode).
 
 When the `Config` object is constructed, it takes configuration data either as
-a parameter or it gets the path from an environment variable. It then assigns
-every property from the `config` object to itself. The
-[`hasOwnProperty()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/hasOwnProperty)
-check ensures only properties defined by the configuration file itself are
-copied.
+a parameter or it gets the path from an environment variable.
 
-Once all the properties are copied, the object is then validated against a
+We then validate the data object against a
 [schema]({{ site.baseurl }}/concepts/schema-validation/), defined just below
 the constructor:
 
@@ -100,27 +96,42 @@ var schema = {
 };
 ```
 
-Let's take a look at the starting implementation for `validate()`. It makes
-sure that all of the fields required by the schema are present, and doesn't
-contain any fields missing from the schema. It performs a series of checks to
-accumulate as many errors as possible before throwing an
-[`Error`](https://nodejs.org/api/errors.html).
+Note that we do not call assign any values to `this` or call any methods on
+`this` until `validate` succeeds. [This is a good practice regardless of
+language, as it makes it easier to reason about the state of the object, and
+can preclude security issues]({{ site.baseurl }}/concepts/valid-by-contract/).
+Once validation succeeds, `Config` then assigns every property from the
+`config` object to itself. The
+[`hasOwnProperty`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/hasOwnProperty)
+check ensures only properties defined by the configuration file itself are
+copied.
+
+Let's take a look at the starting implementation for `validate`. It makes sure
+that all of the fields required by the schema are present, and doesn't contain
+any fields missing from the schema. It performs a series of checks to
+accumulate as many errors as possible before throwing an [`Error`](https://nodejs.org/api/errors.html).
+Therefore, any time the `Config` constructor _doesn't_ throw an `Error`, [we
+are guaranteed that `Config` contains valid data by
+contract]({{ site.baseurl }}/concepts/valid-by-contract/).
 
 ```js
-Config.prototype.validate = function() {
+function validate(config) {
   var errors = [],
       errMsg;
 
-  this.checkRequiredTopLevelFields(errors);
-  this.checkForUnknownFieldNames(errors);
-  this.checkRequiredRulesFields(errors);
-  this.checkForUnknownRuleFieldNames(errors);
+  checkRequiredTopLevelFields(config, errors);
+  checkForUnknownFieldNames(config, errors);
+
+  if (config.rules) {
+    checkRequiredRulesFields(config, errors);
+    checkForUnknownRuleFieldNames(config, errors);
+  }
 
   if (errors.length !== 0) {
     errMsg = 'Invalid configuration:\n  ' + errors.join('\n  ');
     throw new Error(errMsg);
   }
-};
+}
 ```
 
 ## Testing a valid configuration object
@@ -159,7 +170,7 @@ that the new `Config` object contains the same data as the original JSON
 object.
 
 The most expedient comparison is to use
-[`JSON.stringify()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify)
+[`JSON.stringify`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify)
 on both objects and to compare the result. It's a blunt instrument, but for
 our small case, it gets the job done. In this test, we'll use the `expect`
 form of [Chai BDD-style assertions](http://chaijs.com/api/bdd/).
@@ -205,8 +216,8 @@ $ npm test -- --grep '^Config '
   missing slackTimeout
   missing successReaction
   missing rules
-    at Config.validate (exercise/lib/config.js:46:11)
-    at new Config (exercise/lib/config.js:14:8)
+    at validate (exercise/lib/config.js:58:11)
+    at new Config (exercise/lib/config.js:13:3)
     at Context.<anonymous> (exercise/test/config-test.js:27:14)
 
 
@@ -243,7 +254,7 @@ $ npm test -- --grep Config
 [12:29:20] Finished 'test' after 58 ms
 ```
 
-## Testing `checkRequiredTopLevelFields()`
+## Testing `checkRequiredTopLevelFields`
 
 We've now verified that our `Config` will accept a valid configuration.
 However, we'd like to remain confident that `Config` will detect every missing
@@ -282,17 +293,17 @@ For the `rules` field, `channelNames` is the only optional field. If it is
 present, it names the channels matched by the rule. If it is absent, the rule
 will match any channel.
 
-In [`exercise/config/slack-github-issues.json`]({{ site.baseurl
-}}/exercise/config/slack-github-issues.json), neither `githubApiBaseUrl` nor
-`slackApiBaseUrl` are defined, and the only rule defined does not contain a
-`channelNames` field. To test that these fields are rightfully allowed by
-validation, create a new test case called `'should validate optional config
-fields'`. Copy the implementation from  `'should validate a valid
-configuration'`, but add values for `githubApiBaseUrl` and `slackApiBaseUrl`,
-and update the `configData.rules` member by either:
+In [`exercise/config/slack-github-issues.json`]({{ site.baseurl }}/exercise/config/slack-github-issues.json),
+neither `githubApiBaseUrl` nor `slackApiBaseUrl` are defined, and the only
+rule defined does not contain a `channelNames` field. To test that these
+fields are rightfully allowed by validation, create a new test case called
+`'should validate optional config fields'`. Copy the implementation from
+`'should validate a valid configuration'`, but add values for
+`githubApiBaseUrl` and `slackApiBaseUrl`, and update the `configData.rules`
+member by either:
 
 - directly updating the existing `rules` member to have a `channelNames` field
-- calling `configData.rules.push()` to add a new member with `channelNames`
+- calling `configData.rules.push` to add a new member with `channelNames`
   field defined
 
 Do not worry about the duplicated code and data for now. We will address this
@@ -303,12 +314,12 @@ in a later step.
 At this point you're ready to implement the remaining validation functions.
 Here's roughly how they should be implemented and tested.
 
-### `checkForUnknownFieldNames()`
+### `checkForUnknownFieldNames`
 
-This is the inverse of `checkRequiredTopLevelFields()`. You will need to
-iterate over every property of `this` and compare each against the required
+This is the inverse of `checkRequiredTopLevelFields`. You will need to
+iterate over every property of `config` and compare each against the required
 and optional properties in the schema. You will need to perform the
-`hasOwnProperty()` check on properties from `this`, as well as from the
+`hasOwnProperty` check on properties from `config`, as well as from the
 `schema.requiredTopLevelFields` and `schema.optionalTopLevelFields`
 collections.
 
@@ -333,14 +344,14 @@ properties'` starting with this template:
 Again, do not worry that several of the tests contain duplicate logic and
 data. We will address this in a later step.
 
-### `checkRequiredRulesFields()`
+### `checkRequiredRulesFields`
 
-This function is very similar to `checkRequiredTopLevelFields()`, except that
+This function is very similar to `checkRequiredTopLevelFields`, except that
 it validates individual items in the `rules` field using the schema's
 `requiredRulesFields` property. It may be helpful to include the numeric index
 of the rule in the list when constructing the error message.
 
-You will need to detect when `this.rules` is `undefined`. Even though
+You will need to detect when `config.rules` is `undefined`. Even though
 `rules` is required, and will always be present when validation succeeds, it
 may not always be present when validation is taking place. This is because the
 validation will try to collect as many errors as possible, and will not stop
@@ -348,14 +359,14 @@ just because `rules` is not present.
 
 To test, create a new test case called `'should raise errors for missing
 required rules fields'`. Use the same template from
-`checkForUnknownFieldNames()` to start. Just copy and paste; we'll address the
+`checkForUnknownFieldNames` to start. Just copy and paste; we'll address the
 duplication later.
 
-### `checkForUnknownRuleNames()`
+### `checkForUnknownRuleNames`
 
-This function requires the same test for `this.rules` as
-`checkRequiredRulesFields()`, but the logic performed on each rule will need
-to resemble `checkForUnknownFieldNames()`. You will have to check each rule's
+This function requires the same test for `config.rules` as
+`checkRequiredRulesFields`, but the logic performed on each rule will need
+to resemble `checkForUnknownFieldNames`. You will have to check each rule's
 properties against the property names from both `schema.requiredRulesFields`
 and `schema.optionalRulesFields`.
 
@@ -364,14 +375,14 @@ errors for unknown properties'` test rather than writing a new test. However,
 it's generally good to have separate tests for distinct concerns at this
 level, so feel free to make a new test if you wish.
 
-### `parseConfigFromEnvironmentVariablePathOrUseDefault()`
+### `parseConfigFromEnvironmentVariablePathOrUseDefault`
 
 This function should read `HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH` from
 [`process.env`](https://nodejs.org/api/process.html#process_process_env)
 to discover the location of the configuration file. If that variable is not
 defined, it should attempt to read `config/slack-github-issues.json`. It
 should return the JSON object parsed from the file, using
-[`fs.ReadFileSync()`](https://nodejs.org/api/fs.html#fs_fs_readfilesync_file_options)
+[`fs.ReadFileSync`](https://nodejs.org/api/fs.html#fs_fs_readfilesync_file_options)
 to read the contents.
 
 The tests for this function need only validate that the `Config` object reads
@@ -383,7 +394,7 @@ the other tests, using data defined in the test itself.
 The tricky part is managing the presence of
 `HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH`. We want to ensure that this variable
 is defined for this test, but not for any other. Add the following
-[`before() and afterEach()` hooks](https://mochajs.org/#hooks) to the top of
+[`before and afterEach` hooks](https://mochajs.org/#hooks) to the top of
 the fixture:
 
 ```js
@@ -421,7 +432,7 @@ path to the config file using:
       path.dirname(__dirname), 'config', 'slack-github-issues.json');
 ```
 
-Both tests should use the `JSON.stringify()` method of comparing the original
+Both tests should use the `JSON.stringify` method of comparing the original
 data to the validated `Config` object.
 
 Note that at the moment, both tests are using the same data file. Though two
@@ -447,7 +458,7 @@ Config.prototype.checkRequiredTopLevelFields = function(errors) {
 
   for (fieldName in schema.requiredTopLevelFields) {
     if (schema.requiredTopLevelFields.hasOwnProperty(fieldName) &&
-        !this.hasOwnProperty(fieldName)) {
+        !config.hasOwnProperty(fieldName)) {
       errors.push('missing ' + fieldName);
     }
   }
@@ -455,7 +466,7 @@ Config.prototype.checkRequiredTopLevelFields = function(errors) {
 ```
 
 `checkRequiredRulesFields` likely looks very similar, except that the logic is
-repeated for each element of `this.rules`. How can we effectively factor out
+repeated for each element of `config.rules`. How can we effectively factor out
 this duplication?
 
 The answer is to [convert the loop into a collection pipeline of distinct,
@@ -464,15 +475,13 @@ steps](http://martinfowler.com/articles/refactoring-pipelines.html). The first
 step is to convert the `for (fieldName in schema.requiredTopLevelFields)` to:
 
 ```js
-Config.prototype.checkRequiredTopLevelFields = function(errors) {
-  var config = this;
-
+function checkRequiredTopLevelFields(config, errors) {
   Object.keys(schema.requiredTopLevelFields).forEach(function(fieldName) {
     if (!config.hasOwnProperty(fieldName)) {
       errors.push('missing ' + fieldName);
     }
   });
-};
+}
 ```
 
 [`Object.keys`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/keys)
@@ -484,9 +493,7 @@ We can now switch the `forEach` function body into two separate pipeline
 functions:
 
 ```js
-Config.prototype.checkRequiredTopLevelFields = function(errors) {
-  var config = this;
-
+function checkRequiredTopLevelFields(config, errors) {
   Object.keys(schema.requiredTopLevelFields)
     .filter(function(fieldName) {
       return !config.hasOwnProperty(fieldName);
@@ -494,7 +501,7 @@ Config.prototype.checkRequiredTopLevelFields = function(errors) {
     .forEach(function(fieldName) {
       errors.push('missing ' + fieldName);
     });
-};
+}
 ```
 
 Now rather than having one big loop, we have three small ones:
@@ -520,12 +527,12 @@ We can now use this utility function to update `checkRequiredTopLevelFields`
 to look like:
 
 ```js
-Config.prototype.checkRequiredTopLevelFields = function(errors) {
-  filterMissingFields(this, schema.requiredTopLevelFields)
+function checkRequiredTopLevelFields(config, errors) {
+  filterMissingFields(config, schema.requiredTopLevelFields)
     .forEach(function(fieldName) {
       errors.push('missing ' + fieldName);
     });
-};
+}
 ```
 
 Run the tests to make sure they all still pass. Now perform a similar
@@ -554,7 +561,7 @@ exercise a different code path.
 
 To that end, there is a
 [`test/helpers/test-config.json`]({{ site.baseurl }}/exercise/test/helpers/test-config.json)
-file containing a valid configuration. However, using `require()` to import
+file containing a valid configuration. However, using `require` to import
 this file directly will cause all of the tests to manipulate the same single
 object. This sharing of state leads to interdependencies between test cases,
 which is the opposite of what we want. Each test should be able to pass or
@@ -562,7 +569,7 @@ fail independently of state changes from other tests.
 
 For that reason, the
 [`test/helpers` module]({{ site.baseurl }}/exercise/test/helpers/index.js)
-module provides a `baseConfig()` method that makes a fresh copy of this data:
+module provides a `baseConfig` method that makes a fresh copy of this data:
 
 ```js
 /* jshint node: true */
@@ -585,7 +592,7 @@ var helpers = require('./helpers');
 ```
 
 Now replace most of your test data definitions with calls to
-`helpers.baseConfig()`, and then update the resulting data structure as needed
+`helpers.baseConfig`, and then update the resulting data structure as needed
 for each specific test. The specific conditions examined by each test should
 become easier to see.
 

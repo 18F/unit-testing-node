@@ -10,13 +10,13 @@ function Config(configuration, logger) {
   var config = configuration ||
         parseConfigFromEnvironmentVariablePathOrUseDefault(logger);
 
+  validate(config);
+
   for (var fieldName in config) {
     if (config.hasOwnProperty(fieldName)) {
       this[fieldName] = config[fieldName];
     }
   }
-  this.validate();
-
 }
 
 var schema = {
@@ -41,23 +41,23 @@ var schema = {
   }
 };
 
-Config.prototype.validate = function() {
+function validate(config) {
   var errors = [],
       errMsg;
 
-  this.checkRequiredTopLevelFields(errors);
-  this.checkForUnknownFieldNames(errors);
+  checkRequiredTopLevelFields(config, errors);
+  checkForUnknownFieldNames(config, errors);
 
-  if (this.rules) {
-    this.checkRequiredRulesFields(errors);
-    this.checkForUnknownRuleFieldNames(errors);
+  if (config.rules) {
+    checkRequiredRulesFields(config, errors);
+    checkForUnknownRuleFieldNames(config, errors);
   }
 
   if (errors.length !== 0) {
     errMsg = 'Invalid configuration:\n  ' + errors.join('\n  ');
     throw new Error(errMsg);
   }
-};
+}
 
 function parseConfigFromEnvironmentVariablePathOrUseDefault(logger) {
   var configPath = (process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH ||
@@ -66,12 +66,12 @@ function parseConfigFromEnvironmentVariablePathOrUseDefault(logger) {
   return JSON.parse(fs.readFileSync(configPath, 'utf8'));
 }
 
-Config.prototype.checkRequiredTopLevelFields = function(errors) {
-  filterMissingFields(this, schema.requiredTopLevelFields)
+function checkRequiredTopLevelFields(config, errors) {
+  filterMissingFields(config, schema.requiredTopLevelFields)
     .forEach(function(fieldName) {
       errors.push('missing ' + fieldName);
     });
-};
+}
 
 function filterMissingFields(object, requiredFields) {
   return Object.keys(requiredFields).filter(function(fieldName) {
@@ -79,13 +79,13 @@ function filterMissingFields(object, requiredFields) {
   });
 }
 
-Config.prototype.checkForUnknownFieldNames = function(errors) {
-  filterUnknownFields(this, schema.requiredTopLevelFields,
+function checkForUnknownFieldNames(config, errors) {
+  filterUnknownFields(config, schema.requiredTopLevelFields,
     schema.optionalTopLevelFields)
     .forEach(function(fieldName) {
       errors.push('unknown property ' + fieldName);
     });
-};
+}
 
 function filterUnknownFields(object, requiredFields, optionalFields) {
   return Object.keys(object).filter(function(fieldName) {
@@ -94,17 +94,17 @@ function filterUnknownFields(object, requiredFields, optionalFields) {
   });
 }
 
-Config.prototype.checkRequiredRulesFields = function(errors) {
-  this.rules.forEach(function(rule, index) {
+function checkRequiredRulesFields(config, errors) {
+  config.rules.forEach(function(rule, index) {
     filterMissingFields(rule, schema.requiredRulesFields)
       .forEach(function(fieldName) {
         errors.push('rule ' + index + ' missing ' + fieldName);
       });
   });
-};
+}
 
-Config.prototype.checkForUnknownRuleFieldNames = function(errors) {
-  this.rules.forEach(function(rule, index) {
+function checkForUnknownRuleFieldNames(config, errors) {
+  config.rules.forEach(function(rule, index) {
     filterUnknownFields(rule, schema.requiredRulesFields,
       schema.optionalRulesFields)
       .forEach(function(fieldName) {
@@ -112,4 +112,4 @@ Config.prototype.checkForUnknownRuleFieldNames = function(errors) {
           ' contains unknown property ' + fieldName);
       });
   });
-};
+}
