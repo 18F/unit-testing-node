@@ -390,7 +390,10 @@ the file properly (or throws an appropriate `Error`, which we'll cover
 shortly). All of the validation success and failure cases have been covered by
 the other tests, using data defined in the test itself.
 
-**Don't forget to `require('fs')` and `require('path')` as needed.**
+**Don't forget to `require('fs')` and `require('path')` as needed.** Use
+[`path.join`](https://nodejs.org/api/path.html#path_path_join_path1_path2) in
+your implementation to ensure that the default configuration path is portable
+across operating systems.
 
 The tricky part is managing the presence of
 `HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH`. We want to ensure that this variable

@@ -3,6 +3,7 @@
 'use strict';
 
 var fs = require('fs');
+var path = require('path');
 
 module.exports = Config;
 
@@ -61,7 +62,7 @@ function validate(config) {
 
 function parseConfigFromEnvironmentVariablePathOrUseDefault() {
   var configPath = (process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH ||
-        'config/slack-github-issues.json'),
+        path.join('config', 'slack-github-issues.json')),
       errorPrefix = 'failed to load configuration from ' + configPath + ': ';
 
   try {
