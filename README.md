@@ -22,9 +22,9 @@ how to create directories and files on the command line of a terminal program.
 
 ## Installation
 
-** Docker users**: _The short way_
-1. Run `./docker-startup.sh` to build and run the docker image and open your web browser to appropriate web address.
-  - You may have to refresh after the server finally starts
+**Docker users**:
+
+Ensure you have `docker` and `docker-machine` installed. Run `./docker-startup.sh` to build and run the docker image and open your web browser to appropriate web address. You may have to refresh after the server finally starts.
 
 **OS X users**: Consider using [Homebrew](http://brew.sh/) to install the
 software described below.
