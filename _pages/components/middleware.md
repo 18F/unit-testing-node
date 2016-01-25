@@ -423,10 +423,10 @@ findMatchingRule '` and you should see:
 $ npm test -- --grep ' findMatchingRule '
 
 > 18f-unit-testing-node@0.0.0 test
-> /Users/michaelbland/src/18F/unit-testing-node
+> .../unit-testing-node
 > gulp test "--grep" " findMatchingRule "
 
-[13:51:23] Using gulpfile ~/src/18F/unit-testing-node/gulpfile.js
+[13:51:23] Using gulpfile .../unit-testing-node/gulpfile.js
 [13:51:23] Starting 'test'...
 
 
@@ -1243,10 +1243,10 @@ output:
 $ npm test -- --grep ' execute '
 
 > 18f-unit-testing-node@0.0.0 test
-> /Users/michaelbland/src/18F/unit-testing-node
+> .../unit-testing-node
 > gulp test "--grep" " execute "
 
-[11:59:33] Using gulpfile ~/src/18F/unit-testing-node/gulpfile.js
+[11:59:33] Using gulpfile .../unit-testing-node/gulpfile.js
 [11:59:33] Starting 'test'...
 
 
@@ -1394,10 +1394,10 @@ run the test and make sure it fails:
 $ npm test -- --grep ' execute '
 
 > 18f-unit-testing-node@0.0.0 test
-> /Users/michaelbland/src/18F/unit-testing-node
+> .../unit-testing-node
 > gulp test "--grep" " execute "
 
-[13:23:20] Using gulpfile ~/src/18F/unit-testing-node/gulpfile.js
+[13:23:20] Using gulpfile .../unit-testing-node/gulpfile.js
 [13:23:20] Starting 'test'...
 
 
@@ -1463,10 +1463,10 @@ Run the test again, and you should see this:
 $ npm test -- --grep ' execute '
 
 > 18f-unit-testing-node@0.0.0 test
-> /Users/michaelbland/src/18F/unit-testing-node
+> .../unit-testing-node
 > gulp test "--grep" " execute "
 
-[13:51:25] Using gulpfile ~/src/18F/unit-testing-node/gulpfile.js
+[13:51:25] Using gulpfile .../unit-testing-node/gulpfile.js
 [13:51:25] Starting 'test'...
 
 
@@ -1868,7 +1868,7 @@ Notice that in the `message instanceof Error` case, we explicitly log the
 `message.message` field. This is because logging the actual `Error` object
 will include the class name in the output, which we don't need or want.
 
-Run the tests, and verify that the new test passes. Then, add this next 
+Run the tests, and verify that the new test passes. Then, add this next
 test, which validates the behavior when the request to file a GitHub issue
 fails. It is nearly identical to the previous one except that
 `githubClient.fileNewIssue` produces the failure (notice
@@ -1929,11 +1929,11 @@ function like so:
         checkErrorResponse(errorMessage);
 ```
 
-Run the test, and verify that the new test passes. Then, add this one final
-test, which validates the behavior when the GitHub issue request succeeds, but
-adding the success reaction to the message fails. It is nearly identical to
-the previous one except that `slackClient.addSuccessReaction` produces the
-failure (notice `calledOnce.should.be.true`):
+Run the test, and verify that the new test passes. Then, add this test, which
+validates the behavior when the GitHub issue request succeeds but adding the
+success reaction to the message fails. It is nearly identical to the previous
+one except that `slackClient.addSuccessReaction` produces the failure (notice
+`calledOnce.should.be.true`):
 
 ```js
     it('should file an issue but fail to add a reaction', function(done) {
@@ -1954,6 +1954,87 @@ failure (notice `calledOnce.should.be.true`):
     });
 ```
 
+## <a name="interface-boundary"></a>Preventing `Errors` from escaping the application interface boundary
+
+We've done a good job ensuring our `execute` function handles `Errors` by
+calling `reject` handlers in each `Promise`. Should any code that `Middleware`
+depends upon throw an `Error`, the `handleFailure` error handler function will
+convert it into a rejected `Promise`. `handleFailure` will then log any
+`Errors` before calling `next(done)`.
+
+However, at the moment, we can never be completely positive that an `Error`
+will never escape our `execute` function. Changes in the application or its
+dependencies may eventually cause `Errors` outside of the `Promise` chain and
+its failure handler. If that happens, we'll pollute the log with a nasty stack
+trace, and `next(done)` won't get called.
+
+Allowing an error from our application to cross an interface boundary is a bad
+habit. Since `Middleware.execute` will serve as the touchpoint between Hubot
+and our application, we would do well to prevent it from allowing any errors
+to escape.
+
+There is a straightforward fix to this, however. Push the entire `execute`
+implementation into another function, `doExecute`, and wrap it in a
+[`try...catch`
+block](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/try...catch):
+
+```js
+Middleware.prototype.execute = function(context, next, done) {
+  try {
+    return doExecute(this, context, next, done);
+
+  } catch (err) {
+  }
+};
+
+function doExecute(middleware, context, next, done) {
+  // Update existing implementation to replace `this` with `middleware`.
+}
+```
+
+Make this change, and run the tests to ensure they all still pass. Then add
+the following test case, which sets the expectation that `execute` will log
+unhandled errors and send them as a reply to the user.
+
+```js
+    it('should catch and log unanticipated errors', function() {
+      var errorMessage = 'unhandled error: Error\nmessage: ' +
+            JSON.stringify(helpers.reactionAddedMessage(), null, 2);
+
+      slackClient.getChannelName.throws();
+      expect(middleware.execute(context, next, hubotDone)).to.be.undefined;
+      next.calledWith(hubotDone).should.be.true;
+      context.response.reply.args.should.eql([[errorMessage]]);
+      logger.error.args.should.eql([[null, errorMessage]]);
+    });
+```
+
+The error message will include a copy of the incoming message that triggered
+the error. This is arguably a lot more helpful than a stack trace, at least
+for people trying to report the error. The developer can then try to reproduce
+the error by writing a test using the same input.
+
+Run the test and make sure it fails. Then update the `execute` function to
+appear thus:
+
+```js
+Middleware.prototype.execute = function(context, next, done) {
+  var errorMessage;
+
+  try {
+    return doExecute(this, context, next, done);
+
+  } catch (err) {
+    errorMessage = 'unhandled error: ' +
+      (err instanceof Error ? err.message : err) + '\nmessage: ' +
+        JSON.stringify(context.response.message.rawMessage, null, 2);
+    this.logger.error(null, errorMessage);
+    context.response.reply(errorMessage);
+    return next(done);
+  }
+};
+```
+
 ## Check your work
 
 By this point, all of the `Middleware` tests should be passing:
@@ -1961,12 +2042,11 @@ By this point, all of the `Middleware` tests should be passing:
 ```sh
 $ npm test -- --grep '^Middleware '
 
-> 18f-unit-testing-node@0.0.0 test
-> /Users/michaelbland/src/18F/unit-testing-node
+> 18f-unit-testing-node@0.0.0 test .../unit-testing-node
 > gulp test "--grep" "^Middleware "
 
-[17:27:26] Using gulpfile ~/src/18F/unit-testing-node/gulpfile.js
-[17:27:26] Starting 'test'...
+[19:16:06] Using gulpfile .../unit-testing-node/gulpfile.js
+[19:16:06] Starting 'test'...
 
 
   Middleware
@@ -1981,18 +2061,17 @@ $ npm test -- --grep '^Middleware '
     execute
       ✓ should receive a message and file an issue
       ✓ should ignore messages that do not match
-      ✓ should not file another issue for the same message when one is in
-progress
-      ✓ should not file another issue for the same message when one is already
-filed
+      ✓ should not file another issue for the same message when one is in progress
+      ✓ should not file another issue for the same message when one is already filed
       ✓ should receive a message but fail to get reactions
       ✓ should get reactions but fail to file an issue
       ✓ should file an issue but fail to add a reaction
+      ✓ should catch and log unanticipated errors
 
 
-  13 passing (98ms)
+  14 passing (110ms)
 
-[17:27:26] Finished 'test' after 609 ms
+[19:16:07] Finished 'test' after 683 ms
 ```
 
 Now that you're all finished, compare your solutions to the code in

@@ -1407,178 +1407,19 @@ to make any API requests.
   });
 ```
 
-## Testing unexpected errors
-
-We've done a good job ensuring our `Middleware` function passes `Errors` by
-calling `reject` handlers in each `Promise`. Also, the `handleFailure` error
-handler function from `Middleware` will convert thrown `Errors` into rejected
-`Promises` that get logged by `handleFinish`, which also calls `next(done)`.
-
-However, we can never be completely positive that an `Error` will ever get
-thrown, due to changes or errors in the application or its dependencies. If
-that happens, we'll pollute the log with a nasty stack trace, and `next(done)`
-won't get called.
-
-To simulate this, let's add this new test case, relying on the dirty trick of
-reaching into `room.robot.middleware.receive.stack` to force an `Error`. We'll
-call `room.user.react` temporarily so we can see the stack trace.
-
-```js
-  it('should catch and log an unanticipated error', function(done) {
-    var impl = room.robot.middleware.receive.stack[0].impl;
-
-    impl.slackClient.client.getChannelByID = function() {
-      throw Error('forced error');
-    };
-
-    sendReaction(helpers.REACTION).should.be.fulfilled.then(function() {
-    }).should.notify(done);
-  });
-```
-
-Running the test should produce:
-
-```sh
-$ npm test -- --grep '^Integration '
-
-> 18f-unit-testing-node@0.0.0 test .../unit-testing-node
-> gulp test "--grep" "^Integration "
-
-[17:52:17] Using gulpfile .../unit-testing-node/gulpfile.js
-[17:52:17] Starting 'test'...
-
-
-  Integration test
-    ✓ should successfully load the application script
-    ✓ should not register if the config file is invalid
-    ✓ should create a GitHub issue given a valid reaction (62ms)
-    ✓ should fail to create a GitHub issue
-    ✓ should ignore a message receiving an unknown reaction
-[Sun Jan 24 2016 17:52:18 GMT-0500 (EST)] ERROR Error: forced error
-  at Error (native)
-  at Object.impl.slackClient.client.getChannelByID (.../unit-testing-node/exercise/test/integration-test.js:236:13)
-  at SlackClient.getChannelName (.../unit-testing-node/exercise/lib/slack-client.js:26:22)
-  at Rule.channelMatches (.../unit-testing-node/exercise/lib/rule.js:28:34)
-  at Rule.match (.../unit-testing-node/exercise/lib/rule.js:17:10)
-  at .../unit-testing-node/exercise/lib/middleware.js:54:19
-  at Array.find (native)
-  at Middleware.findMatchingRule (.../unit-testing-node/exercise/lib/middleware.js:53:23)
-  at Middleware.execute (.../unit-testing-node/exercise/lib/middleware.js:24:19)
-  at middleware (.../unit-testing-node/exercise/scripts/slack-github-issues.js:30:12)
-  at .../unit-testing-node/node_modules/hubot/src/middleware.coffee:33:24
-  [...snip Hubot stack frames...]
-
-    ✓ should catch and log an unanticipated error
-
-
-  6 passing (278ms)
-
-[17:52:18] Finished 'test' after
-```
-
-Note that while Hubot caught the `Error`, `execute` never invoked `next(done)`.
-
-To rectify this and clean up the log, let's add a `try...catch` block inside
-the `middleware` function of our script:
-
-```js
-    middleware = function(context, next, done) {
-      var errorMessage;
-
-      try {
-        impl.execute(context, next, done);
-
-      } catch (err) {
-        errorMessage = 'unhandled error: ' +
-          (err instanceof Error ? err.message : err) +
-          '\nmessage: ' + JSON.stringify(
-              context.response.envelope.message.rawMessage, null, 2);
-        logger.error(null, errorMessage);
-        context.response.reply(errorMessage);
-        next(done);
-      }
-    };
-```
-
-Run the test again and you should see:
-
-```sh
-$ npm test -- --grep '^Integration '
-
-> 18f-unit-testing-node@0.0.0 test .../unit-testing-node
-> gulp test "--grep" "^Integration "
-
-[17:55:56] Using gulpfile .../unit-testing-node/gulpfile.js
-[17:55:56] Starting 'test'...
-
-
-  Integration test
-    ✓ should successfully load the application script
-    ✓ should not register if the config file is invalid
-    ✓ should create a GitHub issue given a valid reaction (62ms)
-    ✓ should fail to create a GitHub issue
-    ✓ should ignore a message receiving an unknown reaction
-[Sun Jan 24 2016 17:55:57 GMT-0500 (EST)] ERROR 18f-unit-testing-node: unhandled error: forced error
-message: {
-  "type": "reaction_added",
-  "user": "U5150OU812",
-  "item": {
-    "type": "message",
-    "channel": "C5150OU812",
-    "ts": "1360782804.083113"
-  },
-  "reaction": "evergreen_tree",
-  "event_ts": "1360782804.083113"
-}
-    ✓ should catch and log an unanticipated error
-
-
-  6 passing (274ms)
-
-[17:55:57] Finished 'test' after
-```
-
-This is arguably a lot more helpful than a stack trace, at least for people
-trying to report the error. The developer can then try to reproduce the error
-by writing a test using the same input.
-
-Now let's update our test to validate the result programmatically. First,
-replace the `room.user.react` call from `beforeEach` with:
-
-```js
-    sendReaction(helpers.REACTION).should.be.fulfilled.then(function() {
-    }).should.notify(done);
-```
-
-Then fill in the test case with:
-
-```js
-    sendReaction(helpers.REACTION).should.be.fulfilled.then(function() {
-      var errorMessage = 'unhandled error: forced error',
-          message = JSON.stringify(helpers.reactionAddedMessage(), null, 2),
-          completeMessage = errorMessage + '\nmessage: ' + message;
-
-      room.messages.should.eql([
-        ['mbland', helpers.REACTION],
-        ['hubot', '@mbland ' + completeMessage]
-      ]);
-
-      logHelper.filteredMessages().should.eql(
-        initLogMessages().concat(['ERROR ' + errorMessage])
-      );
-    }).should.notify(done);
-```
-
-Run the test and ensure it passes. However, it'd be good to validate that the
-final log message contains the string representation of the raw message. Add
-this one last assertion to inspect the final raw log message:
-
-```js
-      logHelper.messages[logHelper.messages.length - 1].should.have.string(
-        completeMessage);
-```
-
 Run the tests, and ensure they all pass. And that's it!
+
+## Preventing `Errors` from escaping the application interface boundary
+
+As mentioned in the `Middleware` chapter, [we should endeavor to prevent
+any `Errors` escaping our application's interface
+boundary]({{ site.baseurl }}/components/middleware/#interface-boundary). Since
+we've already written `Middleware.execute` such that any unexpected errors are
+caught and logged, we need not worry about testing it again here.
+
+However, it's such an important concept that it's worth reiterating. If
+`Middleware.execute` throws any `Errors`, that could prevent other Hubot
+scripts from working normally.
 
 ## Think about it
 
@@ -1608,22 +1449,21 @@ $ npm test -- --grep '^Integration '
 > 18f-unit-testing-node@0.0.0 test .../unit-testing-node
 > gulp test "--grep" "^Integration "
 
-[17:59:19] Using gulpfile .../unit-testing-node/gulpfile.js
-[17:59:19] Starting 'test'...
+[19:23:53] Using gulpfile .../unit-testing-node/gulpfile.js
+[19:23:53] Starting 'test'...
 
 
   Integration test
     ✓ should successfully load the application script
     ✓ should not register if the config file is invalid
-    ✓ should create a GitHub issue given a valid reaction (62ms)
+    ✓ should create a GitHub issue given a valid reaction (61ms)
     ✓ should fail to create a GitHub issue
     ✓ should ignore a message receiving an unknown reaction
-    ✓ should catch and log an unanticipated error
 
 
-  6 passing (320ms)
+  5 passing (276ms)
 
-[17:59:20] Finished 'test' after
+[19:23:54] Finished 'test' after
 ```
 
 Now that you're all finished, compare your solutions to the code in
