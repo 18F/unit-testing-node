@@ -1,0 +1,98 @@
+#! /usr/bin/env node
+
+// jshint node: true
+// jshint esversion: 6
+//
+// Ensures that Hubot can successfully load and register this application.
+// 
+// Usage:
+//   cd path/to/hubot-slack-github-issues
+//   npm run smoke-test -s
+
+'use strict';
+
+var execSync = require('child_process').execSync;
+var path = require('path');
+var rootDir = path.dirname(__dirname);
+var scriptName = require(path.join(rootDir, 'package.json')).name;
+var testName = path.basename(__filename);
+
+var SUCCESS_MESSAGE = scriptName + ': registered receiveMiddleware';
+var FAILURE_MESSAGE = scriptName + ': receiveMiddleware registration failed: ';
+
+var failedCases = [];
+
+runTest('success using default config');
+runTest('success using test config',
+  path.join(__dirname, 'helpers', 'test-config.json'));
+runTest('failure with invalid test config',
+  path.join(__dirname, 'helpers', 'test-config-invalid.json'),
+  'Invalid configuration:');
+
+if (failedCases.length !== 0) {
+  write('The following test cases contained errors:\n  ' +
+    failedCases.join('\n  '));
+  write('FAILED');
+  process.exit(1);
+}
+write('PASSED');
+
+function write(message) {
+  process.stdout.write(`${testName}: ${message}\n`);
+}
+
+function runTest(caseName, configPath, expectedError) {
+  var result;
+
+  write('BEGIN ' + caseName);
+  if (configPath) {
+    process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH = configPath;
+  }
+
+  try {
+    result = execSync('hubot -t', { cwd: rootDir }).toString('utf8');
+    process.stdout.write(result);
+    checkResult(result, expectedError);
+    write('PASSED ' + caseName + '\n');
+
+  } catch (err) {
+    if (!err.status) {
+      write('ERROR: ' + err.message);
+    } else if (err.stdout.length !== 0) {
+      write(err.stdout);
+    }
+    write('FAILED ' + caseName + '\n');
+    failedCases.push(caseName);
+  }
+}
+
+function checkResult(result, expectedError) {
+  var lines = result.trim().split('\n'),
+      success,
+      failureMessage = FAILURE_MESSAGE + expectedError,
+      expectedFailure;
+
+  success = lines.find(function(line) {
+    return line.endsWith(SUCCESS_MESSAGE);
+  });
+  expectedFailure = expectedError && lines.find(function(line) {
+    return line.endsWith(failureMessage);
+  });
+
+  if (success) {
+    if (expectedError) {
+      throw new Error('script registered, but expected error:\n  ' +
+        expectedError);
+    }
+  } else if (!expectedError) {
+    throw new Error('script did not successfully register');
+  } else if (!expectedFailure) {
+    throw new Error('script did not emit expected error message:\n  ' +
+      failureMessage);
+  }
+
+  // Hubot should always exit with "OK" even if there's an error.
+  if (lines[lines.length - 1] !== 'OK') {
+    throw new Error('"OK" missing from output');
+  }
+}

@@ -70,7 +70,7 @@ function createTestSolutionsTasks() {
 gulp.task('test-all', createTestSolutionsTasks());
 
 gulp.task('lint', function() {
-  return gulp.src(['./exercise/**/*.js'])
+  return gulp.src(['./exercise/**/*.js', 'exercise/test/hubot-smoke-test'])
     .pipe(jshint())
     .pipe(jshint.reporter('default'));
 });
@@ -79,6 +79,8 @@ gulp.task('lint-all', function() {
   var filePatterns = [
     '**/*.js',
     '.exercise-init/**/*.js',
+    'exercise/test/hubot-smoke-test',
+    'solutions/07-system/test/hubot-smoke-test',
     '!node_modules/**',
     '!_site/**',
   ];
