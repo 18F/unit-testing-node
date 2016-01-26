@@ -14,42 +14,9 @@ var scriptName = require(path.join(rootDir, 'package.json')).name;
 var SUCCESS_MESSAGE = scriptName + ': registered receiveMiddleware';
 var FAILURE_MESSAGE = scriptName + ': receiveMiddleware registration failed: ';
 
-function checkHubot(done, validateOutput) {
-  exec('hubot -t', { cwd: rootDir }, function(error, stdout, stderr) {
-    var lines = stdout.trim().split('\n');
-
-    try {
-      expect(error).to.be.null;
-      stderr.should.eql('');
-      validateOutput(lines);
-      lines[lines.length - 1].should.eql('OK',
-        '"OK" missing from end of output');
-      done();
-
-    } catch (err) {
-      err.message = err.message + '\n' + lines.join('\n');
-      done(err);
-    }
-  });
-}
-
-function hasSuccessMessage(lines) {
-  return lines.find(function(line) {
-    return line.indexOf(SUCCESS_MESSAGE) !== -1;
-  });
-}
-
-function hasFailureMessage(expectedError) {
-  var failureMessage = FAILURE_MESSAGE + expectedError;
-
-  return function(lines) {
-    return lines.find(function(line) {
-      return line.indexOf(failureMessage) !== -1;
-    });
-  };
-}
-
 describe('Smoke test', function() {
+  var checkHubot;
+
   beforeEach(function() {
     delete process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH;
   });
@@ -58,9 +25,24 @@ describe('Smoke test', function() {
     delete process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH;
   });
 
+  checkHubot = function(done, validateOutput) {
+    exec('hubot -t', { cwd: rootDir }, function(error, stdout, stderr) {
+      try {
+        expect(error).to.be.null;
+        stderr.should.eql('');
+        validateOutput(stdout);
+        stdout.should.have.string('\nOK\n', '"OK" missing from end of output');
+        done();
+
+      } catch (err) {
+        done(err);
+      }
+    });
+  };
+
   it('should register successfully using the default config', function(done) {
-    checkHubot(done, function(lines) {
-      lines.should.satisfy(hasSuccessMessage, 'script not registered');
+    checkHubot(done, function(output) {
+      output.should.have.string(SUCCESS_MESSAGE, 'script not registered');
     });
   });
 
@@ -68,17 +50,17 @@ describe('Smoke test', function() {
      'HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH', function(done) {
     process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH = path.join(
       __dirname, 'helpers', 'test-config.json');
-    checkHubot(done, function(lines) {
-      lines.should.satisfy(hasSuccessMessage, 'script not registered');
+    checkHubot(done, function(output) {
+      output.should.have.string(SUCCESS_MESSAGE, 'script not registered');
     });
   });
 
   it('should fail to register due to an invalid config', function(done) {
     process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH = path.join(
       __dirname, 'helpers', 'test-config-invalid.json');
-    checkHubot(done, function(lines) {
-      lines.should.satisfy(hasFailureMessage('Invalid configuration:'),
-        'script didn\'t emit "Invalid configuration:" error');
+    checkHubot(done, function(output) {
+      output.should.have.string(FAILURE_MESSAGE + 'Invalid configuration:',
+        'script didn\'t emit expected error');
     });
   });
 });

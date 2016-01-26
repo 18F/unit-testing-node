@@ -31,12 +31,10 @@ successfully load our script.
 We will learn to:
 
 - write a Node.js script to run a Hubot process as part of a "smoke test"
-- capture the process's standard output to validate both success and error log
+- examine the process's standard output to validate both success and error log
   messages
-- writing small test harness functions to exercise and validate success and
-  error cases
-- use a couple of nifty ECMAScript 6 features that we've avoided using in the
-  application code up until now
+- writing a harness function to exercise and validate properties common to
+  both success and error cases
 
 ## What to include in a smoke test
 
@@ -61,111 +59,250 @@ that Hubot can load `exercise/scripts/slack-github-issues` and:
   variable and fail to register the application due to a configuration
   validation error.
 
-## Starting to write and run the `exercise/test/hubot-smoke-test` script
+## Starting to write `exercise/test/smoke-test.js`
 
-Open up a new file, `exercise/test/hubot-smoke-test`, and add this preamble:
+Open up a new file, `exercise/test/smoke-test.js`, and add this preamble:
 
 ```js
-#! /usr/bin/env node
-
-// jshint node: true
-// jshint esversion: 6
-//
-// Ensures that Hubot can successfully load and register this application.
-// 
-// Usage:
-//   cd path/to/hubot-slack-github-issues
-//   npm run smoke-test -s
+/* jshint node: true */
+/* jshint mocha: true */
+/* jshint expr: true */
 
 'use strict';
+
+var exec = require('child_process').exec;
+var path = require('path');
+var chai = require('chai');
+var expect = chai.expect;
+
+var rootDir = path.dirname(__dirname);
+var scriptName = require(path.join(rootDir, 'package.json')).name;
+var SUCCESS_MESSAGE = scriptName + ': registered receiveMiddleware';
+var FAILURE_MESSAGE = scriptName + ': receiveMiddleware registration failed: ';
 ```
 
-The first line, or "[shebang](https://en.wikipedia.org/wiki/Shebang_(Unix))",
-is a UNIX convention identifying the executable to use when running the script
-as a standalone program. If the script file has [execute
-permission](https://en.wikipedia.org/wiki/File_system_permissions#Permissions),
-the kernel will automatically use the specified executable to run the script.
-[`/usr/bin/env node` is one of the more portable methods of specifying the
-interpreter](https://en.wikipedia.org/wiki/Shebang_(Unix)#Portability), though
-it isn't perfect.
+Some of this should look very familar by now. However, notice that we're
+pulling in the [`exec` function from the `child_process` standard library
+package](https://nodejs.org/api/child_process.html#child_process_child_process_exec_command_options_callback).
+As you may expect, this is what we will use to execute our Hubot instance.
+Plus, since `npm test` adds the `node_modules/.bin` directory from the
+repository to the `PATH` environment variable, invoking the `hubot` program
+will be straightforward.
 
-Of course, this won't work on Windows and possibly other systems that aren't
-UNIX-based. Also, unless the `node_modules/.bin` directory from your clone of this repository is already in your `PATH`, the script won't work on UNIX, either.
+We use `rootDir` to build up the constants used to match log messages. We
+will also use `rootDir` to set the working directory of the `hubot` process
+because `hubot` expects there to be a `scripts` directory present. Otherwise,
+when we invoke `npm test`, the working directory will not necessarily be the
+same as `rootDir`, causing a test failure.
 
-Not to fret! Since we'll only ever execute this script within this source
-repository, we've defined a custom [npm
-script](https://docs.npmjs.com/files/package.json#scripts), run via [`npm
-run-script` (`npm run` for short)](https://docs.npmjs.com/cli/run-script). In
-the top-level `package.json` file you'll find within the `scripts` object:
-
-```json
-    "smoke-test": "node exercise/test/hubot-smoke-test",
-```
-
-So now running the script via `npm run smoke-test` should successfully do
-nothing:
-
+In fact, let's try an experiment. Try running the following commands:
+ 
 ```sh
-$ npm run smoke-test
+$ PATH=$PATH:node_modules/.bin hubot -t
+OK
 
-> 18f-unit-testing-node@0.0.0 smoke-test .../unit-testing-node
-> node exercise/test/hubot-smoke-test
+$ cd exercise
+$ PATH=$PATH:../node_modules/.bin hubot -t
+[Mon Jan 25 2016 20:34:50 GMT-0500 (EST)] INFO 18f-unit-testing-node: reading configuration from config/slack-github-issues.json
+[Mon Jan 25 2016 20:34:50 GMT-0500 (EST)] INFO 18f-unit-testing-node: registered receiveMiddleware
+OK
 
+$ cd ..
 ```
 
-Now for kicks, add this line to the script:
+The `-t` option tells hubot to only check that its configuration won't fail at
+startup; otherwise `hubot` would start an interactive session.
+
+As you can see, in the root directory of our repository, `hubot` didn't find
+any scripts to load. In our `exercise` directory, however`, it found our
+application and loaded it successfully. (Don't forget to `cd ..` to return to
+the root directory of the repository!)
+
+Note that we're using
+[`path.join`](https://nodejs.org/api/path.html#path_path_join_path1_path2)
+to ensure that `scriptName` is portable across operating systems.
+
+Now let's add some empty test cases:
 
 ```js
-process.exit(1);
+
+describe('Smoke test', function() {
+  it('should register successfully using the default config', function(done) {
+  });
+
+  it('should register successfully using the config from ' +
+     'HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH', function(done) {
+  });
+
+  it('should fail to register due to an invalid config', function(done) {
+  });
+});
 ```
 
-Running `npm run smoke-test` again should produce output resembling:
+Notice that all of the test cases use a `done` callback. This is because
+`exec` is asynchronous, and we'll need to pass to the `done` callback along to
+it. In the end, this will make the test _easier_ to write than in we used
+[`execSync`](https://nodejs.org/api/child_process.html#child_process_child_process_execsync_command_options)
+instead.
+
+## Working with `HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH`
+
+Since we know the `HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH` will figure
+prominently in our test cases, let's add `beforeEach` and `after` hooks:
+
+```js
+describe('Smoke test', function() {
+  beforeEach(function() {
+    delete process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH;
+  });
+
+  after(function() {
+    delete process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH;
+  });
+```
+
+The `beforeEach` hook will make sure the variable is clear before each test
+case. The `after` hook makes sure we clear the variable from the environment
+once all our cases have finished to avoid affecting other tests suites.
+
+Now let's set the environment variables for the cases that need it:
+
+```js
+  it('should register successfully using the config from ' +
+     'HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH', function(done) {
+    process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH = path.join(
+      __dirname, 'helpers', 'test-config.json');
+  });
+
+  it('should fail to register due to an invalid config', function(done) {
+    process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH = path.join(
+      __dirname, 'helpers', 'test-config-invalid.json');
+  });
+```
+
+Note that we're using
+[`path.join`](https://nodejs.org/api/path.html#path_path_join_path1_path2)
+to ensure that the config paths are portable across operating systems.
+
+## Writing the `checkHubot` harness function
+
+[Well-crafted repetition across test cases can be
+helpful]({{ site.baseurl }}/concepts/repetition-in-tests/). However, multiple
+assertions that are identical across test cases can cloud the differences
+between the test cases. Encapsulating these common assertions in a new
+function can help; the wrapper function can provide the repetition signalling
+common expectations far more efficiently.
+
+Combining this idea with the notion of a callback to `exec` that can validate
+the result, and we can begin writing the `checkHubot` harness function:
+
+```js
+describe('Smoke test', function() {
+  var checkHubot;
+
+  // ...beforeEach and after hooks...
+
+  checkHubot = function(done, validateOutput) {
+    exec('hubot -t', { cwd: rootDir }, function(error, stdout, stderr) {
+    });
+  };
+```
+
+As mentioned earlier, `npm test` will set our `PATH` environment variable such
+that `exec` can find our `hubot` installation. We pass the `-t` option so
+`hubot` only checks its configuration and exits rather than starting an
+interactive session. The working directory is set to `rootDir`, and
+[`exec`](https://nodejs.org/api/child_process.html#child_process_child_process_exec_command_options_callback)
+will pass the outputs of the finished process to the callback.
+
+The `done` argument will be the `done` callback passed by Mocha into each test
+fixture. `validateOutput` will be a callback defined by each test case to
+validate the standard output string from the `hubot` process.
+
+Let's fill in the structure of our callback to `exec`:
+
+```js
+    exec('hubot -t', { cwd: rootDir }, function(error, stdout, stderr) {
+      try {
+        validateOutput(stdout);
+        done();
+
+      } catch (err) {
+        done(err);
+      }
+    });
+```
+
+That's the basic outline. However, we still need to add the common assertions
+mentioned earlier. For every test case, we expect that:
+
+- `hubot` will exit normally, meaning `error` should be `null`
+- `hubot` will not print anything to standard error
+- the last line of output should be "`OK`"
+
+With that in mind, let's update the content of the `try` block to:
+
+```js
+        expect(error).to.be.null;
+        stderr.should.eql('');
+        validateOutput(stdout);
+        stdout.should.have.string('\nOK\n', '"OK" missing from end of output');
+        done();
+```
+
+## Finishing the test cases
+
+With the `checkHubot` harness function in place, all that's left is to add it
+to each test case. For the first two test cases, in which the script should
+register successfully, add the following:
+
+```js
+    checkHubot(done, function(output) {
+      output.should.have.string(SUCCESS_MESSAGE, 'script not registered');
+    });
+```
+
+For the final test case, in which the script should fail to register, add:
+
+```js
+    checkHubot(done, function(output) {
+      output.should.have.string(FAILURE_MESSAGE + 'Invalid configuration:',
+        'script didn\'t emit expected error');
+    });
+```
+
+And that's it! Really, that's all there is. Run the tests, and make sure they
+pass. Change the assertions to make them break, just to be sure they're really
+doing something.
+
+## Check your work
+
+By this point, all of the smoke tests should be passing:
 
 ```sh
-$ npm run smoke-test
+$ npm test -- --grep '^Smoke test '
 
-> 18f-unit-testing-node@0.0.0 smoke-test .../unit-testing-node
-> node exercise/test/hubot-smoke-test
+> 18f-unit-testing-node@0.0.0 test .../unit-testing-node
+> gulp test "--grep" "^Smoke test "
+
+[20:55:11] Using gulpfile .../unit-testing-node/gulpfile.js
+[20:55:11] Starting 'test'...
 
 
-npm ERR! OS VERSION
-npm ERR! argv ".../bin/node" ".../bin/npm" "run" "smoke-test"
-npm ERR! node NODE_VERSION
-npm ERR! npm  NPM_VERSION
-npm ERR! code ELIFECYCLE
-npm ERR! 18f-unit-testing-node@0.0.0 smoke-test: `node exercise/test/hubot-smoke-test`
-npm ERR! Exit status 1
-npm ERR!
-npm ERR! Failed at the 18f-unit-testing-node@0.0.0 smoke-test script 'node exercise/test/hubot-smoke-test'.
-npm ERR! Make sure you have the latest version of node.js and npm installed.
-npm ERR! If you do, this is most likely a problem with the 18f-unit-testing-node package,
-npm ERR! not with npm itself.
-npm ERR! Tell the author that this fails on your system:
-npm ERR!     node exercise/test/hubot-smoke-test
-npm ERR! You can get information on how to open an issue for this project with:
-npm ERR!     npm bugs 18f-unit-testing-node
-npm ERR! Or if that isn't available, you can get their info via:
-npm ERR!     npm owner ls 18f-unit-testing-node
-npm ERR! There is likely additional logging output above.
+  Smoke test
+    ✓ should register successfully using the default config (638ms)
+    ✓ should register successfully using the config from HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH (642ms)
+    ✓ should fail to register due to an invalid config (644ms)
 
-npm ERR! Please include the following file with any support request:
-npm ERR!     .../unit-testing-node/npm-debug.log
+
+  3 passing (2s)
+
+[20:55:14] Finished 'test' after 2.5 s
 ```
 
-Ugh! Why so noisy? Unlike [`npm test`](https://docs.npmjs.com/cli/test), which
-suppresses such output because tests are frequently expected to fail, `npm`
-reports as much context as possible for other failed scripts. But this _is_ a
-test; how can we avoid this noise every time the test fails?
+Now that you're all finished, compare your solutions to the code in
+[`solutions/07-system/test/smoke-test.js`]({{ site.baseurl }}/solutions/07-system/test/smoke-test.js).
 
-The solution, per the advice in the `Usage:` comment, is to use [the `-s` flag,
-short for `--loglevel silent`](https://docs.npmjs.com/misc/config). Run the
-script again, and the noisy output should go away. Then remove the
-`process.exit(1)` line before continuing.
-
-## Why `hubot-smoke-test` doesn't end in `.js`
-
-Since the `hubot-smoke-test` will become a relatively high level and slow
-running program, with verbose output, it's not something we will want to run
-frequently. It also will not use the Mocha framework used in all of our other
-tests. Consequently, we want it to be a standalone script that is invoked only
-occasionally, not automatically with every 
+You may wish to `git commit` your work to your local repo at this point. After
+doing so, try copying the `smoke-test.js` file from `solutions/07-system/test`
+into `exercises/test` to see if your implementation passes.
