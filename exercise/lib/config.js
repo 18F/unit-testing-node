@@ -5,14 +5,16 @@
 module.exports = Config;
 
 function Config(configuration) {
-  var config = configuration || parseConfigFromEnvironmentVariablePath();
+  var config = configuration ||
+        parseConfigFromEnvironmentVariablePathOrUseDefault();
+
+  validate(config);
 
   for (var fieldName in config) {
     if (config.hasOwnProperty(fieldName)) {
       this[fieldName] = config[fieldName];
     }
   }
-  this.validate();
 }
 
 var schema = {
@@ -22,6 +24,10 @@ var schema = {
     slackTimeout: 'Slack API timeout limit in milliseconds',
     successReaction: 'emoji used to indicate an issue was successfully filed',
     rules: 'Slack-reaction-to-GitHub-issue rules'
+  },
+  optionalTopLevelFields: {
+    githubApiBaseUrl: 'Alternate base URL for GitHub API requests',
+    slackApiBaseUrl: 'Alternate base URL for Slack API requests'
   },
   requiredRulesFields: {
     reactionName: 'name of the reaction emoji triggering the rule',
@@ -33,40 +39,40 @@ var schema = {
   }
 };
 
-Config.prototype.validate = function() {
+function validate(config) {
   var errors = [],
       errMsg;
 
-  this.checkRequiredTopLevelFields(errors);
-  this.checkForUnknownFieldNames(errors);
-  this.checkRequiredRulesFields(errors);
-  this.checkForUnknownRuleFieldNames(errors);
+  checkRequiredTopLevelFields(config, errors);
+  checkForUnknownFieldNames(config, errors);
+  checkRequiredRulesFields(config, errors);
+  checkForUnknownRuleFieldNames(config, errors);
 
   if (errors.length !== 0) {
     errMsg = 'Invalid configuration:\n  ' + errors.join('\n  ');
     throw new Error(errMsg);
   }
-};
-
-function parseConfigFromEnvironmentVariablePath() {
 }
 
-Config.prototype.checkRequiredTopLevelFields = function(errors) {
+function parseConfigFromEnvironmentVariablePathOrUseDefault() {
+}
+
+function checkRequiredTopLevelFields(config, errors) {
   var fieldName;
 
   for (fieldName in schema.requiredTopLevelFields) {
     if (schema.requiredTopLevelFields.hasOwnProperty(fieldName) &&
-        !this.hasOwnProperty(fieldName)) {
+        !config.hasOwnProperty(fieldName)) {
       errors.push('missing ' + fieldName);
     }
   }
-};
+}
 
-Config.prototype.checkForUnknownFieldNames = function() {
-};
+function checkForUnknownFieldNames(/* config */) {
+}
 
-Config.prototype.checkRequiredRulesFields = function() {
-};
+function checkRequiredRulesFields(/* config */) {
+}
 
-Config.prototype.checkForUnknownRuleFieldNames = function() {
-};
+function checkForUnknownRuleFieldNames(/* config */) {
+}

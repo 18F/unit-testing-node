@@ -10,6 +10,8 @@ var path = require('path');
 
 var ROOT_DIR = process.cwd();
 
+require('coffee-script/register');
+
 function buildArgs(args) {
   var argName, skipArgs = { _: true, '$0': true };
 
@@ -35,7 +37,7 @@ function makeTestTargetForDirectory(workDir) {
 }
 
 gulp.task('test', makeTestTargetForDirectory('exercise'));
-gulp.task('test-init', makeTestTargetForDirectory('.exercise-init'));
+gulp.task('test-init', ['test'], makeTestTargetForDirectory('.exercise-init'));
 
 // Lifted from:
 // https://github.com/gulpjs/gulp/blob/master/docs/recipes/running-task-steps-per-folder.md
