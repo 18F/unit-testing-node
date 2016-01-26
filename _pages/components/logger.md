@@ -65,7 +65,11 @@ based on the name of the script's package. Let's make it a constant member of
 the constructor so that it is programmatically accessible to our test:
 
 ```js
-Logger.PREFIX = require('../package.json').name + ':';
+var scriptName = require('../package.json').name;
+
+// ...snip...
+
+Logger.PREFIX = scriptName + ':';
 ```
 
 ## Manipulating `arguments`
@@ -96,7 +100,7 @@ bother to do the safe thing and manually create a new `Array`:
   var args = new Array(arguments.length),
       i;
 
-  for (i = 0; i != args.length; ++i) {
+  for (i = 0; i !== args.length; ++i) {
     args[i] = arguments[i];
   }
 ```
