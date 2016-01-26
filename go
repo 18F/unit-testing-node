@@ -109,7 +109,6 @@ end
 
 def_command :ci_build, 'Run all continuous integration checks' do
   exec_cmd 'npm run lint-all'
-  exec_cmd 'npm test'
   exec_cmd 'npm run test-all'
   build
 end

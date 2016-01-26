@@ -26,9 +26,6 @@ author:
 logourl: /assets/img/18f-logo.png
 logoalt: 18F logo
 
-# If true, will expand all nav bar items by default
-expand_nav: true
-
 # Navigation
 # List links that should appear in the site sidebar here
 navigation:
@@ -37,6 +34,10 @@ navigation:
 - text: Setup
   url: setup/
   internal: true
+  children:
+  - text: Adding the tools to your own project
+    url: tools/
+    internal: true
 - text: Designing the application
   url: designing-the-application/
   internal: true
@@ -49,16 +50,83 @@ navigation:
 - text: Designing and testing the components
   url: components/
   internal: true
-- text: Further reading
-  url: further-reading/
+  children:
+  - text: Config class
+    url: config/
+    internal: true
+  - text: Rule class
+    url: rule/
+    internal: true
+  - text: SlackClient class
+    url: slack-client/
+    internal: true
+  - text: GitHubClient class
+    url: github-client/
+    internal: true
+  - text: Logger class
+    url: logger/
+    internal: true
+  - text: Middleware class
+    url: middleware/
+    internal: true
+- text: Testing component integration
+  url: testing-component-integration/
+  internal: true
+- text: Testing system integration
+  url: testing-system-integration/
+  internal: true
+- text: Tools and automation
+  url: tools-and-automation/
+  internal: true
+- text: Conclusion
+  url: conclusion/
   internal: true
 - text: Concepts
   url: concepts/
   internal: true
   children:
+  - text: Code reuse
+    url: code-reuse/
+    internal: true
+  - text: Dependency injection
+    url: dependency-injection/
+    internal: true
+  - text: Ensuring valid objects by contract
+    url: valid-by-contract/
+    internal: true
+  - text: Exploration, vision, and settlement
+    url: exploration-vision-and-settlement/
+    internal: true
+  - text: Forking and contributing upstream
+    url: forking-and-contributing-upstream/
+    internal: true
+  - text: Minimizing dependencies
+    url: minimizing-dependencies/
+    internal: true
+  - text: Mocks vs. stubs
+    url: mocks-vs-stubs/
+    internal: true
+  - text: Object composition vs. inheritance
+    url: object-composition-vs-inheritance/
+    internal: true
+  - text: Repetition in tests
+    url: repetition-in-tests/
+    internal: true
+  - text: Schema validation
+    url: schema-validation/
+    internal: true
   - text: Seams
     url: seams/
     internal: true
+  - text: Shims
+    url: shims/
+    internal: true
+  - text: Testability
+    url: testability/
+    internal: true
+- text: Further reading
+  url: further-reading/
+  internal: true
 
 repos:
 - name: Unit testing in Node.js
@@ -66,8 +134,8 @@ repos:
   url: https://github.com/18F/unit-testing-node
 
 back_link:
-  url: "https://pages.18f.gov/guides/"
-  text: Read more 18F Guides
+  url: "https://pages.18f.gov/edu/"
+  text: Return to 18F Edu
 
 google_analytics_ua: UA-48605964-19
 
