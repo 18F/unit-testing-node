@@ -14,25 +14,21 @@ var scriptName = require(path.join(rootDir, 'package.json')).name;
 var SUCCESS_MESSAGE = scriptName + ': registered receiveMiddleware';
 var FAILURE_MESSAGE = scriptName + ': receiveMiddleware registration failed: ';
 
-function checkHubot(done, expectedError) {
+function checkHubot(done, validateOutput) {
   exec('hubot -t', { cwd: rootDir }, function(error, stdout, stderr) {
     var lines = stdout.trim().split('\n');
 
     try {
       expect(error).to.be.null;
       stderr.should.eql('');
-
-      if (expectedError) {
-        lines.should.satisfy(hasFailureMessage(expectedError),
-          'script didn\'t emit expected error: ' + expectedError);
-      } else {
-        lines.should.satisfy(hasSuccessMessage, 'script didn\'t register');
-      }
-      lines[lines.length - 1].should.eql('OK', '"OK" missing at end of output');
+      validateOutput(lines);
+      lines[lines.length - 1].should.eql('OK',
+        '"OK" missing from end of output');
       done();
 
     } catch (err) {
-      done(err + '\n' + lines.join('\n'));
+      err.message = err.message + '\n' + lines.join('\n');
+      done(err);
     }
   });
 }
@@ -63,19 +59,26 @@ describe('Smoke test', function() {
   });
 
   it('should register successfully using the default config', function(done) {
-    checkHubot(done);
+    checkHubot(done, function(lines) {
+      lines.should.satisfy(hasSuccessMessage, 'script not registered');
+    });
   });
 
   it('should register successfully using the config from ' +
      'HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH', function(done) {
     process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH = path.join(
       __dirname, 'helpers', 'test-config.json');
-    checkHubot(done);
+    checkHubot(done, function(lines) {
+      lines.should.satisfy(hasSuccessMessage, 'script not registered');
+    });
   });
 
   it('should fail to register due to an invalid config', function(done) {
     process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH = path.join(
       __dirname, 'helpers', 'test-config-invalid.json');
-    checkHubot(done, 'Invalid configuration:');
+    checkHubot(done, function(lines) {
+      lines.should.satisfy(hasFailureMessage('Invalid configuration:'),
+        'script didn\'t emit "Invalid configuration:" error');
+    });
   });
 });
