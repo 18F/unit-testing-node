@@ -2075,12 +2075,12 @@ $ npm test -- --grep '^Middleware '
 ```
 
 Now that you're all finished, compare your solutions to the code in
-[`solutions/05-middleware/lib/github-client.js`]({{ site.baseurl }}/solutions/05-middleware/lib/github-client.js)
+[`solutions/05-middleware/lib/middleware.js`]({{ site.baseurl }}/solutions/05-middleware/lib/middleware.js)
 and
-[`solutions/05-middleware/test/github-client-test.js`]({{ site.baseurl }}/solutions/05-middleware/test/github-client-test.js).
+[`solutions/05-middleware/test/middleware-test.js`]({{ site.baseurl }}/solutions/05-middleware/test/middleware-test.js).
 
 You may wish to `git commit` your work to your local repo at this point. After
-doing so, try copying the `config.js` file from `solutions/05-middleware`
-into `exercises` to see if it passes the test you wrote. Then run `git reset
---hard HEAD` and copy the test files instead to see if your implementation
-passes.
+doing so, try copying the `middleware.js` file from
+`solutions/05-middleware/lib` into `exercises/lib` to see if it passes the
+test you wrote. Then run `git reset --hard HEAD` and copy the test files
+instead to see if your implementation passes.

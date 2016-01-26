@@ -544,6 +544,7 @@ and
 [`solutions/01-rule/test/rule-test.js`]({{ site.baseurl }}/solutions/01-rule/test/rule-test.js).
 
 You may wish to `git commit` your work to your local repo at this point. After
-doing so, try copying the `config.js` file from `solutions/01-rule` into
-`exercises` to see if it passes the test you wrote. Then run `git reset --hard
-HEAD` and copy the test files instead to see if your implementation passes.
+doing so, try copying the `rule.js` file from `solutions/01-rule/lib` into
+`exercises/lib` to see if it passes the test you wrote. Then run `git reset
+--hard HEAD` and copy the test files instead to see if your implementation
+passes.

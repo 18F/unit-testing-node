@@ -1467,12 +1467,10 @@ $ npm test -- --grep '^Integration '
 ```
 
 Now that you're all finished, compare your solutions to the code in
-[`solutions/06-integration/lib/github-client.js`]({{ site.baseurl }}/solutions/06-integration/lib/github-client.js)
-and
-[`solutions/06-integration/test/github-client-test.js`]({{ site.baseurl }}/solutions/06-integration/test/github-client-test.js).
+[`solutions/06-integration/scripts/slack-github-issues.js`]({{ site.baseurl }}/solutions/06-integration/scripts/slack-github-issues.js)
+[`solutions/06-integration/test/integration-test.js`]({{ site.baseurl }}/solutions/06-integration/test/integration-test.js).
 
 You may wish to `git commit` your work to your local repo at this point. After
-doing so, try copying the `config.js` file from `solutions/06-integration`
-into `exercises` to see if it passes the test you wrote. Then run `git reset
---hard HEAD` and copy the test files instead to see if your implementation
-passes.
+doing so, try copying the `integration-test.js` file from
+`solutions/06-integration/test` into `exercises/test` to see if your
+implementation passes.

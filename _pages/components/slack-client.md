@@ -1343,7 +1343,7 @@ and
 [`solutions/02-slack-client/test/slack-client-test.js`]({{ site.baseurl }}/solutions/02-slack-client/test/slack-client-test.js).
 
 You may wish to `git commit` your work to your local repo at this point. After
-doing so, try copying the `config.js` file from `solutions/02-slack-client`
-into `exercises` to see if it passes the test you wrote. Then run `git reset
---hard HEAD` and copy the test files instead to see if your implementation
-passes.
+doing so, try copying the `slack-client.js` file from
+`solutions/02-slack-client/lib` into `exercises/lib` to see if it passes the
+test you wrote. Then run `git reset --hard HEAD` and copy the test files
+instead to see if your implementation passes.

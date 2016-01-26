@@ -712,6 +712,7 @@ and
 [`solutions/00-config/test/config-test.js`]({{ site.baseurl }}/solutions/00-config/test/config-test.js).
 
 You may wish to `git commit` your work to your local repo at this point. After
-doing so, try copying the `config.js` file from `solutions/00-config` into
-`exercises` to see if it passes the test you wrote. Then run `git reset --hard
-HEAD` and copy the test files instead to see if your implementation passes.
+doing so, try copying the `config.js` file from `solutions/00-config/lib` into
+`exercises/lib` to see if it passes the test you wrote. Then run `git reset
+--hard HEAD` and copy the test files instead to see if your implementation
+passes.

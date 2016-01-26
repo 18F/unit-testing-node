@@ -447,11 +447,12 @@ $ npm test -- --grep '^Logger'
 ```
 
 Now that you're all finished, compare your solutions to the code in
-[`solutions/04-logger/lib/github-client.js`]({{ site.baseurl }}/solutions/04-logger/lib/github-client.js)
+[`solutions/04-logger/lib/logger.js`]({{ site.baseurl }}/solutions/04-logger/lib/logger.js)
 and
-[`solutions/04-logger/test/github-client-test.js`]({{ site.baseurl }}/solutions/04-logger/test/github-client-test.js).
+[`solutions/04-logger/test/logger-test.js`]({{ site.baseurl }}/solutions/04-logger/test/logger-test.js).
 
 You may wish to `git commit` your work to your local repo at this point. After
-doing so, try copying the `config.js` file from `solutions/04-logger` into
-`exercises` to see if it passes the test you wrote. Then run `git reset --hard
-HEAD` and copy the test files instead to see if your implementation passes.
+doing so, try copying the `logger.js` file from `solutions/04-logger/lib` into
+`exercises/lib` to see if it passes the test you wrote. Then run `git reset
+--hard HEAD` and copy the test files instead to see if your implementation
+passes.
