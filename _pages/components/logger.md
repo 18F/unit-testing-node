@@ -300,7 +300,7 @@ function addPrefix() {
   var args = new Array(arguments.length),
       i;
 
-  for (i = 0; i != args.length; ++i) {
+  for (i = 0; i !== args.length; ++i) {
     args[i] = arguments[i];
   }
 
