@@ -63,8 +63,6 @@ The beginning of the `middleware.js` file, where the `Middleware` constructor
 is defined, looks like this:
 
 ```js
-/* jshint node: true */
-
 'use strict';
 
 module.exports = Middleware;

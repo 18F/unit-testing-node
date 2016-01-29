@@ -37,8 +37,6 @@ The beginning of the `rule.js` file, where the `Rule` constructor is defined,
 looks like this:
 
 ```js
-/* jshint node: true */
-
 'use strict';
 
 module.exports = Rule;
@@ -71,10 +69,6 @@ Open up the
 file in your favorite editor. You should see this:
 
 ```js
-/* jshint node: true */
-/* jshint mocha: true */
-/* jshint expr: true */
-
 'use strict';
 
 describe('Rule', function() {

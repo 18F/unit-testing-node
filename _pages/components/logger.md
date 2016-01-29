@@ -38,8 +38,6 @@ The beginning of the `logger.js` file, where the `Middleware` constuctor is
 defined, looks like this:
 
 ```js
-/* jshint node: true */
-
 'use strict';
 
 module.exports = Logger;
@@ -132,10 +130,6 @@ The
 currently contains:
 
 ```js
-/* jshint node: true */
-/* jshint mocha: true */
-/* jshint expr: true */
-
 'use strict';
 
 describe('Logger', function() {

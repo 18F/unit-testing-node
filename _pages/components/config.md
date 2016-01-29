@@ -40,8 +40,6 @@ The beginning of the `config.js` file, where the `Config` constructor is
 defined, looks like this:
 
 ```js
-/* jshint node: true */
-
 'use strict';
 
 module.exports = Config;
@@ -61,9 +59,7 @@ function Config(configuration) {
 ```
 
 _Note_: Every JavaScript file in this application will begin with
-[jshint option directives](http://jshint.com/docs/options/)
-and the
-['use strict' directive](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Strict_mode).
+the ['use strict' directive](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Strict_mode).
 
 When the `Config` object is constructed, it takes configuration data either as
 a parameter or it gets the path from an environment variable.
@@ -141,10 +137,6 @@ Open up the
 file in your favorite editor. You should see this:
 
 ```js
-/* jshint node: true */
-/* jshint mocha: true */
-/* jshint expr: true */
-
 'use strict';
 
 describe('Config', function() {
@@ -627,8 +619,6 @@ For that reason, the
 module provides a `baseConfig` method that makes a fresh copy of this data:
 
 ```js
-/* jshint node: true */
-
 'use strict';
 
 var testConfig = require('./test-config.json');

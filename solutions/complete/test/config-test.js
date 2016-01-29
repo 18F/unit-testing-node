@@ -1,7 +1,3 @@
-/* jshint node: true */
-/* jshint mocha: true */
-/* jshint expr: true */
-
 'use strict';
 
 var Config = require('../lib/config');

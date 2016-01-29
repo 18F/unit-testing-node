@@ -1,5 +1,3 @@
-/* jshint node: true */
-
 'use strict';
 
 var testConfig = require('./test-config.json');

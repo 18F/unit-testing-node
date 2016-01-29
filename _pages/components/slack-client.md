@@ -65,8 +65,6 @@ The beginning of the `slack-client.js` file, where the `SlackClient`
 constructor is defined, looks like this:
 
 ```js
-/* jshint node: true */
-
 'use strict';
 
 module.exports = SlackClient;
@@ -931,8 +929,6 @@ This will also facilitate using this test server in other tests.
 Start with this:
 
 ```js
-/* jshint node: true */
-
 'use strict';
 
 var http = require('http');
