@@ -191,6 +191,15 @@ $ gulp test --grep '^Config '
 $ gulp test-all --grep '^Config '
 ```
 
+### `.eslintrc` configuration
+
+This project uses [ESLint](http://eslint.org/) for static analysis per the
+[18F Compliance Toolkit](https://github.com/18F/compliance-toolkit) and the
+[18F Before you ship guide](https://pages.18f.gov/before-you-ship/security/static-analysis/#javascript).
+See the [ESLint configuration user guide](http://eslint.org/docs/user-guide/configuring)
+and [ESLint rules guide](http://eslint.org/docs/rules/) for details on each
+parameter of the [`.eslintrc`](.eslintrc) file.
+
 ### Submit your changes!
 
 If you'd like to contribute to this repository, please follow our

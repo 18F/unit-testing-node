@@ -1,9 +1,7 @@
-/* jshint node: true */
-
 var gulp = require('gulp');
 var yargs = require('yargs');
 var mocha = require('gulp-mocha');
-var jshint = require('gulp-jshint');
+var eslint = require('gulp-eslint');
 
 var fs = require('fs');
 var path = require('path');
@@ -39,8 +37,10 @@ function makeTestTargetForDirectory(workDir) {
 gulp.task('test', makeTestTargetForDirectory('exercise'));
 gulp.task('test-init', ['test'], makeTestTargetForDirectory('.exercise-init'));
 
+/* eslint-disable max-len */
 // Lifted from:
 // https://github.com/gulpjs/gulp/blob/master/docs/recipes/running-task-steps-per-folder.md
+/* eslint-enable max-len */
 function getSubdirs(dir) {
   if (!fs.existsSync(dir)) {
     return [];
@@ -71,8 +71,8 @@ gulp.task('test-all', createTestSolutionsTasks());
 
 gulp.task('lint', function() {
   return gulp.src(['./exercise/**/*.js'])
-    .pipe(jshint())
-    .pipe(jshint.reporter('default'));
+    .pipe(eslint())
+    .pipe(eslint.format());
 });
 
 gulp.task('lint-all', function() {
@@ -80,10 +80,10 @@ gulp.task('lint-all', function() {
     '**/*.js',
     '.exercise-init/**/*.js',
     '!node_modules/**',
-    '!_site/**',
+    '!_site/**'
   ];
 
   return gulp.src(filePatterns)
-    .pipe(jshint())
-    .pipe(jshint.reporter('default'));
+    .pipe(eslint())
+    .pipe(eslint.format());
 });

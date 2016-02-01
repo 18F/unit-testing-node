@@ -1,5 +1,3 @@
-/* jshint node: true */
-
 'use strict';
 
 var http = require('http');
@@ -71,7 +69,7 @@ function handleResponse(res, resolve, reject) {
   res.on('end', function() {
     if (res.statusCode >= 200 && res.statusCode < 300) {
       try {
-        resolve(JSON.parse(result).html_url);  // jshint ignore:line
+        resolve(JSON.parse(result).html_url);
       } catch (err) {
         reject(new Error('could not parse JSON response from GitHub API: ' +
           result));

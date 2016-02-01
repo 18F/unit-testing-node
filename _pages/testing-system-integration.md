@@ -64,10 +64,6 @@ that Hubot can load `exercise/scripts/slack-github-issues` and:
 Open up a new file, `exercise/test/smoke-test.js`, and add this preamble:
 
 ```js
-/* jshint node: true */
-/* jshint mocha: true */
-/* jshint expr: true */
-
 'use strict';
 
 var exec = require('child_process').exec;

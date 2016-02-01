@@ -46,8 +46,6 @@ this preamble, with fields inspired by the [Hubot documentation
 guidelines](https://hubot.github.com/docs/scripting/#documenting-scripts):
 
 ```js
-// jshint node: true
-//
 // Description:
 //   Uses the Slack Real Time Messaging API to file GitHub issues
 //
@@ -102,10 +100,6 @@ Nothing more to it. (For now.)
 Open the `exercise/test/integration-test.js` file, which should look like:
 
 ```js
-/* jshint node: true */
-/* jshint mocha: true */
-/* jshint expr: true */
-
 'use strict';
 
 describe('Integration test', function() {
@@ -171,8 +165,6 @@ lightweight helper, `LogHelper`, in a new
 `exercise/test/helpers/log-helper.js` file:
 
 ```js
-/* jshint node: true */
-
 var sinon = require('sinon');
 
 module.exports = LogHelper;

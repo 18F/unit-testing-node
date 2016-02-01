@@ -15,20 +15,23 @@ $ npm install gulp gulp-mocha --save-dev
 ```
 
 It's also good practice to apply a linting tool such as
-[JSHint](https://www.npmjs.com/package/jshint):
+[ESLint](http://eslint.org/), per the
+[18F Compliance Toolkit](https://github.com/18F/compliance-toolkit) and the
+[18F Before you ship guide](https://pages.18f.gov/before-you-ship/security/static-analysis/#javascript).
+See the [ESLint configuration user guide](http://eslint.org/docs/user-guide/configuring)
+and [ESLint rules guide](http://eslint.org/docs/rules/) for details on each
+parameter of the `.eslintrc` file.
 
 ```sh
-$ npm install jshint gulp-jshint --save-dev
+$ npm install eslint gulp-eslint --save-dev
 ```
 
 This `gulpfile.js` can be the starting point for your own:
 
 ```js
-/* jshint node: true */
-
 var gulp = require('gulp');
 var mocha = require('gulp-mocha');
-var jshint = require('gulp-jshint');
+var eslint = require('gulp-eslint');
 
 gulp.task('test', function() {
   return gulp.src('./test/*.js', {read: false})
@@ -39,8 +42,8 @@ gulp.task('test', function() {
 
 gulp.task('lint', function() {
   return gulp.src(['*.js', 'lib/**/*.js', 'test/**/*.js'])
-    .pipe(jshint())
-    .pipe(jshint.reporter('default'));
+    .pipe(eslint())
+    .pipe(eslint.format());
 });
 ```
 

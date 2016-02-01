@@ -58,8 +58,6 @@ The beginning of the `github-client.js` file, where the `GitHubClient`
 constructor is defined, looks like this:
 
 ```js
-/* jshint node: true */
-
 'use strict';
 
 module.exports = GitHubClient;
@@ -354,7 +352,7 @@ response. This is the last piece we need to finish the `GitHubClient`:
   res.on('end', function() {
     if (res.statusCode >= 200 && res.statusCode < 300) {
       try {
-        resolve(JSON.parse(result).html_url);  // jshint ignore:line
+        resolve(JSON.parse(result).html_url);
       } catch (err) {
         reject(new Error('could not parse JSON response from GitHub API: ' +
           result));
