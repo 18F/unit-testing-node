@@ -5,10 +5,14 @@ RUN apt-get update && \
 	apt-get install -y git-core curl zlib1g-dev build-essential libssl-dev libreadline-dev libyaml-dev libsqlite3-dev sqlite3 libxml2-dev libxslt1-dev libcurl4-openssl-dev python-software-properties libffi-dev libv8-dev make g++ && \
 	apt-get clean && \
 	rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-RUN (curl https://raw.githubusercontent.com/creationix/nvm/v0.16.1/install.sh | sh) && \
-  . ~/.profile && \
-  nvm install 5.5.0 && \
-  nvm use 5.5.0
+RUN /bin/bash -c \
+	'git clone https://github.com/creationix/nvm.git /usr/local/opt/nvm && \
+	cd /usr/local/opt/nvm && git checkout v0.30.2 2>/dev/null && \
+	source /usr/local/opt/nvm/nvm.sh && \
+	echo "source /usr/local/opt/nvm/nvm.sh" >> /root/.bashrc && \
+	nvm install 5.5.0 && \
+	nvm alias default 5.5.0'
+
 RUN git clone https://github.com/sstephenson/rbenv.git /usr/local/rbenv
 RUN echo '# rbenv setup' > /etc/profile.d/rbenv.sh
 RUN echo 'export RBENV_ROOT=/usr/local/rbenv' >> /etc/profile.d/rbenv.sh
