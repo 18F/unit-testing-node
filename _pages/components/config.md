@@ -25,14 +25,10 @@ Getting the configuration right is key to the proper and expected functioning
 of the application as a whole. Consequently, this will become one of the
 larger classes in the system, performing lots of detailed
 [schema validation]({{ site.baseurl }}/concepts/schema-validation/) checks.
-However, it will also be one of the most straightforward to test, as:
-
-- it takes plain
-  [JSON](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON)
-  as input,
-- either does nothing or raises an error upon construction,
-- holds immutable data for the rest of the application, and
-- has no other behavior.
+However, it will also be one of the most straightforward to test, as it takes
+plain [JSON](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON)
+as input, either does nothing or raises an error upon construction, holds
+immutable data for the rest of the application, and has no other behavior.
 
 ## Validating the configuration data
 
@@ -272,8 +268,8 @@ the error message. For now, we'll let it slide; we'll do more exact matching
 against log messages later. However, to confirm that the message is raised as
 expected, do one the following and inspect the error message:
 
-- misspell a member of `errors` or reorder some of the elements
-- change the `to.throw` expression to `to.not.throw`
+- Misspell a member of `errors` or reorder some of the elements
+- Change the `to.throw` expression to `to.not.throw`
 
 ## Testing the optional fields
 
@@ -281,7 +277,7 @@ The top level config defines the optional fields `githubApiBaseUrl` and
 `slackApiBaseUrl`. We will use these fields to override built-in defaults from
 `SlackClient` and `GitHubClient` in several later tests.
 
-For the `rules` field, `channelNames` is the only optional field. If it is
+For the `rules` field, `channelNames` is the only optional field. If it's
 present, it names the channels matched by the rule. If it is absent, the rule
 will match any channel.
 
@@ -294,11 +290,11 @@ fields are rightfully allowed by validation, create a new test case called
 `githubApiBaseUrl` and `slackApiBaseUrl`, and update the `configData.rules`
 member by either:
 
-- directly updating the existing `rules` member to have a `channelNames` field
-- calling `configData.rules.push` to add a new member with `channelNames`
+- Directly updating the existing `rules` member to have a `channelNames` field
+- Calling `configData.rules.push` to add a new member with `channelNames`
   field defined
 
-Do not worry about the duplicated code and data for now. We will address this
+Don't worry about the duplicated code and data for now. We will address this
 in a later step.
 
 ## Testing and implementing the remaining functions
@@ -333,7 +329,7 @@ properties'` starting with this template:
   });
 ```
 
-Again, do not worry that several of the tests contain duplicate logic and
+Again, don't worry that several of the tests contain duplicate logic and
 data. We will address this in a later step.
 
 ### `checkRequiredRulesFields`
@@ -431,7 +427,7 @@ path to the config file using:
 Both tests should use the `JSON.stringify` method of comparing the original
 data to the validated `Config` object.
 
-Note that at the moment, both tests are using the same data file. Though two
+Note that, at the moment, both tests are using the same data file. Though two
 different code paths are exercised, the test assertions are the same. This
 means that the environment variable-based test will still pass even if that
 code path is removed. However, we will fix this issue in a later step.
@@ -601,12 +597,12 @@ term.
 
 You may have noticed a lot of [repetition in the
 tests]({{ site.baseurl }}/concepts/repetition-in-tests/), both of the test
-logic and of the test data. The logic is minimal enough that it is of no
+logic and of the test data. The logic is minimal enough that it's of no
 particular concern; the data, however, could be better utilized. Most of the
 data could be shared, with each individual test altering it as necessary to
 exercise a different code path.
 
-To that end, there is a
+To that end, there's a
 [`test/helpers/test-config.json`]({{ site.baseurl }}/exercise/test/helpers/test-config.json)
 file containing a valid configuration. However, using `require` to import
 this file directly will cause all of the tests to manipulate the same single

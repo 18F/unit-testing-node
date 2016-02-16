@@ -9,7 +9,7 @@ running the entire system would prove complicated, tedious, slow, and brittle,
 even for an application as small as this.
 
 Testing the `Middleware` class in isolation requires a less complex testing
-setup that is easier to configure and control. We will also find
+setup that's easier to configure and control. We will also find
 [seams]({{ site.baseurl }}/concepts/seams/) within the `Middleware` class
 itself, extract several other discrete components, and test those thoroughly
 and independently from the `Middleware` class. We can then use an integration
@@ -26,7 +26,7 @@ This narrative doesn't follow a strict test-first style often associated with
 However, reading the sections that begin with the word **Testing**, then
 backtracking to read earlier sections may provide the same effect.
 
-The important thing is that the code has tests _with_ it when it is sent for
+The important thing is that the code has tests _with_ it when it's sent for
 review or checked into revision control. Whether you're more comfortable
 writing the tests first, or writing some code and testing it immediately
 after, is up to you.

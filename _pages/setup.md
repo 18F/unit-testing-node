@@ -61,7 +61,7 @@ Restoration of starting state successful
 
 ## Create a working branch
 
-It is _strongly_ suggested you create a working branch. This way, you can
+It's _strongly_ suggested that you create a working branch. This way, you can
 checkpoint your work, compare it against the solution code, and generally
 avoid pushing unintended changes upstream (if you have push access):
 
