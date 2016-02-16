@@ -8,3 +8,4 @@ _site/
 coverage/*
 .bundle
 node_modules/
+.docker_repo_hash
