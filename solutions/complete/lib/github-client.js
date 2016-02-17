@@ -12,6 +12,7 @@ function GitHubClient(config) {
   this.timeout = config.githubTimeout;
   this.baseurl = url.parse(config.githubApiBaseUrl ||
     GitHubClient.API_BASE_URL);
+  this.requestFactory = (this.baseurl.protocol === 'https:') ? https : http;
 }
 
 GitHubClient.API_BASE_URL = 'https://api.github.com/';
@@ -40,14 +41,14 @@ function getHttpOptions(client, repository, paramsStr) {
 }
 
 function makeApiCall(client, metadata, repository) {
-  var requestFactory = (client.protocol === 'https:') ? https : http,
-      paramsStr = JSON.stringify({
-        title: metadata.title,
-        body: metadata.url
-      });
+  var paramsStr = JSON.stringify({
+    title: metadata.title,
+    body: metadata.url
+  });
+
   return new Promise(function(resolve, reject) {
     var httpOptions = getHttpOptions(client, repository, paramsStr),
-        req = requestFactory.request(httpOptions, function(res) {
+        req = client.requestFactory.request(httpOptions, function(res) {
           handleResponse(res, resolve, reject);
         });
 
