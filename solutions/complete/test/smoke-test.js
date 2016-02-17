@@ -15,6 +15,8 @@ var FAILURE_MESSAGE = scriptName + ': receiveMiddleware registration failed: ';
 describe('Smoke test', function() {
   var checkHubot;
 
+  this.timeout(5000);
+
   beforeEach(function() {
     delete process.env.HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH;
   });
