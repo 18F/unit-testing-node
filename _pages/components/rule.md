@@ -1,10 +1,11 @@
 ---
 title: Rule class
 ---
-The `Rule` class is very small, but encapsulates important logic, part of
-which depends on the [slack-client npm
-package](https://www.npmjs.com/package/slack-client). You can find it in the
-[`exercise/lib/rule.js`]({{ site.baseurl }}/exercise/lib/rule.js) file.
+The `Rule` class compares a incoming messages against a single rule defined in
+the configuration file. It is very small, but it encapsulates important logic,
+part of which depends on the [slack-client npm
+package](https://www.npmjs.com/package/slack-client). You can find this class
+in the [`exercise/lib/rule.js`]({{ site.baseurl }}/exercise/lib/rule.js) file.
 
 If you don't have experience writing or using test doubles, testing the `Rule`
 class is a great way to gain some experience. If you're looking for more of a
@@ -20,16 +21,17 @@ $ ./go set-rule
 ## What to expect
 
 Each `Rule` object implements the behavior implied by each member of
-`Config.rules`. This is one of the smaller classes in the system, but an
+`Config.rules`. This is one of the smaller classes in the system, but it's an
 interesting one because:
 
-- its `match()` method provides a generic interface to arbitrarily complex
+- Its `match()` method provides a generic interface to arbitrarily complex
   boolean logic
-- that can be broken down into multiple smaller methods, and
-- it uses an object from another package to implement part of its decision
-  logic that
-- we will simulate using a [test
-  double](http://googletesting.blogspot.com/2013/07/testing-on-toilet-know-your-test-doubles.html).
+- This logic can be broken down into multiple smaller methods
+- It uses an object from another package to implement part of its decision
+  logic
+
+We'll simulate this external decision logic using a [test
+double](http://googletesting.blogspot.com/2013/07/testing-on-toilet-know-your-test-doubles.html).
 
 ## Building a `Rule` object
 
@@ -53,16 +55,26 @@ function Rule(configRule) {
 When the `Rule` object is constructed, it assigns every property from
 `configRule` to itself. The
 [`hasOwnProperty()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/hasOwnProperty)
-check ensures only properties defined by the configuration rule itself are
-copied.
+check ensures that the only properties copied into the `Rule` are those defined
+by the configuration rule itself, excluding those inherited from
+[`Object`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object#Object_instances_and_Object_prototype_object).
+(As the `Config` chapter illustrated, you can also use
+[`Object.keys`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/keys) for this purpose.)
 
-`configRule` should come from the `rules` property of a `Config` object, i.e.
-`config.rules`. As discussed in the previous chapter, the `Config` object
+`configRule` should come from the `rules` property of a `Config` object
+(`config.rules`). As the previous chapter mentions, the `Config` object
 validates the entire configuration, so there is no need for this object to
-validate the rule. (Arguably we _could have_ designed the `Rule` object to
-perform its own validation. Perhaps in a future release it will.)
+validate the rule. (Arguably, we _could have_ designed the `Rule` object to
+perform its own validation, and perhaps in a future release it will.)
 
-## Testing that a `Rule` contains all the properties from the configuration
+## Testing the `Rule` constructor
+
+To validate our `Rule` constructor we must verify that it contains all the
+properties from the configuration object. While this seems trivial, it's one
+small concrete step towards testing the rest of the behavior. It's also
+critical to ensure that [the constructor produces no
+surprises]({{ site.baseurl}}/concepts/valid-by-contract/), as it could result
+in unexpected behavior from other methods.
 
 Open up the
 [`exercise/test/rule-test.js`]({{ site.baseurl }}/exercise/test/rule-test.js)
@@ -77,8 +89,8 @@ describe('Rule', function() {
 });
 ```
 
-The first thing we want to do is to make sure that the `Rule` constructor
-builds a valid object without errors. We'll also need to import the Chai
+The first thing you want to do is to make sure that the `Rule` constructor
+builds a valid object without errors. You'll also need to import the Chai
 assertion framework. Update the top of the file to reflect the following
 `require` statements:
 
@@ -89,17 +101,15 @@ var expect = chai.expect;
 ```
 
 Then add an implementation to the `'should contain all the fields from the
-configuration'` test. Pass a data object into the `Rule` constructor, and
+configuration'` test. Pass a data object into the `Rule` constructor and
 verify that the new `Rule` object contains the same data as the original JSON
-object.
-
-The most expedient comparison is to use
+object. The most expedient comparison is to use
 [`JSON.stringify()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify)
 on both objects and to compare the result. It's a blunt instrument, but for
-our small case, it gets the job done. In this test, we'll use the `expect`
+this small case, it gets the job done. In this test, you'll use the `expect`
 form of [Chai BDD-style assertions](http://chaijs.com/api/bdd/).
 
-The test should look something like:
+The test should look something like this:
 
 ```js
   it('should contain all the fields from the configuration', function() {
@@ -112,7 +122,8 @@ The test should look something like:
   });
 ```
 
-Verify that the tests passes by running `npm test`. To limit the output to just the `Rule` tests, run it as `npm test -- --grep '^Rule '`:
+Verify that the test passes by running `npm test`. To limit the output to just
+the `Rule` tests, run it as `npm test -- --grep '^Rule '`:
 
 ```sh
 $ npm test -- --grep '^Rule '
@@ -133,14 +144,14 @@ $ npm test -- --grep '^Rule '
 [17:24:29] Finished 'test' after 59 ms
 ```
 
-Good tests fail when they should, so at this point, verify that the test
-fails by altering the `configRule` object after the `Rule` is created:
+Good tests fail when they should. At this point, verify that the test fails by
+altering the `configRule` object after the `Rule` is created:
 
 ```js
     delete configRule.reactionName;
 ```
 
-Then running the test again should produce:
+Running the test again should produce these results:
 
 ```sh
 $ npm test -- --grep '^Rule '
@@ -179,13 +190,14 @@ Message:
 npm ERR! Test failed.  See above for more details.
 ```
 
-Now that we're confident the test will fail when it should, remove the
+Now that you're confident the test will fail when it should, remove the
 alteration so that the test passes again.
 
 ## Designing the `Rule.match()` method
 
 The `match()` method needs to inspect a `reaction_added` message and return
-`true` if the rule applies. The format of a `reaction_added` message is:
+`true` if the rule applies. The format of a `reaction_added` message is as
+follows:
 
 ```json
 {
@@ -203,12 +215,12 @@ The `match()` method needs to inspect a `reaction_added` message and return
 
 Therefore, the rule should match if:
 
-- the message's `reaction` value matches `Rule.reactionName`
+- The message's `reaction` value matches `Rule.reactionName`
 - `Rule.channelNames` is undefined, _or_ the message's `item.channel` value
   is a member of `Rule.channelNames`
 
-Even though this could all be written as a single function, these concerns are
-different enough that we've extracted them into separate functions:
+Even though you could write this as a single function, these concerns are
+different enough that they're best extracted into separate functions:
 
 ```js
 Rule.prototype.match = function(message, slackClient) {
@@ -217,14 +229,16 @@ Rule.prototype.match = function(message, slackClient) {
 };
 ```
 
-This not only makes the `match()` method easier to understand, but also makes
-it easy to add new conditions to `match()` one day should the need arise.
+Extracting into separate functions not only makes the `match()` method easier
+to understand, but it also makes it easy to add new conditions to `match()`
+one day, should the need arise.
 
 ## Testing `Rule.reactionMatches()`
 
-This is the easy one. It only needs to check that the message's `reaction`
-matches `Rule.reactionName`. However, before we write the test, let's hoist
-the `configRule` from the previous test into a helper method in the fixture:
+Testing `reactionMatches()` is an easy part of this process—your test only
+needs to check that the message's `reaction` matches `Rule.reactionName`.
+However, before you write the test, hoist the `configRule` from the previous
+test into a helper method in the fixture:
 
 ```js
 describe('Rule', function() {
@@ -244,9 +258,9 @@ describe('Rule', function() {
 });
 ```
 
-Remember, we've wrapped the data in a method so that each test gets a
+Remember, you've wrapped the data in a method so that each test gets a
 different copy, which keeps the tests isolated from one another. Make sure the
-test still passes, then add a new test called `'should match a message from
+test still passes, and then add a new test called `'should match a message from
 one of the channelNames'`, using the sample message from above:
 
 ```js
@@ -267,29 +281,33 @@ one of the channelNames'`, using the sample message from above:
   });
 ```
 
-Notice that we're actually still calling `rule.match()` instead of
-`rule.reactionMatches()`. This is a judgment call given the relatively
+The `reaction: 'evergreen_tree'` component is the key that identifies this
+message as an `evergreen_tree` emoji reaction. This is the piece that will
+match the `reactionName` property of the rule generated by `makeConfigRule`.
+
+Notice that you're still calling `rule.match()` instead of
+`rule.reactionMatches()`. This is a judgment call, given the relatively
 straightforward `Rule.match()` algorithm. However, should it grow more
-complex, we can later test each individual component of the algorithm in
-isolation. [This will give us confidence that all the corner cases are
+complex, you can later test each individual component of the algorithm in
+isolation. [This will give you confidence that all the corner cases are
 accounted for, without an exponential explosion in the number of test
 cases](http://googletesting.blogspot.com/2008/02/in-movie-amadeus-austrian-emperor.html).
 
-Run the tests. Since we've yet to implement either `reactionMatches()` or
+Run the tests. Since you've yet to implement either `reactionMatches()` or
 `channelMatches()`, this test should fail. Now add an implementation for
 `reactionMatches()` that compares the message's `reaction` against the
 `Rule`'s `reactionName`.
 
-Run the test. The test should still fail. This is because `channelMatches()`
-doesn't yet return anything, causing `rule.match()` to return `undefined`. For
-now, just update `channelMatches()` to return `true` unconditionally. (No,
-this isn't correct behavior. We will account for this very shortly.) Once the
-test passes, we're ready to move on.
+Once again, run the test. The test should still fail. This is because
+`channelMatches()` doesn't yet return anything, causing `rule.match()` to
+return `undefined`. For now, just update `channelMatches()` to return `true`
+unconditionally. (No, this isn't correct behavior—you'll account for this
+very shortly.) Once the test passes, you're all set to move on.
 
 Now add a new test called `'should ignore a message if its name does not
-match'`. Before we fill it in, let's hoist the sample message out of the
-previous test and into the fixture. Make sure the tests continue to pass after
-doing so:
+match'`. Before you fill it in, hoist the sample message out of the previous
+test and into the fixture. Make sure the tests continue to pass after doing
+so:
 
 ```js
 describe('Rule', function() {
@@ -318,9 +336,9 @@ describe('Rule', function() {
   });
 ```
 
-It should begin slightly differently from the earlier test, in order
-to exercise the condition that the message names don't match. In this case
-we're updating the `configRule`. Alternatively, you can change
+This test should begin slightly differently than the earlier test in order
+to exercise the condition that the message names don't match. In this case,
+you're updating the `configRule`. Alternatively, you can change
 `message.reaction` instead.
 
 ```js
@@ -340,9 +358,9 @@ Run the test. When it passes, move on to the next section.
 
 ## Testing `Rule.channelMatches()`
 
-First, the easy case. Add a test called `'should match a message from any
+First, the easy case: Add a test called `'should match a message from any
 channel'`. Copy the implementation from `'should match a message from one of
-the channelNames'`, then add this line before the `expect()` clause:
+the channelNames'`, and then add this line before the `expect()` clause:
 
 ```js
     delete rule.channelNames;
@@ -350,57 +368,58 @@ the channelNames'`, then add this line before the `expect()` clause:
 
 Run the test. It should pass. Now add another test called `'should ignore a
 message if its channel doesn\'t match'`. Copy the implementation from the
-previous test, except change two things:
+previous test, but change two things:
 
-- Remove the `delete rule.channelNames` line.
-- Change `to.be.true` condition to `to.be.false`.
+- Remove the `delete rule.channelNames` line
+- Change `to.be.true` condition to `to.be.false`
 
-Run the test. It should fail. This because we made `channelMatches()` always
-return `true` to get the earlier test to pass. Our goal now is to get the new
-test to pass, while making sure all the previous tests continue to pass.
+Run the test. It should fail. This is because you made `channelMatches()`
+always return `true` to get the earlier test to pass. Your goal now is to get
+the new test to pass while making sure all the previous tests continue to
+pass.
 
 ## Implementing `channelMatches()`
 
-`channelMatches()` will not be very complex, but certainly more complex than
-`reactionMatches()`. It needs to ensure the following:
+`channelMatches()` will not be very complex, but it will certainly be more
+complex than `reactionMatches()`. It needs to ensure the following:
 
 - If the `Rule` does not have any `channelNames` defined, it should always
   return `true`.
 - Otherwise, it should only return `true` if the channel from the message
   matches one of the `channelNames`.
 
-Go ahead and implement the first condition, ensuring that the previous test
-still passes. To get the new test to pass, there is a bit of a wrinkle to
-handle first.
+Go ahead and implement the first condition, making sure the previous test
+still passes. To get the new test to pass, you'll first have to take care of a
+bit of a wrinkle.
 
 ## The external Slack client dependency
 
-The incoming `reaction_added` message has a `item.channel` property, but it's
-encoded as a unique identifier. However, in our configuration, we use a
-human-readable array of `channelNames`. In order to implement
-`channelMatches`, we need to translate the identifier to a human-readable
-name. In production, we will rely on the slack-client instance passed in from
-Hubot to perform this translation.
+The incoming `reaction_added` message has an `item.channel` property, but it's
+encoded as a unique identifier assigned by the Slack system. However, the
+`Config` class uses a human-readable array of `channelNames`. In order to
+implement `channelMatches`, you need to translate the identifier to a
+human-readable name. In production, you'll rely on the `slack-client` instance
+passed in from Hubot to perform this translation.
 
 ## Using a stub for the external Slack client interface
 
-We have a number of options to simulate this functionality in our unit test in
-a fast, controllable, yet reliable fashion using a test double:
+You have a number of options to simulate this functionality in your unit test
+in a fast, controllable, and reliable way using a test double:
 
-- We can create a Slack client _stub_ to pass into `rule.match()` and hardcode
+- You can create a Slack client _stub_ to pass into `rule.match()` and hardcode
   it to return a particular value.
-- We can use a test double library to generate such a stub for us.
-- We can introduce a new abstraction for the Slack client.
+- You can use a test double library to generate such a stub.
+- You can introduce a new abstraction for the Slack client.
 
-In this situation, any of the three could reasonably suffice. Thinking ahead
-regarding the needs of the application, we know that other parts of the
-application will depend on this Slack interface as well. This would favor the
-third option.
+In this situation, any of the three options will work reasonably well.
+Thinking ahead about the needs of the application, you should note that other
+parts of the application will depend on this Slack interface, as well. This
+would favor the third option.
 
-However, since this is such a small example, we'll create our own stub for
-Slack client for now. This also helps to illustrate some of the concepts
-behind test stubs before we use a more complex library like
-[sinon](http://sinonjs.org/). Add this to the file before the
+However, since this is such a small example, you can create your own stub for
+the Slack client for now. Writing the stub also helps illustrate some of the
+concepts behind test stubs, which is helpful before you use a more complex
+library like [sinon](http://sinonjs.org/). Add this to the file before the
 `describe('Rule')` declaration:
 
 ```js
@@ -415,14 +434,14 @@ SlackClientImplStub.prototype.getChannelByID = function(channelId) {
 ```
 
 This stub hardcodes the `channelName` that `getChannelByID` will return.
-The actual slack-client object returns a `Channel` instance that contains a
-`name` property, so we simulate that with a small JavaScript object.
-`SlackClientImplStub` also records the `channelId` passed to the stub, so that
-we can validate the the argument passed by the code under test.
+The actual `slack-client` object returns a `Channel` instance that contains a
+`name` property, and you can simulate that using a small JavaScript object.
+`SlackClientImplStub` also records the `channelId` passed to the stub. This
+will allow you to validate the the argument passed by the code under test.
 
 ## Applying `SlackClientImplStub` to the test
 
-Equipped with the stub, we can now get the test to pass. Update the test to
+Equipped with the stub, you can now get the test to pass. Update the test to
 look like this:
 
 ```js
@@ -483,10 +502,10 @@ Message:
 npm ERR! Test failed.  See above for more details.
 ```
 
-It's failing because now the earlier test is actually exercising the new code
-path we just introduced into `channelMatches()`. In this case, it's the test
-itself that needs updating, not the code under test. Update all the tests that
-call `rule.match()` with the following declaration:
+It's failing because the earlier test is now exercising the new code path you
+just introduced into `channelMatches()`. In this case, the test itself—not the
+code under test—that needs updating. Update all the tests that call
+`rule.match()` with the following declaration:
 
 ```js
         // previous var declarations...
@@ -495,7 +514,7 @@ call `rule.match()` with the following declaration:
 
 Then update all of the `rule.match(message)` calls to read
 `rule.match(message, slackClient)`. And for good measure, add these assertions
-to all of the affected tests as well:
+to all of the affected tests, as well:
 
 ```js
     // For tests that should exercise the new channelMatches() logic.
@@ -537,8 +556,9 @@ Now that you're all finished, compare your solutions to the code in
 and
 [`solutions/01-rule/test/rule-test.js`]({{ site.baseurl }}/solutions/01-rule/test/rule-test.js).
 
-You may wish to `git commit` your work to your local repo at this point. After
-doing so, try copying the `rule.js` file from `solutions/01-rule/lib` into
+At this point, you may wish to `git commit` your work to your local repo. After
+doing so, copy the `rule.js` file from `solutions/01-rule/lib` into
 `exercises/lib` to see if it passes the test you wrote. Then run `git reset
 --hard HEAD` and copy the test files instead to see if your implementation
-passes.
+passes. If a test case fails, review the section of this chapter pertaining to
+the failing test case, then try to update your code to make the test pass.

@@ -301,4 +301,6 @@ Now that you're all finished, compare your solutions to the code in
 
 You may wish to `git commit` your work to your local repo at this point. After
 doing so, try copying the `smoke-test.js` file from `solutions/07-system/test`
-into `exercises/test` to see if your implementation passes.
+into `exercises/test` to see if your implementation passes. If a test case
+fails, review the section of this chapter pertaining to the failing test case,
+then try to update your code to make the test pass.
