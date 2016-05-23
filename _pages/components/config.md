@@ -695,13 +695,13 @@ $ npm test -- --grep '^Config '
 [18:00:58] Finished 'test' after 73 ms
 ```
 
-Now that you're all finished, compare your solutions to the code in
+Now that you're finished, compare your solutions to the code in
 [`solutions/00-config/lib/config.js`]({{ site.baseurl }}/solutions/00-config/lib/config.js)
 and
 [`solutions/00-config/test/config-test.js`]({{ site.baseurl }}/solutions/00-config/test/config-test.js).
 
-At this point, you may wish to `git commit` your work to your local repo. After
-doing so, try copying the `config.js` file from `solutions/00-config/lib` into
+At this point, `git commit` your work to your local repo. After doing so, try
+copying the `config.js` file from `solutions/00-config/lib` into
 `exercises/lib` to see if it passes the test you wrote. Then run `git reset
 --hard HEAD` and copy the test files instead to see if your implementation
 passes. If a test case fails, review the section of this chapter pertaining to

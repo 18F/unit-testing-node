@@ -444,15 +444,14 @@ $ npm test -- --grep '^Logger'
 [21:21:45] Finished 'test' after 139 ms
 ```
 
-Now that you're all finished, compare your solutions to the code in
+Now that you're finished, compare your solutions to the code in
 [`solutions/04-logger/lib/logger.js`]({{ site.baseurl }}/solutions/04-logger/lib/logger.js)
 and
 [`solutions/04-logger/test/logger-test.js`]({{ site.baseurl }}/solutions/04-logger/test/logger-test.js).
 
-At this point, you may wish to `git commit` your work to your local repo.
-After doing so, try copying the `logger.js` file from
-`solutions/04-logger/lib` into `exercises/lib` to see if it passes the test
-you wrote. Then run `git reset --hard HEAD` and copy the test files instead to
-see if your implementation passes. If a test case fails, review the section of
-this chapter pertaining to the failing test case, then try to update your code
-to make the test pass.
+At this point, `git commit` your work to your local repo. After doing so, try
+copying the `logger.js` file from `solutions/04-logger/lib` into
+`exercises/lib` to see if it passes the test you wrote. Then run `git reset
+--hard HEAD` and copy the test files instead to see if your implementation
+passes. If a test case fails, review the section of this chapter pertaining to
+the failing test case, then try to update your code to make the test pass.

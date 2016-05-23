@@ -296,11 +296,11 @@ $ npm test -- --grep '^Smoke test '
 [20:55:14] Finished 'test' after 2.5 s
 ```
 
-Now that you're all finished, compare your solutions to the code in
+Now that you're finished, compare your solutions to the code in
 [`solutions/07-system/test/smoke-test.js`]({{ site.baseurl }}/solutions/07-system/test/smoke-test.js).
 
-You may wish to `git commit` your work to your local repo at this point. After
-doing so, try copying the `smoke-test.js` file from `solutions/07-system/test`
-into `exercises/test` to see if your implementation passes. If a test case
-fails, review the section of this chapter pertaining to the failing test case,
-then try to update your code to make the test pass.
+At this point, `git commit` your work to your local repo. After doing so, try
+copying the `smoke-test.js` file from `solutions/07-system/test` into
+`exercises/test` to see if your implementation passes. If a test case fails,
+review the section of this chapter pertaining to the failing test case, then
+try to update your code to make the test pass.

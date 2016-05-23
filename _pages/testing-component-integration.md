@@ -861,7 +861,7 @@ Then define the function thus:
 This function is based on the implementation of `Room.receive` found in
 `node_modules/hubot-test-helper/src/index.coffee`. Yet another benefit of open
 source is being able to see the code you depend on for hints regarding how to
-extend its behavior. As always, remain mindful of [`Promise` gotcha #1: not
+extend its behavior. As always, remain mindful of [Promise gotcha #1: not
 returning the `Promise`](#promises-gotcha-1).
 
 Though monkey patching is not ideal, in this test, it gets the job done quite
@@ -1065,7 +1065,7 @@ LogHelper.prototype.capture = function(callback) {
 };
 ```
 
-Then add these two functions, remembering to watch out for [`Promise` gotcha
+Then add these two functions, remembering to watch out for [Promise gotcha
 #1: not returning the `Promise`](#promises-gotcha-1):
 
 ```js
@@ -1309,7 +1309,7 @@ describe('Integration test', function() {
   };
 ```
 
-As ever, we are mindful of [`Promise` gotcha #1: not returning the
+As ever, we are mindful of [Promise gotcha #1: not returning the
 `Promise`](#promises-gotcha-1). Then, in the test cases, use `sendReaction` to
 replace both the `logHelper.beginCapture` calls and the
 `.then(logHelper.endCaptureResolve(), logHelper.endCaptureReject())` clause:
@@ -1458,13 +1458,12 @@ $ npm test -- --grep '^Integration '
 [19:23:54] Finished 'test' after
 ```
 
-Now that you're all finished, compare your solutions to the code in
+Now that you're finished, compare your solutions to the code in
 [`solutions/06-integration/scripts/slack-github-issues.js`]({{ site.baseurl }}/solutions/06-integration/scripts/slack-github-issues.js)
 [`solutions/06-integration/test/integration-test.js`]({{ site.baseurl }}/solutions/06-integration/test/integration-test.js).
 
-At this point, you may wish to `git commit` your work to your local repo.
-After doing so, try copying the `integration-test.js` file from
-`solutions/06-integration/test` into `exercises/test` to see if your
-implementation passes. If a test case fails, review the section of this
-chapter pertaining to the failing test case, then try to update your code to
-make the test pass.
+At this point, `git commit` your work to your local repo. After doing so, try
+copying the `integration-test.js` file from `solutions/06-integration/test`
+into `exercises/test` to see if your implementation passes. If a test case
+fails, review the section of this chapter pertaining to the failing test case,
+then try to update your code to make the test pass.

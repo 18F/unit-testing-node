@@ -253,9 +253,9 @@ which are common asynchronous operations. For background, please see the
 [`SlackClient` section on
 `Promises`]({{ site.baseurl }}/components/slack-client/#promises),
 as well as
-[`Promise` gotcha #0]({{ site.baseurl }}/components/slack-client/#promises-gotcha-0)
+[Promise gotcha #0]({{ site.baseurl }}/components/slack-client/#promises-gotcha-0)
 and
-[`Promise` gotcha #1]({{ site.baseurl }}/components/slack-client/#promises-gotcha-1).
+[Promise gotcha #1]({{ site.baseurl }}/components/slack-client/#promises-gotcha-1).
 
 Let's start fleshing out the rest of `makeApiCall` by defining a `Promise`:
 
@@ -311,7 +311,7 @@ actual HTTP request, delegating `resolve` and `reject` to `handleResponse`
 - We finally send the request with `req.end`, passing `paramsStr` as the body
   of the request.
 
-Also, take this opportunity to read [`Promise` gotcha #0: not calling
+Also, take this opportunity to read [Promise gotcha #0: not calling
 `resolve` or `reject`]({{ site.baseurl
 }}/components/slack-client/#promises-gotcha-0) from the `SlackClient` chapter
 before moving on.
@@ -571,7 +571,7 @@ $ npm test -- --grep '^GitHubClient '
 ```
 
 In this case, what happened is that **we forgot to `return` the new Promise**.
-Please review [`Promise` gotcha #1: not returning the
+Please review [Promise gotcha #1: not returning the
 `Promise`]({{ site.baseurl }}/components/slack-client/#promises-gotcha-1) from
 the `SlackClient` chapter for more background. Restore the missing `return`
 statement and run the test again to ensure it fails before moving on.
@@ -928,15 +928,14 @@ $ npm test -- --grep '^GitHubClient '
 [12:17:55] Finished 'test' after 140 ms
 ```
 
-Now that you're all finished, compare your solutions to the code in
+Now that you're finished, compare your solutions to the code in
 [`solutions/03-github-client/lib/github-client.js`]({{ site.baseurl }}/solutions/03-github-client/lib/github-client.js)
 and
 [`solutions/03-github-client/test/github-client-test.js`]({{ site.baseurl }}/solutions/03-github-client/test/github-client-test.js).
 
-At this point, you may wish to `git commit` your work to your local repo.
-After doing so, try copying the `github-client.js` file from
-`solutions/03-github-client/lib` into `exercises/lib` to see if it passes the
-test you wrote. Then run `git reset --hard HEAD` and copy the test files
-instead to see if your implementation passes. If a test case fails, review the
-section of this chapter pertaining to the failing test case, then try to
-update your code to make the test pass.
+At this point, `git commit` your work to your local repo. After doing so, try
+copying the `github-client.js` file from `solutions/03-github-client/lib` into
+`exercises/lib` to see if it passes the test you wrote. Then run `git reset
+--hard HEAD` and copy the test files instead to see if your implementation
+passes. If a test case fails, review the section of this chapter pertaining to
+the failing test case, then try to update your code to make the test pass.

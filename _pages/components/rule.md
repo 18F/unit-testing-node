@@ -551,14 +551,14 @@ $ npm test -- --grep '^Rule '
 [17:11:05] Finished 'test' after 70 ms
 ```
 
-Now that you're all finished, compare your solutions to the code in
+Now that you're finished, compare your solutions to the code in
 [`solutions/01-rule/lib/rule.js`]({{ site.baseurl }}/solutions/01-rule/lib/rule.js)
 and
 [`solutions/01-rule/test/rule-test.js`]({{ site.baseurl }}/solutions/01-rule/test/rule-test.js).
 
-At this point, you may wish to `git commit` your work to your local repo. After
-doing so, copy the `rule.js` file from `solutions/01-rule/lib` into
-`exercises/lib` to see if it passes the test you wrote. Then run `git reset
---hard HEAD` and copy the test files instead to see if your implementation
-passes. If a test case fails, review the section of this chapter pertaining to
-the failing test case, then try to update your code to make the test pass.
+At this point, `git commit` your work to your local repo. After doing so, copy
+the `rule.js` file from `solutions/01-rule/lib` into `exercises/lib` to see if
+it passes the test you wrote. Then run `git reset --hard HEAD` and copy the
+test files instead to see if your implementation passes. If a test case fails,
+review the section of this chapter pertaining to the failing test case, then
+try to update your code to make the test pass.

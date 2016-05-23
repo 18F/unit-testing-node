@@ -747,7 +747,7 @@ Notice the final line in particular, where we _return the `Promise` created by
 `fileGitHubIssue` is called; it is created when _the closure returned by
 `fileGitHubIssue` is called, which then calls `githubClient.fileNewIssue`_.
 
-This would be a good time to review [`Promise` gotcha #1: not returning the
+This would be a good time to review [Promise gotcha #1: not returning the
 `Promise`]{{ site.baseurl }}/components/slack-client/#promises-gotcha-1)
 from the `SlackClient` chapter. If we return a `Promise` directly from
 `fileGitHubIssue`, it will get created too early. If we don't explicitly
@@ -1722,7 +1722,7 @@ function alreadyProcessed(message, successReaction) {
 ```
 
 Now inject this into `fileGitHubIssue`, again being mindful of
-[`Promise` gotcha #1: not returning the
+[Promise gotcha #1: not returning the
 `Promise`]{{ site.baseurl }}/components/slack-client/#promises-gotcha-1):
 
 ```js
@@ -2072,15 +2072,14 @@ $ npm test -- --grep '^Middleware '
 [19:16:07] Finished 'test' after 683 ms
 ```
 
-Now that you're all finished, compare your solutions to the code in
+Now that you're finished, compare your solutions to the code in
 [`solutions/05-middleware/lib/middleware.js`]({{ site.baseurl }}/solutions/05-middleware/lib/middleware.js)
 and
 [`solutions/05-middleware/test/middleware-test.js`]({{ site.baseurl }}/solutions/05-middleware/test/middleware-test.js).
 
-At this point, you may wish to `git commit` your work to your local repo.
-After doing so, try copying the `middleware.js` file from
-`solutions/05-middleware/lib` into `exercises/lib` to see if it passes the
-test you wrote. Then run `git reset --hard HEAD` and copy the test files
-instead to see if your implementation passes. If a test case fails, review the
-section of this chapter pertaining to the failing test case, then try to
-update your code to make the test pass.
+At this point, `git commit` your work to your local repo. After doing so, try
+copying the `middleware.js` file from `solutions/05-middleware/lib` into
+`exercises/lib` to see if it passes the test you wrote. Then run `git reset
+--hard HEAD` and copy the test files instead to see if your implementation
+passes. If a test case fails, review the section of this chapter pertaining to
+the failing test case, then try to update your code to make the test pass.
