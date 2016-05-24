@@ -7,10 +7,13 @@ APIs](https://api.slack.com/) and related npm packages. You can find it in the
 file.
 
 If you don't have experience writing HTTP calls and launching test servers,
-testing the `SlackClient` class is a great way to gain some experience. If
-you're looking for more of a challenge, then move on to the next chapter.
-
-If you've skipped to this chapter, you can establish the starting state of the
+testing the `SlackClient` class is a great way to get acquainted. You should
+be familiar with the [HTTP `GET`
+method](http://www.w3schools.com/tags/ref_httpmethods.asp) and the concept of
+[Web Application Programming Interfaces
+(APIs)](http://readwrite.com/2013/09/19/api-defined/). If you're looking for
+more of a challenge, then move on to the next chapter. And if you've skipped
+ahead to this chapter, you can establish the starting state of the
 `exercise/` files for this chapter by running:
 
 ```sh
@@ -37,31 +40,35 @@ class](https://sourcemaking.com/design_patterns/facade), which wraps the
 full-featured `hubot-slack` package in an interface that exposes only the
 behavior needed by this program.
 
-This facade implementation serves multiple purposes:
+Facades offer several advantages:
 
-- All uses of the external dependency are documented via the methods on the
-  facade's interface.
+- The methods comprising the facade interface document all uses of the external
+  dependency.
 - When the upstream interface changes, only this class should require any
   changes, minimizing the cost and risk of upgrades.
-- You can use [dependency injection]({{ site.baseurl }}/concepts/dependency-injection/)
-  in tests _to model and control_ the external behavior.
+- By using [dependency
+  injection]({{ site.baseurl }}/concepts/dependency-injection/) to construct
+  objects using the facade, a test double implementing the same interface can
+  model the external behavior. When used well, this technique reduces direct
+  dependencies on the external code, and makes tests faster, more reliable,
+  and more thorough.
 
 You will also add methods to the facade to wrap the Slack Web API methods
 [reactions.get](https://api.slack.com/methods/reactions.get) and
 [reactions.add](https://api.slack.com/methods/reactions.add). There are npm
 wrappers for the Slack Web API, but you will write your own code in this case
-to [minimize dependencies](/concepts/minimizing-dependencies/). Since the code
-required is relatively small and straightforward, it also provides a good
+to [minimize dependencies](/concepts/minimizing-dependencies/). Because the
+code required is relatively small and straightforward, it also provides a good
 example of _how_ to write and test web API wrappers.
 
 You will learn:
 
-- to manage HTTP bookkeeping
-- the basics of using a
+- To manage HTTP bookkeeping
+- The basics of using a
   [`Promise`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
   to encapsulate an asynchronous operation
-- how to test HTTP requests by launching a local HTTP test server
-- how to use Promises with mocha and chai
+- How to test HTTP requests by launching a local HTTP test server
+- How to use Promises with mocha and chai
 
 ## Starting to build `SlackClient`
 
@@ -340,8 +347,8 @@ parameter, `client`, is actually the `this` reference from the `SlackClient`
 methods. `makeApiCall` is going to define a [nested
 function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Functions#Nested_functions_and_closures) to launch an
 asynchronous HTTP request. Were `makeApiCall` a member of `SlackClient`,
-[inside the nested handler, `this` would not refer to the `SlackClient`
-object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Functions#Lexical_this).
+[`this` would not refer to the `SlackClient` object inside the nested
+handler](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Functions#Lexical_this).
 This can prove very confusing, especially to people with experience in
 object-oriented languages. Translating `this` to `client` in this way
 sidesteps the problem, and having `makeApiCall` private to the module keeps
@@ -462,7 +469,7 @@ function getHttpOptions(client, method, queryParams) {
 
 Note `port: baseurl.port`. When `port:` is undefined, the request uses the
 default port for HTTP (80) or HTTPS(443). In these tests, you'll launch a
-local HTTP server with a dynamically-assigned port. We'll assign this server's
+local HTTP server with a dynamically assigned port. We'll assign this server's
 URL, including its port value, to the `slackApiBaseUrl` property of the
 `Config` object used to create the `SlackClient` instance under test. In
 `getHttpOptions`, that dynamic port value will then propagate to this options
@@ -478,14 +485,13 @@ of HTTP options that we will build using `getHttpOptions()`.
 
 In these tests, you will configure the `SlackClient` instance to make requests
 to an HTTP server running locally. So to ensure you're using the correct
-library in either the test or in production, add the following as the first
-line of `makeApiCall`:
+library in either the test or in production, add the following as the last
+line of the `SlackClient` constructor:
 
 ```js
-function makeApiCall(client, method, params) {
-  var requestFactory = (client.baseurl.protocol === 'https:') ? https : http;
-
-  // We'll continue with the rest of the implementation here shortly.
+function SlackClient(robotSlackClient, config) {
+  // ...
+  this.requestFactory = (this.baseurl.protocol === 'https:') ? https : http;
 }
 ```
 
@@ -504,8 +510,6 @@ a series of HTTP requests. Start fleshing out `makeApiCall` by returning a
 
 ```js
 function makeApiCall(client, method, params) {
-  var requestFactory = (client.baseurl.protocol === 'https:') ? https : http;
-
   return new Promise(function(resolve, reject) {
     // We'll fill in the actual request implementation here shortly.
   });
@@ -532,7 +536,7 @@ HTTPS) request:
     params.token = process.env.HUBOT_SLACK_TOKEN;
     httpOptions = getHttpOptions(client, method, params);
 
-    req = requestFactory.request(httpOptions, function(res) {
+    req = client.requestFactory.request(httpOptions, function(res) {
       handleResponse(method, res, resolve, reject);
     });
 
@@ -547,14 +551,14 @@ A few things to notice about this new block of code:
   added here to every request. The value comes from the `HUBOT_SLACK_TOKEN`
   environment variable, accessible via
   [`process.env`](https://nodejs.org/api/process.html#process_process_env).
-- `requestFactory` will dispatch to either `http.request()` or
+- `client.requestFactory` will dispatch to either `http.request()` or
   `https.request()`. The polymorphism afforded by the earlier assignment to
-  `requestFactory` avoids the need for a conditional here, making the
+  `client.requestFactory` avoids the need for a conditional here, making the
   algorithm easier to follow. This is related to the
   [replace conditional with polymorphism refactoring](http://refactoring.com/catalog/replaceConditionalWithPolymorphism.html),
   except we started with polymorphism instead of refactoring the conditional
   away.
-- We're passing a callback to `requestFactory.request()` that
+- We're passing a callback to `client.requestFactory.request()` that
   delegates to a function we've yet to write, `handleResponse`. This function
   will have access to the `resolve` and `reject` callbacks passed to the
   outer `Promise` callback.
@@ -1352,8 +1356,8 @@ Now that you're finished, compare your solutions to the code in
 and
 [`solutions/02-slack-client/test/slack-client-test.js`]({{ site.baseurl }}/solutions/02-slack-client/test/slack-client-test.js).
 
-At this point, `git commit` your work to your local repo. After doing so, try
-copying the `slack-client.js` file from `solutions/02-slack-client/lib` into
+At this point, `git commit` your work to your local repo. After you do, copy
+the `slack-client.js` file from `solutions/02-slack-client/lib` into
 `exercises/lib` to see if it passes the test you wrote. Then run `git reset
 --hard HEAD` and copy the test files instead to see if your implementation
 passes. If a test case fails, review the section of this chapter pertaining to

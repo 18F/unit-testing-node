@@ -10,10 +10,9 @@ and validate the contents. The example configuration file is
 If you're completely unfamiliar with unit testing, or unfamiliar with
 [Mocha](https://mochajs.org/) and [Chai](http://chaijs.com/), the `Config`
 class is a great object to get you acquainted. If you're looking for more of a
-challenge, move on to the next chapter.
-
-If you've skipped to this chapter, you can establish the starting state of the
-`exercise/` files for this chapter by running:
+challenge, move on to the next chapter. And if you've skipped ahead to this
+chapter, you can establish the starting state of the `exercise/` files for
+this chapter by running:
 
 ```sh
 $ ./go set-config
@@ -700,9 +699,9 @@ Now that you're finished, compare your solutions to the code in
 and
 [`solutions/00-config/test/config-test.js`]({{ site.baseurl }}/solutions/00-config/test/config-test.js).
 
-At this point, `git commit` your work to your local repo. After doing so, try
-copying the `config.js` file from `solutions/00-config/lib` into
-`exercises/lib` to see if it passes the test you wrote. Then run `git reset
---hard HEAD` and copy the test files instead to see if your implementation
-passes. If a test case fails, review the section of this chapter pertaining to
-the failing test case, then try to update your code to make the test pass.
+At this point, `git commit` your work to your local repo. After you do, copy
+the `config.js` file from `solutions/00-config/lib` into `exercises/lib` to
+see if it passes the test you wrote. Then run `git reset --hard HEAD` and copy
+the test files instead to see if your implementation passes. If a test case
+fails, review the section of this chapter pertaining to the failing test case,
+then try to update your code to make the test pass.

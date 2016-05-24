@@ -6,8 +6,8 @@ implemented the core `Middleware` functionality, it's time to plug
 `Middleware` into `Hubot`. We'll do this by creating the "script" that defines
 the entry point of our application.
 
-If you've skipped to this chapter, you can establish the starting state of the
-`exercise/` files for this chapter by running:
+If you've skipped ahead to this chapter, you can establish the starting state
+of the `exercise/` files for this chapter by running:
 
 ```sh
 $ ./go set-integration
@@ -1462,8 +1462,8 @@ Now that you're finished, compare your solutions to the code in
 [`solutions/06-integration/scripts/slack-github-issues.js`]({{ site.baseurl }}/solutions/06-integration/scripts/slack-github-issues.js)
 [`solutions/06-integration/test/integration-test.js`]({{ site.baseurl }}/solutions/06-integration/test/integration-test.js).
 
-At this point, `git commit` your work to your local repo. After doing so, try
-copying the `integration-test.js` file from `solutions/06-integration/test`
-into `exercises/test` to see if your implementation passes. If a test case
-fails, review the section of this chapter pertaining to the failing test case,
-then try to update your code to make the test pass.
+At this point, `git commit` your work to your local repo. After you do, copy
+the `integration-test.js` file from `solutions/06-integration/test` into
+`exercises/test` to see if your implementation passes. If a test case fails,
+review the section of this chapter pertaining to the failing test case, then
+try to update your code to make the test pass.

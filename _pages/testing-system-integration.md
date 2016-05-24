@@ -6,8 +6,8 @@ validated that all of the components work together as expected. All that's
 left is to test that we can launch a Hubot process with our script installed,
 and that startup behavior is as expected.
 
-If you've skipped to this chapter, you can establish the starting state of the
-`exercise/` files for this chapter by running:
+If you've skipped ahead to this chapter, you can establish the starting state
+of the `exercise/` files for this chapter by running:
 
 ```sh
 $ ./go set-system
@@ -299,8 +299,8 @@ $ npm test -- --grep '^Smoke test '
 Now that you're finished, compare your solutions to the code in
 [`solutions/07-system/test/smoke-test.js`]({{ site.baseurl }}/solutions/07-system/test/smoke-test.js).
 
-At this point, `git commit` your work to your local repo. After doing so, try
-copying the `smoke-test.js` file from `solutions/07-system/test` into
-`exercises/test` to see if your implementation passes. If a test case fails,
-review the section of this chapter pertaining to the failing test case, then
-try to update your code to make the test pass.
+At this point, `git commit` your work to your local repo. After you do, copy
+the `smoke-test.js` file from `solutions/07-system/test` into `exercises/test`
+to see if your implementation passes. If a test case fails, review the section
+of this chapter pertaining to the failing test case, then try to update your
+code to make the test pass.

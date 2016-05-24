@@ -9,10 +9,9 @@ in the [`exercise/lib/rule.js`]({{ site.baseurl }}/exercise/lib/rule.js) file.
 
 If you don't have experience writing or using test doubles, testing the `Rule`
 class is a great way to gain some experience. If you're looking for more of a
-challenge, then move on to the next chapter.
-
-If you've skipped to this chapter, you can establish the starting state of the
-`exercise/` files for this chapter by running:
+challenge, then move on to the next chapter. And if you've skipped ahead to
+this chapter, you can establish the starting state of the `exercise/` files
+for this chapter by running:
 
 ```sh
 $ ./go set-rule
@@ -556,7 +555,7 @@ Now that you're finished, compare your solutions to the code in
 and
 [`solutions/01-rule/test/rule-test.js`]({{ site.baseurl }}/solutions/01-rule/test/rule-test.js).
 
-At this point, `git commit` your work to your local repo. After doing so, copy
+At this point, `git commit` your work to your local repo. After you do, copy
 the `rule.js` file from `solutions/01-rule/lib` into `exercises/lib` to see if
 it passes the test you wrote. Then run `git reset --hard HEAD` and copy the
 test files instead to see if your implementation passes. If a test case fails,
