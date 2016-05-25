@@ -1,13 +1,12 @@
 ---
 title: Middleware class
 ---
-The `Middleware` class is where all of the pieces we've built up so far get
-integrated. It is the figurative brain and heart of the application. The name
-refers to its role in implementing a piece of [Hubot receive
+The `Middleware` class is the figurative heart and brain of the
+application—it's where all of the pieces you've built up so far [come
+together](https://www.youtube.com/watch?v=uSM5MpKSnqE). The name `Middleware`
+refers to the class's role in implementing a piece of [Hubot receive
 middleware](https://hubot.github.com/docs/scripting/#middleware). You can find
-it in the
-[`exercise/lib/middleware.js`]({{ site.baseurl }}/exercise/lib/middleware.js)
-file.
+it in the [`exercise/lib/middleware.js`]({{ site.baseurl }}/exercise/lib/middleware.js) file.
 
 If you've skipped ahead to this chapter, you can establish the starting state
 of the `exercise/` files for this chapter by running:
@@ -18,44 +17,45 @@ $ ./go set-middleware
 
 ## What to expect
 
-Thanks to the work we've done encapsulating configuration validation in the
-`Config` class, rule matching logic in the `Rule` class, and API calls to
-Slack and GitHub in the `SlackClient` and `GitHubClient` classes, `Middleware`
-can focus squarely on the core application logic.
+Thanks to the work you've done encapsulating configuration validation in the
+`Config` class, rule-matching logic in the `Rule` class, and API calls to
+Slack and GitHub in the `SlackClient` and `GitHubClient` classes, the
+`Middleware` class can focus solely on the core application logic.
 
-We also don't need to test all possible corner and error cases for those other
-components, since they have been thoroughly tested in isolation. In fact, we
-don't need to run any HTTP servers in the `Middleware` test, because we can
-use [test
-doubles](http://googletesting.blogspot.com/2013/07/testing-on-toilet-know-your-test-doubles.html)
-to simulate their behavior. This will make the `Middleware` tests easier to
-write, to maintain, and to understand.
+Because you've already thoroughly tested them in isolation, you don't need to
+test all possible corner and error cases for the aforementioned classes. In
+fact, you don't need to run any HTTP servers in the `Middleware` test because
+you can simulate their behavior using [test
+doubles](http://googletesting.blogspot.com/2013/07/testing-on-toilet-know-your-test-doubles.html).
+This will make the `Middleware` tests easier to write, maintain, and understand.
 
-In short, we will learn to:
+In short, this chapter will teach you how to:
 
-- build our core application object using [composition rather than
+- Build your core application object using [composition rather than
   inheritance]({{ site.baseurl }}/concepts/object-composition-vs-inheritance)
-- write more controllable, maintainable, readable tests using test doubles and
+- Write more controllable, maintainable, readable tests using test doubles and
   a technique known as [dependency
   injection]({{ site.baseurl }}/concepts/dependency-injection)
-- use the [`sinon` library](http://sinonjs.org/) to create
+- Use the [`sinon` library](http://sinonjs.org/) to create
   [test doubles](http://googletesting.blogspot.com/2013/07/testing-on-toilet-know-your-test-doubles.html)
-- learn how to use `Promises` with mocha and chai
+- Use `Promises` with mocha and chai
 
 ## <a name="core-algorithm"></a>The core algorithm
 
-`Middleware` implements the core algorithm of the application:
+`Middleware` implements the core algorithm of the application—a process that
+includes the following steps:
 
-- Match an incoming `reaction_added` message against the rules.
-- If a match is found, get a list of all of the reactions to the message.
-- If there is no "success" reaction (defined in the configuration), file a
-  GitHub issue.
-- Add a "success" reaction to the message.
-- Post the link to the GitHub issue in the channel containing the message.
+- It compares an incoming `reaction_added` message to the existing rules.
+- If a match is found, it gets a list of all of the reactions to the message.
+- If there is no "success" reaction (defined in the configuration), it will
+  file a GitHub issue.
+- It will add a "success" reaction to the message.
+- Finally, it will post the link to the GitHub issue in the channel containing
+  the message.
 
-Thanks to the other classes we've written, `Middleware` is not concerned with
+Thanks to the other classes you've written, `Middleware` is not concerned with
 the details handled by those classes. This makes the `Middleware` class itself
-easier to implement, to understand, and especially easier to test.
+easier to implement, understand, and test.
 
 ## Starting to build `Middleware`
 
@@ -80,36 +80,35 @@ Middleware.prototype.execute = function(/* context, next, done */) {
 ```
 
 There are two very important things to notice about the constructor. First,
-the `rules`, `successReaction`, `slackClient`, `githubClient`, and `logger`
-objects become properties of the `Middleware` object. Rather than directly
-implement configuration validation, rule matching, HTTP request behavior, and
-logging, we delegate handling of those detailed operations to each respective
-object.
+the `config.rules`, `config.successReaction`, `slackClient`, `githubClient`,
+and `logger` objects become properties of the `Middleware` object. Rather than
+directly implementing configuration validation, rule matching, HTTP request
+behavior, and logging, the `Middleware` class delegates handling of those
+detailed operations to each respective object.
 
-Neither does `Middleware` inherit any behavior from other objects. Every
-dependency on behavior not implemented directly by `Middleware` itself is made
-explicit by a method call on a collaborating object. This is an illustration of
-[object composition]({{ site.baseurl }}/concepts/object-composition-vs-inheritance),
-one of the core design principles that leads to more readable, more maintable,
-more testable code.
+Neither does `Middleware` inherit behaviors from other objects. Every
+dependency on behavior *not* implemented directly by `Middleware` itself is
+made explicit by a method call on a collaborating object. This is an
+illustration of [object composition]({{ site.baseurl }}/concepts/object-composition-vs-inheritance),
+one of the core design principles that leads to more readable, maintable,
+testable code.
 
-The second thing to notice is that the `Middleware` object is not creating
+The second thing to notice is that the `Middleware` object doesn't create
 these collaborating objects itself. Rather, these _dependencies_ are
-_injected_ into the object by the code creating the `Middleware` object. The
-finished application will configure the `Middleware` to use real `Config`,
-`SlackClient`, and `GitHubClient` objects. However, our tests can use
-alternate implementations of `SlackClient` and `GitHubClient` in particular to
-exercise `Middleware` behavior without making actual Slack and GitHub API
-calls. [Dependency injection]({{ site.baseurl }}/concepts/dependency-injection)
-relies upon object composition to make it even easier to write focused,
-targeted, isolated, stable, readable, maintainable, valuable automated tests.
+_injected_ into the object by the code creating the `Middleware` object—hence
+the name "[dependency injection]({{ site.baseurl }}/concepts/dependency-injection)".
+The finished application will configure the `Middleware` to use real `Config`,
+`SlackClient`, and `GitHubClient` objects. However, your tests can use
+alternative implementations of `SlackClient` and `GitHubClient`, in
+particular, to exercise `Middleware` behavior without making actual Slack and
+GitHub API calls.
 
 ## Creating `Rule` objects from `config.rules`
 
-The first thing we need to do is promote the flat JSON objects from
-`config.rules` to full-fledged `Rule` objects. The `Config` object has already
-ensured that `config.rules` contains valid `Rule` specifications, so all we
-have to do is map each specification to a behavior-rich object:
+First promote the flat JSON objects from `config.rules` to full-fledged `Rule`
+objects. The `Config` object has already ensured that `config.rules` contains
+valid `Rule` specifications, so all you have to do is map each specification
+to a behavior-rich object:
 
 ```js
 var Rule = require('./rule');
@@ -122,32 +121,49 @@ function Middleware(config, slackClient, githubClient, logger) {
   });
 ```
 
-In contrast to our injected dependencies, our `Rule` objects are small,
-straightforward, and do not rely on outside resources such as files, servers,
-or timers. Should this somehow ever change, we may wish to extract the `Rule`
-instantiation into a factory object. For the time being, however, it's
-completely OK for `Middleware` to instantiate these objects directly, as
-opposed to `slackClient`, `githubClient`, or `logger`.
+In contrast to the injected dependencies, the `Rule` objects are small,
+straightforward, and not reliant on outside resources such as files, servers,
+or timers. Should this somehow ever change, you may wish to extract the `Rule`
+instantiation into a factory object. For the time being, though, it's
+completely OK for `Middleware` to instantiate these objects directly (unlike
+`slackClient`, `githubClient`, or `logger`, which do depend on outside
+resources).
 
 ## Understanding the `execute(context, next, done)` function signature
 
-The `Middleware` object implements the [Hubot receive middleware
+In the context of web application frameworks, "middleware" refers to a class or package implementing an
+interface that allows injection of new behavior into the framework used to
+implement a larger program.  The framework implements behaviors common to an
+entire class of applications, so that developers can focus on supplying
+application-specific behavior at well-defined points. _Middleware_ is
+analogous to terms such as _plugin_, _hook_, or _extension_, but usually
+refers to request processing performed before or after the core application
+logic.
+
+For our application, [Hubot](https://hubot.github.com/) is the framework, and
+the `Middleware` object implements the [receive middleware
 specification](https://hubot.github.com/docs/scripting/#middleware), which
-defines the following arguments:
+defines an `execute()` function accepting the following arguments:
 
-- **context**: for [receive
+- **`context`**: for [receive
   middleware](https://hubot.github.com/docs/scripting/#receive-middleware-api),
-  this contains a `response` property that itself contains the incoming
-  `message` and a `reply` method to send a response message to the user
-- **next**: a callback function that runs the next piece of middleware; must
-  be called with **done** as an argument, or a function that eventually calls
-  **done**
-- **done**: a callback function taking no arguments that signals completion of
-  middleware processing; typically passed as the sole argument to **next**,
-  but a middleware function can call it to abort further processing
+  this contains a `response` property that contains the incoming `message`, as
+  well as a `reply` method that sends a response message to the user
+- **`next`**: a callback function that runs the next piece of receive
+  middleware; it must be called with **`done`** as an argument, or a function
+  that eventually calls **`done`**
+- **`done`**: a callback function taking no arguments that signals completion
+  of receive middleware processing; typically passed as the sole argument to
+  **`next`**, but a receive middleware function can call it to abort further
+  processing
 
-The first thing we will do is uncomment the arguments and pick apart the parts
-of `context` that we need into separate variables:
+Technically speaking, the `Middleware` class abuses the middleware concept, as
+it _is_ the core application from our perspective. However, it is more complex
+than a typical script, and implementing it as middleware seemed easier than
+extending the `robot` interface presented to Hubot scripts.
+
+At this point, you will need to uncomment the arguments and pick apart into
+separate variables the various parts of `context` that you need:
 
 ```js
 Middleware.prototype.execute = function(context, next, done) {
@@ -160,7 +176,7 @@ Middleware.prototype.execute = function(context, next, done) {
 
 The `message` variable holds the raw JSON object representing the
 [`reaction_added` message](https://api.slack.com/events/reaction_added). These
-messages will look like this:
+messages look like this:
 
 ```json
 {
@@ -176,13 +192,13 @@ messages will look like this:
 }
 ```
 
-Note that, per the API documentation the `item` member can also be a `file` or
-a `file_comment`. Our implementation will not handle those types, though the
-actual application may eventually add support for them.
+Note that, per the API documentation, the `item` member can also be a `file`
+or a `file_comment`. Your implementation will not handle those types, though
+the actual application may eventually add support for them.
 
-The message receiving the message is uniquely identified by the channel ID
-(`channel`) and timestamp (`ts`). This is why we added those parameters to our
-`SlackClient` methods that implement the
+The conversation message receiving the `reaction_added` message is uniquely
+identified by the channel ID (`channel`) and timestamp (`ts`). This is why you
+added those parameters to the `SlackClient` methods that implement the
 [`reactions.get`](https://api.slack.com/methods/reactions.get) and
 [`reactions.add`](https://api.slack.com/methods/reactions.add) Slack API
 calls.
