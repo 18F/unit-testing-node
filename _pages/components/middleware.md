@@ -205,8 +205,8 @@ calls.
 
 ## Finding the matching `Rule` for an incoming `reaction_added` message
 
-We need to iterate through our array of `Rule` objects to find the `Rule` that
-matches the incoming message. Let's import the `SlackClient` library and give
+You need to iterate through the array of `Rule` objects to find the `Rule`
+that matches the incoming message. Import the `SlackClient` library and give
 this behavior its own method:
 
 ```js
@@ -226,13 +226,13 @@ Middleware.prototype.findMatchingRule = function(message) {
 };
 ```
 
-The first thing we do is assign `this.slackClient` to a new variable, since
-[`this` will refer to a different object inside the
+Then, assign `this.slackClient` to a new variable, since [`this` will refer to
+a different object inside the
 callback](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Functions#Lexical_this).
 
-Looking closely, we can see that there's also a new member to add to
+Looking closely, you can see that there's also a new member to add to
 `SlackClient`. Inside
-[`exercise/lib/slack-client.js`]({{ site.baseurl }}/exercise/lib/slack-client.js)
+[`exercise/lib/slack-client.js`]({{ site.baseurl }}/exercise/lib/slack-client.js),
 add the following just below the constructor:
 
 ```js
@@ -241,28 +241,30 @@ add the following just below the constructor:
 SlackClient.REACTION_ADDED = 'reaction_added';
 ```
 This keeps with the theme of adding all Slack-related information and behavior
-encapsulated within the `SlackClient` class. Of course, the most correct thing
-would be to `require('slack-client')` and get the value that way. However, given
-this is the only piece of information we need, we can [minimize
-dependencies]({{ site.baseurl }}/concepts/minimizing-dependencies/) by
-assigning this one constant value ourselves.
+encapsulated within the `SlackClient` class. Of course, the most technically
+correct thing to do would be to `require('slack-client')` and get the value
+that way. However, because the `reaction_added` message label is the
+only piece of information you need, you can
+[minimize dependencies]({{ site.baseurl }}/concepts/minimizing-dependencies/)
+by assigning this one constant value yourself.
 
-We wrap `this.rules.find` in a conditional to ensure that we call `Rule.match`
-with a valid message. This could theoretically be part of the `Rule.match`
-behavior itself. However, since the result of this check would remain the same
-across all `Rule` objects for any message, it makes sense to implement it here.
+Finally, wrap `this.rules.find` in a conditional to ensure that you call
+`Rule.match` with a valid message. This could theoretically be part of the
+`Rule.match` behavior itself. However, since the result of this check would
+remain the same across all `Rule` objects for any message, it makes sense to
+implement it here.
 
 ## Testing `findMatchingRule`
 
-Another benefit of writing this method first is that we can test its behavior
-thoroughly and directly without calling `execute`. Since `execute` will be the
-single function responsible for the entire application, it makes sense to
-implement and test this step in isolation. [This will give us confidence that
-all the corner cases are accounted for, without an exponential explosion in
-the number of test
+Another benefit of writing this method first is that doing so will allow you
+to test its behavior thoroughly and directly without calling `execute`.
+Because `execute` will be the single function responsible for the entire
+application, it makes sense to implement and test this step in isolation.
+[This will give you confidence that all the corner cases are accounted for,
+without an exponential explosion in the number of test
 cases](http://googletesting.blogspot.com/2008/02/in-movie-amadeus-austrian-emperor.html).
 
-Let's look at the first empty test case in
+Look first at the first empty test case in
 [`exercise/test/middleware-test.js`]({{ site.baseurl }}/exercise/test/middleware-test.js):
 
 ```js
@@ -273,11 +275,11 @@ describe('Middleware', function() {
   });
 ```
 
-The first thing we need is to instantiate a `Middleware` instance in our test
-fixture. We'll also instantiate `Config`, `SlackClient`, `GitHubClient`, and
+At this step, you need to instantiate a `Middleware` instance in the test
+fixture. You'll also instantiate `Config`, `SlackClient`, `GitHubClient`, and
 `Logger` objects. Add all of the necessary `require` statements, configure the
-chai assertions, and then create `config`, `slackClient`, `githubClient`,
-`logger`, and `middleware`:
+chai assertions, and then create the `config`, `slackClient`, `githubClient`,
+`logger`, and `middleware` fixture variables:
 
 ```js
 var Middleware = require('../lib/middleware');
@@ -305,27 +307,27 @@ describe('Middleware', function() {
   });
 ```
 
-Notice that we're instantiating `logger` using the `console` object. It
+Notice that you're instantiating `logger` using the `console` object. It
 contains `info` and `error` methods just like the `robot.logger` that the real
-application will use. As we'll see later, we shoudn't actually invoke any of
-the `console` methods. If it happens by accident, we'll see the unexpected
-output printed within the test results.
+application will use. As you'll see later, it shouldn't invoke any of the
+`console` methods. If it happens by accident, you'll see the unexpected output
+printed within the test results.
 
 ## Introducing the `sinon` test double library
 
-Notice that we leave the robotSlackClient argument to the `SlackClient`
-constructor undefined. Since `SlackClient` is already thoroughly tested, we
-can emulate its behavior without defining all (or any) of its dependencies by
-using a
-[test double](http://googletesting.blogspot.com/2013/07/testing-on-toilet-know-your-test-doubles.html).
-We'll now introduce the [`sinon` library](http://sinonjs.org/) to create a
-test doubles for `SlackClient`.
+You may have noticed that you didn't define the `robotSlackClient` argument to
+the `SlackClient` constructor. Since `SlackClient` has already been thoroughly
+tested, you can emulate its behavior without defining all (or any) of its
+dependencies by using a [test
+double](http://googletesting.blogspot.com/2013/07/testing-on-toilet-know-your-test-doubles.html).
+You'll now introduce the [Sinon library](http://sinonjs.org/) to create a
+test double for `SlackClient`.
 
-`sinon` is a library that can create stub, fake, and mock objects for you.
-Though we wrote our own
+Sinon is a library that you can use to create stub, fake, and mock objects.
+Though you wrote your own
 [`SlackClientImplStub`]({{ site.baseurl }}/exercises/test/helpers/slack-client-impl-stub.js)
-when testing the `Rule` class, we will need more objects and more behavior
-when testing `Middleware`. As a result, we'll use `sinon` to create a double
+when testing the `Rule` class, you'll need more objects and more behavior for
+testing `Middleware`. Because of this, you'll use `sinon` to create a double
 for `SlackClient` in this test, rather than extracting `SlackClientImplStub`
 into `test/helpers`.
 
@@ -354,17 +356,18 @@ following to set up and tear down the test double for the
     });
 ```
 
-Here we create a [stub](http://sinonjs.org/docs/#stubs) for the
-`getChannelName` method of the `slackClient` object. We can control what the
-stub returns when it's called via `returns`. There are many other features of
-sinon stubs, and you are welcome to experiment with other methods beyond
-what's covered in this chapter.
+Here, create a [stub](http://sinonjs.org/docs/#stubs) for the `getChannelName`
+method of the `slackClient` object. Using the `returns` method, you can
+control what the stub returns when it's called. There are many other features
+of Sinon stubs; you're welcome to explore the [Sinon
+documentation](http://sinonjs.org/docs/) and experiment with other methods
+beyond what's covered in this chapter.
 
 ## `reaction_added` test data
 
-The final thing we need is a `reaction_added` message instance. Now that we're
-familiar with the pattern of adding test data to our `test/helpers` package,
-let's add the following to `exercise/test/helpers/index.js`:
+The final thing you need is a `reaction_added` message instance. Now that
+you're familiar with the pattern of adding test data to the `test/helpers`
+package, add the following to `exercise/test/helpers/index.js`:
 
 ```js
 var SlackClient = require('../../lib/slack-client');
@@ -394,7 +397,7 @@ exports = module.exports = {
 
 ## The `findMatchingRule` test suite
 
-With this helper data in place, we can now implement our first test:
+With this helper data in place, you can now implement the first test:
 
 ```js
     it('should find the rule matching the message', function() {
@@ -431,7 +434,7 @@ contains:
 Since `message` contains `reaction: "evergreen_tree"`, but the
 `getChannelName` stub will return a name that doesn't match the first rule,
 `findMatchingRule` should return the final rule. Run `npm test -- -grep '
-findMatchingRule '` and you should see:
+findMatchingRule '` and you should see the following:
 
 ```sh
 $ npm test -- --grep ' findMatchingRule '
@@ -454,11 +457,11 @@ $ npm test -- --grep ' findMatchingRule '
 [13:51:23] Finished 'test' after 138 ms
 ```
 
-We have demonstrated that `findMatchingRule` _is_ calling `match` on every
-`Rule` by testing for a match on the final rule. Consequently, while we
-_could_ test that every value is returned, doing so is of dubious benefit.
-What we should care about more is covering all of the cases where a message
-matches _none_ of the rules:
+You have demonstrated that `findMatchingRule` _is_ calling `match` on every
+`Rule` by testing for a match on the last member of `config.rules`.
+Consequently, while you _could_ test to make sure that every value is
+returned, doing so is of dubious benefit. Instead, you should focus on
+covering all of the cases where a message matches _none_ of the rules:
 
 ```js
     it('should ignore a message if it is undefined', function() {
@@ -477,8 +480,8 @@ matches _none_ of the rules:
     });
 ```
 
-Copy and paste these tests into your file, and fill in the tests yourself.
-Use the implementation of `findMatchingRule` to understand what parts of
+Copy and paste these tests into your file and fill in the tests yourself.
+Use the implementation of `findMatchingRule` to understand what parts of the
 `message` you must change to exercise every condition. All of the assertions
 should be of the form `expect(...).to.be.undefined` since `findMatchingRule`
 should return either a valid `Rule` object or `undefined` if no rule matches.
@@ -489,8 +492,8 @@ moving on to the next section.
 ## Starting to build the `execute` test fixture
 
 Now that `findMatchingRule` is in place, let's return to `execute` and begin
-to test it. As a base case, we want to make sure that `execute` calls
-`next(done)` and returns if no rule matches:
+to test it. As a base case, make sure that `execute` calls `next(done)` and
+returns if no rule matches:
 
 ```js
 Middleware.prototype.execute = function(context, next, done) {
@@ -505,8 +508,8 @@ Middleware.prototype.execute = function(context, next, done) {
 };
 ```
 
-The first thing we need to do is simulate the `context` object, the `next`
-callback, and the `done` callback (called `hubotDone` in our fixture):
+The first thing you need to do is simulate the `context` object, the `next`
+callback, and the `done` callback (called `hubotDone` in the fixture):
 
 ```js
   describe('execute', function() {
@@ -527,18 +530,19 @@ callback, and the `done` callback (called `hubotDone` in our fixture):
 The `context.response.reply` and `next` objects defined above are [sinon
 spies](http://sinonjs.org/docs/#spies). Spies are similar to stubs, but are
 more limited in that they cannot be programmed to return values or throw
-errors. Since both of these methods are called without any action taken on
+errors. Because both of these methods are called without any action taken on
 their return values, spies are sufficient to validate the `Middleware`
 behavior under test.
 
 ## Creating a full-featured incoming test message
 
-Note that we're defining a new test helper method, `fullReactionAddedMessage`.
-While the existing `reactionAddedMessage` contains the JSON returned from the
-[`reaction_added` API message](https://api.slack.com/events/reaction_added),
+It's worth pointing out that you're in the process of defining a new test
+helper method, `fullReactionAddedMessage`. While the existing
+`reactionAddedMessage` contains the JSON returned from the [`reaction_added`
+API message](https://api.slack.com/events/reaction_added),
 [hubot-slack](https://www.npmjs.com/package/hubot-slack) package will wrap
-this raw message with other objects. Consequently, let's add the following to
-the `exercise/test/helpers/index.js` file:
+this raw message with other objects. Consequently, add the following to the
+`exercise/test/helpers/index.js` file:
 
 ```js
 var Hubot = require('hubot');
@@ -562,10 +566,11 @@ exports = module.exports = {
 ```
 
 The `reactionAddedMessage` defined above will become the `rawMessage` property
-of the object returned by `fullReactionAddedMessage`. We don't necessarily
+of the object returned by `fullReactionAddedMessage`. You don't necessarily
 need to use actual `Hubot` and `SlackBot` objects to test our `Middleware`
-behavior. However, using them provides the security that if an upgrade to
-either package changes the interfaces we depend on, our tests will notify us.
+behavior. However, using them will provide you the security that if an upgrade
+to either package changes the interfaces we depend on, you tests will notify
+you.
 
 ## Testing the "no matching rule" case
 
@@ -580,25 +585,25 @@ parse a message and file an issue` case:
     });
 ```
 
-Deleting `context.response.message.rawMessage` works because we know that
-`execute` passes this value to `findMatchingRule`, and `findMatchingRule` will
-return `undefined` if its `message` argument is `undefined`. Run the test via
-`npm test -- --grep ' execute '` and ensure it passes.
+Deleting `context.response.message.rawMessage` works because `execute` passes
+this value to `findMatchingRule`, and `findMatchingRule` will return
+`undefined` if its `message` argument is `undefined`. Run the test via `npm
+test -- --grep ' execute '` and make sure that it passes.
 
-We will add at least one more assertion to this rule as we implement the rest
-of `execute`.
+Next you'll add more assertions to this rule as you implement the rest of
+`execute`.
 
 ## Sketching out the rest of `execute` via `Promise` chaining
 
 If `execute` finds a matching rule, it needs to launch a series of
-asynchronous operations in a specific sequence. As introduced in the
+asynchronous operations in a specific sequence. As you learned in the
 `SlackClient` chapter,
 [`Promises`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
 represent asynchronous operations that will either _resolve_ to a value or be
-_rejected_ with an error. A series of `Promise` objects may be chained
-together to execute asynchronous operations in a way that resembles a series
-of synchronous function calls. Plus, a single error handler can catch errors
-arising from any link in the `Promise` chain.
+_rejected_ with an error. You can chain a series of `Promise` objects together
+to execute asynchronous operations in a way that resembles a series of
+synchronous function calls. In addition, a single error handler can catch
+errors arising from any link in the `Promise` chain.
 
 Therefore, if `execute` finds a matching rule, it will return a `Promise` that
 represents a `Promise` chain handling the various Slack and GitHub API calls.
@@ -615,16 +620,16 @@ statement at the end of `execute` with this:
     .then(handleSuccess(finish), handleFailure(finish));
 ```
 
-Notice that each of these steps corresponds to the remainder of the [core
-algorithm](#core-algorithm). If any of the `Promises` in the chain before
-`handleSuccess` are rejected, the `handleFailure` case will report the
-error. There are two pieces of data here that we've yet to define:
+Note that each of these steps corresponds to the remainder of the [core
+algorithm](#core-algorithm). If any `Promise` in the chain before
+`handleSuccess` is rejected, the `handleFailure` case will report the error.
+There are two pieces of data here that you have yet to define:
 
 - **`msgId`**: a unique identifier computed for the incoming message
 - **`finish`**: a callback that gets called by both `handleSuccess` and
   `handleFailure`
 
-We'll define a function private to the module like so:
+Define a function private to the module like so:
 
 ```js
 function messageId(message) {
@@ -632,7 +637,7 @@ function messageId(message) {
 }
 ```
 
-Now we'll add a `msgId` variable to `execute`, and call it _after_
+Now add a `msgId` variable to `execute`, and call it _after_
 `findMatchingRule`, since this new function expects `message` to be defined:
 
 ```js
@@ -673,18 +678,18 @@ function getReactions(middleware, msgId, message) {
 }
 ```
 
-However, notice that we specified a `msgId` argument that we currently are not
+However, note that you specified a `msgId` argument that you're currently not
 using. Remember that this program will run as a Hubot plugin, and that Hubot
-runs as a long-lived service, so our plugin will run indefinitely. Also, our
+runs as a long-lived service, so the plugin will run indefinitely. Also, the
 plugin may handle multiple incoming messages at once, making multiple
 concurrent requests to Slack and GitHub in the process.
 
 Though it's not core to the overall correct functioning of the program, these
 considerations make logging a critical component of operational monitoring and
-debugging. We will use `msgId` as a prefix for log messages describing the
+debugging. You'll use `msgId` as a prefix for log messages describing the
 progress and outcome of the requests made during processing of the message.
 
-Here is the fully fleshed out version of `getReactions`:
+Here is the fully fleshed-out version of `getReactions`:
 
 ```js
 function getReactions(middleware, msgId, message) {
@@ -706,12 +711,12 @@ function getReactions(middleware, msgId, message) {
 }
 ```
 
-We use the `slackClient` to get our team's Slack domain name, the channel
-name, and the list of all reactions to the message. We define a special
+You use the `slackClient` to get your team's Slack domain name, the channel
+name, and the list of all reactions to the message. You must define a special
 `reject` handler here to add some more information to the error message
 returned when `githubClient.getReactions` fails. The only `slackClient` method
-used here that  we haven't yet implemented is `getTeamDomain`. This method is
-very straightforward; let's implement it now in `exercise/lib/slack-client.js`:
+used here that you haven't yet implemented is `getTeamDomain`. This method is
+very straightforward; implement it now in `exercise/lib/slack-client.js`:
 
 ```js
 SlackClient.prototype.getTeamDomain = function() {
@@ -719,21 +724,20 @@ SlackClient.prototype.getTeamDomain = function() {
 };
 ```
 
-With all this information in hand, we compute the `permalink` pertaining to
-the message. Though the `slackClient.getReactions` response will include this
-`permalink`, it's very handy to include it in the log message announcing API
-call.
+With all this information in hand, you can compute the `permalink` pertaining
+to the message. Though the `slackClient.getReactions` response will include
+this `permalink`, it's very handy to include it in the log message announcing
+API call.
 
 ## `fileGitHubIssue`
 
 Recall that `slackClient.getReactions` will return a `Promise` that will
 resolve to a [`reactions.get` API
-response](https://api.slack.com/methods/reactions.get). The way that `Promise`
-chains work is that the function passed as the first argument to
-[`.then()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then))
-will be called with the resolved value. In that light, `fileGitHubIssue` is a
-_factory function_ that returns a new function called a
-[closure](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Closures),
+response](https://api.slack.com/methods/reactions.get). `Promise` chains work
+by using the resolved value to call the function passed as the first argument
+to [`.then()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then)).
+In that light, `fileGitHubIssue` is a _factory function_ that returns a new
+function called a [closure](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Closures),
 which can access the arguments to `fileGitHubIssue`. This closure will also
 take a `message` argument passed in from `slackClient.getReactions`:
 
@@ -758,23 +762,21 @@ function fileGitHubIssue(middleware, msgId, githubRepository) {
 }
 ```
 
-Notice the final line in particular, where we _return the `Promise` created by
+Notice the final line, which _returns the `Promise` created by
 `githubClient.fileNewIssue`_. In fact, the `Promise` isn't created when
 `fileGitHubIssue` is called; it is created when _the closure returned by
 `fileGitHubIssue` is called, which then calls `githubClient.fileNewIssue`_.
 
-This would be a good time to review [Promise gotcha #1: not returning the
-`Promise`]{{ site.baseurl }}/components/slack-client/#promises-gotcha-1)
-from the `SlackClient` chapter. If we return a `Promise` directly from
-`fileGitHubIssue`, it will get created too early. If we don't explicitly
-_return_ the `Promise`, it will execute, but it won't become integrated
-into the `Promise` chain built by `execute`.
+This is a good time for you to review [Promise gotcha #1: not returning the
+`Promise`]{{ site.baseurl }}/components/slack-client/#promises-gotcha-1) from
+the `SlackClient` chapter. If you return a `Promise` directly from
+`fileGitHubIssue`, it will get created too early. If you don't explicitly
+_return_ the `Promise`, it will execute, but it won't become integrated into
+the `Promise` chain built by `execute`.
 
-We define a special `reject` handler here to add some more information to the
-error message returned when `githubClient.fileNewIssue` fails.
-
-Also notice that there is another `Middleware` method that we have yet to
-define, `parseMetadata`.
+The `reject` handler adds some more information to the error message returned
+when `githubClient.fileNewIssue` fails. Also, please note that there is
+another `Middleware` method—`parseMetadata`—that you have yet to define.
 
 ## Extracting `githubClient.fileNewIssue` information with `parseMetadata`
 
@@ -791,8 +793,9 @@ function makeApiCall(client, metadata, repository) {
       });
 ```
 
-We're now at the point in `Middleware` processing where we can compute this
-information and make the GitHub call. Define the `parseMetadata` method thus:
+You're now at the point in `Middleware` processing where you can compute this
+information and make the GitHub call. Define the `parseMetadata` method as
+follows:
 
 ```js
 Middleware.prototype.parseMetadata = function(message) {
@@ -812,16 +815,16 @@ The `message` argument is [the result of the `slackClient.getReactions`
 call](https://api.slack.com/methods/reactions.get), passed through by
 `fileGitHubIssue`. The resulting issue title will contain the channel and the
 date the message was entered. The issue body will be just the permalink URL
-for the message. We limit the information in this way to avoid leaking any
-user details, or any sensitive content contained in the message. This
-information is more than enough for a repository maintainer to find the tagged
-message and triage the issue.
+for the message. Limiting the information in this way avoids leaking any user
+details or other sensitive content contained in the message. This information
+is more than enough for a repository maintainer to find the tagged message and
+triage the issue.
 
 ## Testing `parseMetadata`
 
 Since this is a lightweight, stateless method, let's break from the `Promise`
 chain to write a small test to ensure `parseMetadata` behaves as expected.
-Since it makes use of `slackClient`, we'll need to set up a test stub as we
+Since it makes use of `slackClient`, you'll need to set up a test stub as you
 did with `findMatchingRule`:
 
 ```js
@@ -838,11 +841,11 @@ did with `findMatchingRule`:
     });
 ```
 
-Before writing the test, remember that we already have two handy bits of data
-in `test/helpers/index.js` from when we wrote tests for `SlackClient` and
-`GitHubClient`. We'll reuse `helpers.messageWithReactions` and
-`helpers.metadata` for our new test for `parseMetadata`. First, let's add a
-`permalink` property to `messageWithReactions.message`, since that is key to
+Before writing the test, remember that you already have two handy bits of data
+in `test/helpers/index.js` from when you wrote tests for `SlackClient` and
+`GitHubClient`. You'll reuse `helpers.messageWithReactions` and
+`helpers.metadata` for the new test for `parseMetadata`. First, add a
+`permalink` property to `messageWithReactions.message`, since it's key to
 producing the expected `metadata`:
 
 ```js
