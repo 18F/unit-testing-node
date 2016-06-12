@@ -865,7 +865,7 @@ producing the expected `metadata`:
   },
 ```
 
-Now we write the single test needed to validate `parseMetadata`:
+Now write the single test needed to validate `parseMetadata`:
 
 ```js
     it('should parse GitHub request metadata from a message', function() {
@@ -879,8 +879,8 @@ Now we write the single test needed to validate `parseMetadata`:
 
 Notice the use of the [`deep.property` chai
 assertion](http://chaijs.com/api/bdd/#property) to inspect the
-`getChannelName.args` array. This gives us more helpful error messages should
-`getChannelName.args[0]` not exist.
+`getChannelName.args` array. This will provide more helpful error messages
+in the case that `getChannelName.args[0]` doesn't exist.
 
 Run `npm test -- --grep '^Middleware '` and ensure the test passes before
 moving on.
@@ -914,25 +914,25 @@ function addSuccessReaction(middleware, msgId, message) {
 }
 ```
 
-The closure takes as an argument the `issueUrl` produced when the `Promise` by
-`githubClient.fileNewIssue` resolves successfully. If the entire operation
-succeeds, `execute` will post `issueUrl` in the channel containing the message
-as a response to the user who added the reaction.
+The closure takes as an argument the `issueUrl` that's produced when the
+`Promise` by `githubClient.fileNewIssue` resolves successfully. If the entire
+operation succeeds, `execute` will post `issueUrl` as a response to the user
+who added the reaction (in the channel containing the message).
 
-Inside the closure, first we set up the success and error handlers for the
-`slackClient.addSuccessReaction` call at the end. This final call will return
-a `Promise` that has its own success and error handlers. These handlers will
-execute before the next `Promise` in the chain created by `execute`.
+Inside the closure, you should first set up the success and error handlers for
+the `slackClient.addSuccessReaction` call at the end. This final call will
+return a `Promise` that has its own success and error handlers that will
+will execute before the next `Promise` in the chain created by `execute`.
 
-The success handler, `resolve`, passes through the `issueUrl` by [producing a
-new `Promise` that resolves to the
+`resolve`, the success handler, passes through the `issueUrl` by [producing a
+new `Promise` that resolves to the `issueUrl`
 value](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/resolve).
-The failure handler, `reject`, creates a new
+`reject`, the failure handler, creates a new
 [`Error`](https://nodejs.org/api/errors.html) value used to [produce a new
 `Promise` that is rejected with the
 error](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/reject).
 
-Again, this can't be repeated enough: [always make sure to `return` the
+Again, this can't be repeated enough: [Always make sure to `return` the
 `Promise` from every
 function!]({{ site.baseurl }}/components/slack-client/#promises-gotcha-1)
 
@@ -957,21 +957,21 @@ function handleFailure(middleware, githubRepository, finish) {
 }
 ```
 
-Recall from our definition of `execute` that `finish` is a tiny function that
-calls `next(done)` to signal to Hubot that this middleware's processing is
-finished. At the moment, the value we're passing in will be ignored. We'll
-update `finish` to rectify this shortly.
+Recall from the previously discussed definition of `execute` that `finish` is
+a tiny function that calls `next(done)` to signal to Hubot that a given
+middleware's processing is finished. At the moment, the value you're passing
+in will be ignored (though you'll update `finish` shortly to rectify this).
 
 Note that the `Promises` returned here have no bearing on the `next(done)`
 call at all, or on Hubot generally. When deployed, the resolved or rejected
-values will be discarded. In our tests, however, they enables us to use
+values will be discarded. In your tests, however, they enables you to use
 [chai-as-promised assertions](https://www.npmjs.com/package/chai-as-promised)
 to validate the outcome of `execute` in each test case.
 
 ## Preparing the `execute` fixture for thorough tests
 
-We're just about ready to get some tests around this new behavior. First let's
-update our `execute` test fixture:
+You're just about ready to get some tests around this new behavior. First,
+update your `execute` test fixture:
 
 ```js
   describe('execute', function() {
@@ -1003,45 +1003,44 @@ update our `execute` test fixture:
     });
 ```
 
-_Note:_ `slackClient.getTeamDomain` returns a _lowercased_ "18f" to match
+*Note:* `slackClient.getTeamDomain` returns a _lowercased_ "18f" to match
 `helpers.PERMALINK`.
 
-The most notable update here is that we are stubbing the `slackClient`,
+The most notable update here is that you're stubbing the `slackClient`,
 `githubClient`, and `logger` objects. Though the sinon documentation generally
-recommends against this, we control all of these interfaces, as they are
-defined within our own application. The risk of these objects evolving in
-unexpected ways is managably tiny.
+recommends against this, you control all of these interfaces, which are
+defined within your own application. Because of this, the risk of these
+objects evolving in unexpected ways is manageably tiny.
 
-As for why we use stubs rather than full blown mock objects, read the [Mocks
-vs. stubs chapter of the Concepts
-guide]({{ site.baseurl }}/concepts/mocks-vs-stubs/).
+As for why you should use stubs rather than full-blown mock objects, read the
+[Mocks vs. stubs chapter of the Concepts guide]({{ site.baseurl }}/concepts/mocks-vs-stubs/).
 
 Bear in mind that the `slackClient.getReactions`, `githubClient.fileNewIssue`,
-and `slackClient.addSuccessReaction` responses we set in `beforeEach`
-correspond to the "happy path" which produces a new GitHub issue. In each
-individual test case that veers from this happy path, we will override one of
-these default values.
+and `slackClient.addSuccessReaction` responses you set in `beforeEach`
+correspond to the "happy path," which produces a new GitHub issue. In each
+test case that veers from this happy path, you will override one of these
+default values.
 
-While these tests will appear a bit more complex than previous tests, there
-are two things to keep in mind. One, our `Middleware` class integrates all of
-the behaviors we've developed in isolation prior to this point. Naturally
-there will be more objects working in collaboration, and more behavior to
-model and verify.
+These tests appear to be a bit more complex than previous tests, and there are
+two related points to keep in mind. One, your `Middleware` class integrates
+all of the behaviors you've developed in isolation prior to this point.
+Naturally, there will be more objects working in collaboration, along with
+more behavior to model and verify.
 
 Second, by designing the `Middleware` class for [dependency
-injection]({{ site.baseurl }}/concepts/dependency-injection), we are able to
+injection]({{ site.baseurl }}/concepts/dependency-injection), you're able to
 exercise the core `execute` logic using lightweight, controllable [test
 doubles](http://googletesting.blogspot.com/2013/07/testing-on-toilet-know-your-test-doubles.html).
-This makes our set up and tear down less cumbersome, makes corner cases easier
+This makes your setup and tear down less cumbersome, makes corner cases easier
 to exercise, and makes expected outcomes easier to validate. Plus, as systems
 grow larger, isolating system components via dependency injection and test
 doubles can make the test suite run exponentially faster.
 
 ## Testing the happy path
 
-We're at the point where we can test the "happy path" through `execute`,
+You're now at the point where you can test the "happy path" through `execute`,
 successfully filing an issue and adding the success reaction to the message.
-Let's examine our empty test case:
+Let's examine the empty test case:
 
 ```js
     it('should receive a message and file an issue', function(done) {
@@ -1049,20 +1048,21 @@ Let's examine our empty test case:
     });
 ```
 
-Recall that `execute` will return a `Promise`, and that we've used
+Recall that `execute` will return a `Promise`, and recall too that you've used
 [chai-as-promised](https://www.npmjs.com/package/chai-as-promised) assertions
-such as `should.become` and `should.be.rejectedWith` in our `SlackClient` and
-`GitHubClient` tests. In those tests, we actually returned the expressions
-containing those assertions, which evaluated to `Promises`, because
-[mocha supports this style of asynchronous
-notification](https://mochajs.org/#working-with-promises). Consequently, there
-was no need to rely upon [mocha's `done` callback
+such as `should.become` and `should.be.rejectedWith` in your `SlackClient` and
+`GitHubClient` tests. In those tests, you actually returned the expressions
+containing those assertions (which evaluated to `Promises`) because [mocha
+supports this style of asynchronous
+notification](https://mochajs.org/#working-with-promises). Consequently, you
+had no need to rely upon [mocha's `done` callback
 support](https://mochajs.org/#asynchronous-code).
 
-In this test, however, we're actually defining `done` because we need to
+In this test, however, you're actually defining `done` because you need to
 validate other behaviors after the `Promise` has resolved. [chai-as-promised
-allows us to create a `Promise` chain to eventualy call
-`done`](https://www.npmjs.com/package/chai-as-promised#working-with-non-promisefriendly-test-runners) using the format:
+allows you to create a `Promise` chain to eventually call
+`done`](https://www.npmjs.com/package/chai-as-promised#working-with-non-promisefriendly-test-runners)
+using the format:
 
 ```js
     it('should do something asynchronous', function(done) {
@@ -1072,7 +1072,7 @@ allows us to create a `Promise` chain to eventualy call
     });
 ```
 
-So for our happy-path test, let's write:
+For your happy-path test, write the following:
 
 ```js
     it('should receive a message and file an issue', function(done) {
@@ -1083,14 +1083,14 @@ So for our happy-path test, let's write:
     });
 ```
 
-Note that when we validated `next.calledWith(hubotDone).should.be.true` in
-`should ignore messages that do not match`, we were able to do so directly.
-This because in that case, `execute` returned `undefined` instead of a
-`Promise`. In this case, since there was asynchronous work to be done,
+Note that when you validated `next.calledWith(hubotDone).should.be.true` in
+`should ignore messages that do not match`, you were able to do so directly.
+This was because, in that case, `execute` returned `undefined` instead of a
+`Promise`. In this case, because there is asynchronous work to be done,
 `execute` returns a `Promise`, so we need to perform this check after the
 `Promise` resolves.
 
-Finally, let's verify that our new test passes:
+Finally, verify that your new test passes:
 
 ```sh
 $ npm test -- --grep ' execute '
@@ -1113,7 +1113,7 @@ $ npm test -- --grep ' execute '
 [10:04:04] Finished 'test' after 547 ms
 ```
 
-Success! However, there are actually a couple details that our test _isn't_
+Success! However, there are actually a couple details that your test _isn't_
 testing for right now:
 
 - `Middleware` should call `context.response.reply` to reply to the user who
@@ -1135,7 +1135,7 @@ Let's handle the `context.response.reply` piece first by adding this assertion:
       }).should.notify(done);
 ```
 
-Our test should fail with:
+Your test should fail with the following:
 
 ```sh
 $ npm test -- --grep ' execute '
@@ -1180,7 +1180,7 @@ Message:
 npm ERR! Test failed.  See above for more details.
 ```
 
-Recall that our current `finish` function is defined in the body of `execute`
+Recall that your current `finish` function is defined in the body of `execute`
 as:
 
 ```js
@@ -1189,7 +1189,7 @@ as:
   };
 ```
 
-Yet we're already passing it an argument from both `handleSuccess` and
+Yet you're already passing it an argument from both `handleSuccess` and
 `handleFailure`. Let's first update `finish` inline to report the success or
 error message to the user:
 
@@ -1200,9 +1200,9 @@ error message to the user:
   };
 ```
 
-Run the tests again, and this should pass. While it's passing, let's take the
-opportunity to create a factory function for `finish` like we did with all the
-others.
+Run the tests again, and this should pass. While it's passing, take the
+opportunity to create a factory function for `finish` as you did with all the
+others:
 
 ```js
 function handleFinish(response, next, done) {
@@ -1213,7 +1213,7 @@ function handleFinish(response, next, done) {
 }
 ```
 
-Then replace the existing `finish` assignment with:
+Then replace the existing `finish` assignment with this:
 
 ```js
   finish = handleFinish(response, next, done);
@@ -1222,24 +1222,24 @@ Then replace the existing `finish` assignment with:
 ## Refactoring
 
 Run the test to make sure it still passes. This an example of
-[refactoring](https://en.wikipedia.org/wiki/Code_refactoring), improving the
-structure of existing code to improve readability and to accommodate new
+[refactoring](https://en.wikipedia.org/wiki/Code_refactoring), or improving
+the structure of existing code to improve readability and accommodate new
 features. Having a solid suite of high-quality automated tests is critical to
-making refactoring a regular habit. This in turn allows development to
-continue at a sustained high pace, rather than slowing down due to fear of
-breaking existing behavior. A good suite of tests will tell you when something
-is wrong, and will encourage designs that are easier to change in the long
-term.
+making refactoring a regular habit. This, in turn, allows development to
+continue at a sustained high pace, rather than requiring it to slow down due
+to the fear of breaking existing behavior. A good suite of tests will tell you
+when something is wrong, and will encourage designs that are easier to change
+in the long term.
 
 ## Validating logging behavior
 
 Even though all the other test assertions serve to validate the application's
-behavior, it's important to ensure that our logging behavior is in good shape.
-In production, we will rely upon the logs to tell when the application is
-behaving normally or experiencing an error. We should ensure that we'll get
-the information we expect from our log messages.
+behavior, it's important to ensure that your logging behavior is in good
+shape. In production, you will rely upon the logs to tell when the application
+is behaving normally or experiencing an error. You should ensure that you'll
+get the information you expect from your log messages.
 
-Let's start by adding another assertion to our test:
+Start by adding another assertion to your test:
 
 ```js
       middleware.execute(context, next, hubotDone)
@@ -1253,7 +1253,7 @@ Let's start by adding another assertion to our test:
       }).should.notify(done);
 ```
 
-Now we're gonna cheat a little. Let's just run the test and take a look at the
+Now you're going to cheat a little. Just run the test and take a look at the
 output:
 
 ```sh
@@ -1312,18 +1312,18 @@ Message:
 npm ERR! Test failed.  See above for more details.
 ```
 
-We're seeing a few things we expect:
+You're seeing a few things you should've expected:
 
-- each call has the message ID as the first argument
-- the first two calls include the message permalink
-- the last call includes `config.successReaction`
+- Each call has the message ID as the first argument.
+- The first two calls include the message permalink.
+- The last call includes `config.successReaction`.
 
-However, we're missing:
+However, you're also missing a few things:
 
-- a call for when the message matches a rule
-- a call for when the entire operation succeeds
+- A call for when the message matches a rule
+- A call for when the entire operation succeeds
 
-Since we'll expect the message ID at the beginning of every log message, let's
+Since you'll expect the message ID at the beginning of every log message,
 write a helper function to generate the expected log arguments:
 
 ```js
@@ -1348,7 +1348,7 @@ exports = module.exports = {
   }
 ```
 
-Now let's update our test to read:
+Now update your test to read:
 
 ```js
         var matchingRule = new Rule(helpers.baseConfig().rules[2]);
@@ -1363,7 +1363,7 @@ Now let's update our test to read:
         ]);
 ```
 
-Run the test, and make sure it fails. Then go back to `Middleware` and add or
+Run the test and make sure it fails. Then go back to `Middleware` and add or
 update the necessary calls to `logger.info` to get the test to pass. Note that
 the last call will require passing `logger` and the message ID as arguments to
 `handleFinish`.
@@ -1372,15 +1372,15 @@ Make sure the test passes before continuing to the next section.
 
 ## Prevent filing multiple issues _while_ filing an issue
 
-So we've now tested a complete path through our core algorithm. However,
-there's a couple of corner cases we've yet to cover. The first is ensuring
-that when `execute` has begun to file an issue, that it doesn't allow another
+You've now tested a complete path through your core algorithm. However,
+you still have a few corner cases to cover. The first is ensuring that when
+`execute` has begun to file an issue, it doesn't allow another
 `reaction_added` event for the same message.
 
-Since we have a successful happy path test case in hand, let's copy parts of
-it and adapt it for this new requirement. If processing for a particular
-message is already underway, a subsequent call for the same message should
-return `undefined`:
+Because you already have a successful happy path test case in hand, you can
+copy parts of it and adapt it for this new requirement. If processing for a
+particular message is already underway, a subsequent call for the same message
+should return `undefined`:
 
 ```js
     it('should not file another issue for the same message when ' +
@@ -1399,13 +1399,13 @@ return `undefined`:
     });
 ```
 
-There's no need to check all of the same assertions as before; we've already
+There's no need to check all of the same assertions as before; you've already
 got a thorough test for the success case. Repeating the same assertions time
 and again in different tests that exercise the same code paths is clutter that
 reduces the utility of the suite.
 
-However, we do want to validate an "already in progress" log message. Let's
-run the test and make sure it fails:
+However, you do want to validate an "already in progress" log message. Run the
+test and make sure it fails:
 
 ```sh
 $ npm test -- --grep ' execute '
@@ -1445,11 +1445,11 @@ Message:
 npm ERR! Test failed.  See above for more details.
 ```
 
-So in order to get this test to pass, we need to keep a note of the messages
-that we're in the middle of processing. We're already computing message ID
-values, so that's a start.
+In order to get this test to pass, you need to keep a note of the messages
+that are in the middle of processing. You're already computing message ID
+values—a good start.
 
-It turns out that we can add a new object in the `Middleware` constructor:
+It turns out that you can add a new object in the `Middleware` constructor:
 
 ```js
 function Middleware(config, slackClient, githubClient, logger) {
@@ -1469,12 +1469,12 @@ and add the message ID as a property inside `execute`:
   this.inProgress[msgId] = true;
 ```
 
-Note that this isn't thread-safe; in other languages we would need to protect
+Note that this isn't thread-safe; in other languages you'd need to protect
 this object with a [mutex](https://en.wikipedia.org/wiki/Mutual_exclusion).
 However, since [Node.js uses a single-threaded event loop
-model](https://nodejs.org/en/about/), no mutexes are necessary here.
+model](https://nodejs.org/en/about/), you don't need to use any mutexes here.
 
-Run the test again, and you should see this:
+Run the test again. You should see the following:
 
 ```sh
 $ npm test -- --grep ' execute '
@@ -1514,15 +1514,15 @@ Message:
 npm ERR! Test failed.  See above for more details.
 ```
 
-This doesn't make much sense. We can add `console.log` statements to our tests
-and _see_ that the "already in progress" value is a member of
+This doesn't make much sense. You can add `console.log` statements to your
+tests and _see_ that the "already in progress" value is a member of
 `logger.info.args`. What gives?
 
 It turns out that the standard [`contains`
 assertion](http://chaijs.com/api/bdd/#include) has difficulty comparing
-elements of an array that are themselves arrays. We need the [`chai-things`
-assertion library](http://chaijs.com/plugins/chai-things). First add the
-`require` statement and `chai.use` call at the top of the file:
+elements of an array that are themselves arrays. In this case, you need to use
+the [`chai-things` assertion library](http://chaijs.com/plugins/chai-things).
+First add the `require` statement and `chai.use` call at the top of the file:
 
 ```js
 var chaiThings = require('chai-things');
@@ -1544,13 +1544,13 @@ Now run the test and ensure it passes.
 
 ## Cleaning up message-in-progress IDs
 
-We have to be careful to remove the in-progress message IDs after we've
-finished processing a message or errored out. Especially if the first attempt
-errored out, since we may be able to successfully process the message in the
-future.
+You have to be careful to remove the in-progress message IDs after you've
+finished processing a message or errored out. This is especially true if your
+first attempt errored out, since you may be able to successfully process the
+message in the future.
 
-To cover this case, we'll make one last change to this test case. We'll make
-one more `middleware.execute` call _inside the callback_, and move the
+To cover this case, make one last change to this test case. Start by making
+one more `middleware.execute` call _inside the callback_, and then move the
 `should.notify(done)` clause to the end of this new expression:
 
 ```js
@@ -1611,8 +1611,8 @@ npm ERR! Test failed.  See above for more details.
 
 Fixing this will require removing the message ID from `middleware.inProgress`
 once processing is complete. The right place for this is in the function
-returned by `handleFinish`. Let's update `handleFinish` to pass in the
-`Middleware` object instead of just `logger`, then delete the message ID:
+returned by `handleFinish`. Update `handleFinish` to pass in the `Middleware`
+object instead of just `logger`, and then delete the message ID:
 
 ```js
 function handleFinish(messageId, middleware, response, next, done) {
@@ -1625,8 +1625,8 @@ function handleFinish(messageId, middleware, response, next, done) {
 }
 ```
 
-Again, no need for any mutexes when we delete the message ID, since the
-processing model is single-threaded. In other languages, you would need to
+Again, there's no need for any mutexes when you delete the message ID, since
+the processing model is single-threaded. In other languages, you would need to
 wrap this statement in a mutex-protected block.
 
 Now update the `handleFinish` call in `execute` to pass in the `Middleware`
@@ -1636,17 +1636,17 @@ object:
   finish = handleFinish(msgId, this, response, next, done);
 ```
 
-Run the test again, and confirm that it passes.
+Run the test again and confirm that it passes.
 
 ## Prevent filing multiple issues _after_ filing the first issue
 
-The next case we'll cover is to prevent filing another issue for the same
-message after an issue for the message already exists. We accomplish this by
-adding the `config.successReaction` emoji to the message after we've
+The next case you'll cover is how to prevent filing another issue for the same
+message after an issue for the message already exists. You'll accomplish this
+by adding the `config.successReaction` emoji to the message after you've
 successfully filed an issue. The code needs to abort processing once it
 detects the presence of this reaction.
 
-Let's start building our our test case first:
+Start this step by building our your test case:
 
 ```js
     it('should not file another issue for the same message when ' +
@@ -1672,22 +1672,22 @@ Let's start building our our test case first:
     });
 ```
 
-While or `slackClient.getReaction` call returns the message with the
-`config.successReaction`, we still set the `githubClient.fileNewIssue` and
+While your `slackClient.getReaction` call returns the message with the
+`config.successReaction`, you must still set the `githubClient.fileNewIssue` and
 `slackClient.addSuccessReaction` stubs to respond as if
-`config.successReaction` wasn't present. We want the code under test to follow
-through with a successful result before we add the feature to short-circuit
-the process. After we do so, we have assertions within the callback to ensure
-that `githubClient.fileNewIssue` and `slackClient.addSuccessReaction` were not
-called.
+`config.successReaction` wasn't present. You want the code under test to follow
+through with a successful result before you add the feature to short circuit
+the process. After you do so, you'll have assertions within the callback to
+ensure that `githubClient.fileNewIssue` and `slackClient.addSuccessReaction`
+aren't called.
 
-Also, we want to log the fact that the message already has a GitHub issue as
-an _info_ message, not an _error_. We don't want to spam every user who adds
-another instance of the emoji, hence we check that we don't call
+You also want to log as an _info_ message (not an _error_) the fact that the
+message already has a GitHub issue. You don't want to spam every user who adds
+another instance of the emoji, hence, you need to check that you don't call
 `context.response.reply`.
 
-Run the test, and it should fail by producing a "successful" result, when we
-expected a short-circuit to resolve to `undefined`:
+Run the test—it should fail by producing a "successful" result when you
+expected a short circuit to resolve to `undefined`:
 
 ```sh
 $ npm test -- --grep ' execute '
@@ -1729,8 +1729,8 @@ Message:
 npm ERR! Test failed.  See above for more details.
 ```
 
-Now let's update the code to get the test to pass. First, let's write a
-utility function to detect when the success reaction is present in a message:
+Now update the code to get the test to pass. First, write a utility function
+to detect when the success reaction is present in a message:
 
 ```js
 function alreadyProcessed(message, successReaction) {
@@ -1754,13 +1754,13 @@ function fileGitHubIssue(middleware, msgId, githubRepository) {
     }
 ```
 
-Note that we're only passing a string to `Promise.reject`, not an `Error`.
-This is because we want to short-circuit the operation, but not because of an
-abnormal condition. This will be of consequence when we add tests for the
-error cases shortly.
+Note that you're only passing a string (instead of an `Error` object) to
+`Promise.reject`. You're doing this because you want to short circuit the
+operation for a reason other than the presence of an abnormal condition. This
+will be of consequence shortly when you add tests for the error cases.
 
-Finally, let's update the function returned from `handleFinish` to avoid
-posting any `already filed` messages:
+Finally, update the function returned from `handleFinish` to avoid posting any
+`already filed` messages:
 
 ```js
 function handleFinish(messageId, middleware, response, next, done) {
@@ -1771,15 +1771,15 @@ function handleFinish(messageId, middleware, response, next, done) {
     }
 ```
 
-At this point, run the test again, and ensure it passes before moving on to
-the next section.
+Now run the test again and ensure that it passes before moving on to the next
+section.
 
 ## Testing error cases
 
-Now it's time to give the "unhappy paths" their due. In the first case, we
+It's time now to give the "unhappy paths" their due. In the first case, you
 want to validate the behavior when an incoming message matches a rule, but
-getting its reactions fails. This is going to look very similar to the case we
-just wrote in the previous section:
+getting the messages's reactions fails. This will look very similar to the
+case you just wrote in the previous section:
 
 ```js
     it('should receive a message but fail to get reactions', function(done) {
@@ -1805,15 +1805,15 @@ just wrote in the previous section:
     });
 ```
 
-Note that we're now checking `logger.error.args`, not `logger.info.args`.
-Also, since we're validating a result that contains an `Error` object, we have
-to be more deliberate with the `context.response.reply` assertion. This is
-because no two `Error` objects are equal to one another, so we can't create a
-`new Error` as an assertion argument. We have to check the `message` field of
-each Error explicitly. For both stubs, `args[0]` is the argument list for the
-first call to the stub.
+Note that you're now checking `logger.error.args`, not `logger.info.args`.
+What's more, since you're validating a result that contains an `Error` object,
+you have to be more deliberate with the `context.response.reply` assertion.
+This is because no two `Error` objects are equal to one another, so you can't
+create a `new Error` as an assertion argument. Rather, you have to check the
+`message` field of each Error explicitly. For both stubs, `args[0]` is the
+argument list for the first call to the stub.
 
-Now let's run the test to see what shakes out:
+Run the test to see what shakes out:
 
 ```sh
 $ npm test -- --grep ' execute '
@@ -1853,15 +1853,17 @@ Message:
 npm ERR! Test failed.  See above for more details.
 ```
 
-If you look closely, _it's the next to last assertion that's failing_.
-Everything else is already working as expected: `githubClient.fileNewIssue` is
-returning a rejected `Promise`, and consequently, `middleware.execute`
-resolves to that rejected value, and doesn't call
-`slackClient.addSuccessReaction`. The only issue here is that `logger.error`
-is empty.
+If you look closely, _it's the next to last assertion that's failing_:
+`logger.error` is turning up empty when we check for `helpers.MESSAGE_ID` as
+element `[0][0]`.  Everything else is already working as expected:
+`githubClient.fileNewIssue` is returning a rejected `Promise`, and
+consequently, `middleware.execute` resolves to that rejected value and
+doesn't call `slackClient.addSuccessReaction`. The only issue here is that
+`logger.error` is empty.
 
-All we have to do to get the test to pass is update the function returned by
-`handleFinish` to differentiate between `Error` messages and other types:
+All you need to do to get the test to pass is update the function returned by
+`handleFinish` to differentiate between `Error` messages and other types of
+messages:
 
 ```js
 function handleFinish(messageId, middleware, response, next, done) {
@@ -1881,11 +1883,11 @@ function handleFinish(messageId, middleware, response, next, done) {
 }
 ```
 
-Notice that in the `message instanceof Error` case, we explicitly log the
+In the `message instanceof Error` case, you explicitly log the
 `message.message` field. This is because logging the actual `Error` object
-will include the class name in the output, which we don't need or want.
+will include the class name in the output, which you don't need or want.
 
-Run the tests, and verify that the new test passes. Then, add this next
+Run the tests and verify that the new test passes. Then, add this next
 test, which validates the behavior when the request to file a GitHub issue
 fails. It is nearly identical to the previous one except that
 `githubClient.fileNewIssue` produces the failure (notice
@@ -1916,14 +1918,14 @@ fails. It is nearly identical to the previous one except that
 ```
 
 Even though the last few assertions look identical to those in the previous
-test, they are actually validating different code paths and values for
+test, they're actually validating different code paths and values for
 `errorMessage`. Hence, contrary to earlier advice against repeating
-assertions, in this case it makes sense since they only appear to be the same,
-but actually aren't.
+assertions, in this case the repetition makes sense since the assertions only
+appear to be the same, but actually aren't.
 
-However, it's still prudent to extract these assertions into a helper
-function, so that we can easily see their common purpose across test cases.
-Let's call this helper function `checkErrorResponse`:
+That said, it's still prudent to extract these assertions into a helper
+function, so you can easily see their common purpose across test cases.  Call
+this helper function `checkErrorResponse`:
 
 ```js
   describe('execute', function() {
@@ -1946,11 +1948,11 @@ function like so:
         checkErrorResponse(errorMessage);
 ```
 
-Run the test, and verify that the new test passes. Then, add this test, which
+Run the new test and verify that the it passes. Then, add this test, which
 validates the behavior when the GitHub issue request succeeds but adding the
 success reaction to the message fails. It is nearly identical to the previous
-one except that `slackClient.addSuccessReaction` produces the failure (notice
-`calledOnce.should.be.true`):
+test, except that `slackClient.addSuccessReaction` produces the failure
+(notice `calledOnce.should.be.true`):
 
 ```js
     it('should file an issue but fail to add a reaction', function(done) {
@@ -1973,26 +1975,26 @@ one except that `slackClient.addSuccessReaction` produces the failure (notice
 
 ## <a name="interface-boundary"></a>Preventing `Errors` from escaping the application interface boundary
 
-We've done a good job ensuring our `execute` function handles `Errors` by
-calling `reject` handlers in each `Promise`. Should any code that `Middleware`
-depends upon throw an `Error`, the `handleFailure` error handler function will
-convert it into a rejected `Promise`. `handleFailure` will then log any
-`Errors` before calling `next(done)`.
+You've done a good job ensuring that your `execute` function handles `Errors`
+by calling `reject` handlers in each `Promise`. Should any code that
+`Middleware` depends upon throw an `Error`, the `handleFailure` error handler
+function will convert it into a rejected `Promise`. `handleFailure` will then
+log any `Errors` before calling `next(done)`.
 
-However, at the moment, we can never be completely positive that an `Error`
+However, at the moment, you can't be completely positive that an `Error`
 will never escape our `execute` function. Changes in the application or its
 dependencies may eventually cause `Errors` outside of the `Promise` chain and
-its failure handler. If that happens, we'll pollute the log with a nasty stack
-trace, and `next(done)` won't get called.
+its failure handler. If that happens, you'll pollute the log with a nasty
+stack trace, and `next(done)` won't get called.
 
-Allowing an error from our application to cross an interface boundary is a bad
-habit. Since `Middleware.execute` will serve as the touchpoint between Hubot
-and our application, we would do well to prevent it from allowing any errors
-to escape.
+Allowing an error from your application to cross an interface boundary is a
+bad habit. Since `Middleware.execute` will serve as the touchpoint between
+Hubot and your application, you'd do well to prevent it from allowing any
+errors to escape.
 
-There is a straightforward fix to this, however. Push the entire `execute`
-implementation into another function, `doExecute`, and wrap it in a
-[`try...catch`
+Fortunately, there's a straightforward fix to this situation. Push the entire
+`execute` implementation into another function called `doExecute` and wrap it
+in a [`try...catch`
 block](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/try...catch):
 
 ```js
@@ -2009,9 +2011,9 @@ function doExecute(middleware, context, next, done) {
 }
 ```
 
-Make this change, and run the tests to ensure they all still pass. Then add
-the following test case, which sets the expectation that `execute` will log
-unhandled errors and send them as a reply to the user.
+Make this change and run the tests to ensure that they all still pass. Then
+add the following test case, which sets the expectation that `execute` will
+log unhandled errors and send them as a reply to the user:
 
 ```js
     it('should catch and log unanticipated errors', function() {
@@ -2027,12 +2029,12 @@ unhandled errors and send them as a reply to the user.
 ```
 
 The error message will include a copy of the incoming message that triggered
-the error. This is arguably a lot more helpful than a stack trace, at least
-for people trying to report the error. The developer can then try to reproduce
-the error by writing a test using the same input.
+the error. This is arguably a lot more helpful than a stack trace—at least,
+that is, for people trying to report the error. The developer can then try to
+reproduce the error by writing a test using the same input.
 
 Run the test and make sure it fails. Then update the `execute` function to
-appear thus:
+appear as follows:
 
 ```js
 Middleware.prototype.execute = function(context, next, done) {
