@@ -43,8 +43,11 @@ function validate(config) {
 
   checkRequiredTopLevelFields(config, errors);
   checkForUnknownFieldNames(config, errors);
-  checkRequiredRulesFields(config, errors);
-  checkForUnknownRuleFieldNames(config, errors);
+
+  if (config.rules) {
+    checkRequiredRulesFields(config, errors);
+    checkForUnknownRuleFieldNames(config, errors);
+  }
 
   if (errors.length !== 0) {
     errMsg = 'Invalid configuration:\n  ' + errors.join('\n  ');
