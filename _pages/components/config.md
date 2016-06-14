@@ -261,6 +261,10 @@ Let's add a new test immediately after the first, using the following outline:
   });
 ```
 
+_Note_: The `return new Config` call must be wrapped in a function so that
+`expect` will execute it. Otherwise the `return new Config` expression will
+throw an `Error` _before_ the test calls `expect`.
+
 You may notice that even if the `errors` list is empty, the test will still
 pass. This is because the `throw` directive will do a partial match against
 the error message. For now, we'll let it slide; we'll do more exact matching
