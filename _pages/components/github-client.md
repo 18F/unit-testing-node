@@ -7,10 +7,14 @@ The `GitHubClient` class encapsulates the application's dependency on the
 file.
 
 If you don't have experience writing HTTP calls and launching test servers,
-testing the `GitHubClient` class is a great way to gain some experience. If
-you're looking for more of a challenge, then move on to the next chapter.
-If you've skipped to this chapter, you can establish the starting state of the
-`exercise/` files for this chapter by running:
+testing the `GitHubClient` class is a great way to get acquainted. You should
+be familiar with the [HTTP `POST`
+method](http://www.w3schools.com/tags/ref_httpmethods.asp) and the concept of
+[Web Application Programming Interfaces
+(APIs)](http://readwrite.com/2013/09/19/api-defined/). If you're looking for
+more of a challenge, then move on to the next chapter. And if you've skipped
+ahead to this chapter, you can establish the starting state of the `exercise/`
+files for this chapter by running:
 
 ```sh
 $ ./go set-github-client
@@ -18,39 +22,44 @@ $ ./go set-github-client
 
 ## What to expect
 
-After receiving a `reaction_added` event and fetching the all the message
-reactions via `SlackClient.getReactions`, we will use the [GitHub API to
+After receiving a `reaction_added` event and fetching all the message
+reactions via `SlackClient.getReactions`, you'll use the [GitHub API to
 create a new issue](https://developer.github.com/v3/issues/#create-an-issue).
 Like `SlackClient`, this class is a [facade
 class](https://sourcemaking.com/design_patterns/facade) that limits the
-exposure of the GitHub API to our application's code.
+exposure of the GitHub API to your application's code.
 
-To reiterate the advantages of a facade:
+Facades offer several advantages:
 
-- All uses of the external dependency are documented via the methods on the
-  facade.
+- The methods comprising the facade interface document all uses of the external
+  dependency.
 - When the upstream interface changes, only this class should require any
   changes, minimizing the cost and risk of upgrades.
-- We can use [dependency injection]({{ site.baseurl }}/concepts/dependency-injection/)
-  in our tests _to model and control_ the external behavior.
+- By using [dependency
+  injection]({{ site.baseurl }}/concepts/dependency-injection/) to construct
+  objects using the facade, a test double implementing the same interface can
+  model the external behavior. When used well, this technique reduces direct
+  dependencies on the external code, and makes tests faster, more reliable,
+  and more thorough.
 
-GitHub API wrapper packages exist, but since this is the only API call our
-application will make, we'll write our own code to [minimize
-dependencies](/concepts/minimizing-dependencies/). Since the code required is
+GitHub API wrapper packages exist, but since this is the only API call your
+application will make, you'll write your own code to [minimize
+dependencies](/concepts/minimizing-dependencies/). Because the code required is
 relatively small and straightforward, it also provides a good example of _how_
 to write and test web API wrappers.
 
 This class is actually a little smaller than `SlackClient`. However, whereas
 `SlackClient` makes a GET request with all its information encoded in the
 URL, `GitHubClient` makes a POST request that requires specific HTTP headers.
-We will learn:
 
-- to manage HTTP bookkeeping
-- the basics of using a
+You will learn:
+
+- To manage HTTP bookkeeping
+- The basics of using a
   [`Promise`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
   to encapsulate an asynchronous operation
-- how to test HTTP requests by launching a local HTTP test server
-- how to use `Promises` with mocha and chai
+- How to test HTTP requests by launching a local HTTP test server
+- How to use `Promises` with mocha and chai
 
 ## Starting to build `GitHubClient`
 
@@ -71,26 +80,26 @@ GitHubClient.prototype.fileNewIssue = function(/* metadata, repository */) {
 };
 ```
 
-We see that the constructor pulls the GitHub-related parameters from a
-`Config` object. The first thing we need to do is set a `baseurl` property
+You can see that the constructor pulls the GitHub-related parameters from a
+`Config` object. The first thing you need to do is set a `baseurl` property
 such that the `GitHubClient` will make calls to `https://api.github.com` by
-default. However, in our tests, we will override this property via
+default. Your tests, however, will override this property via
 `Config.githubApiBaseUrl` so that requests go to `http://localhost` instead.
 
-Let's start by encoding the production default as a module constant:
+Start by encoding the production default as a module constant:
 
 ```js
 GitHubClient.API_BASE_URL = 'https://api.github.com/';
 ```
 
-Then we need to add a require statement for the [standard `url`
+Then, add a require statement for the [standard `url`
 package](https://nodejs.org/api/url.html):
 
 ```js
 var url = require('url');
 ```
 
-Now let's add the following to our constructor:
+Now, add the following to your constructor:
 
 ```
   this.baseurl = url.parse(config.githubApiBaseUrl ||
@@ -99,7 +108,7 @@ Now let's add the following to our constructor:
 
 ## Writing the request function
 
-Much like we did with `SlackClient`, let's make `fileNewIssue` a thin wrapper
+Much like you did with `SlackClient`, make `fileNewIssue` a thin wrapper
 around a `makeApiCall` function.  (The parameters `metadata` and `repository`
 are commented out to avoid unused argument errors from `npm run lint`. Go
 ahead and uncomment them now.)
@@ -113,13 +122,14 @@ function makeApiCall(client, metadata, repository) {
 }
 ```
 
-Note that `makeApiCall` is not a member of `GitHubClient`, and that its first
-parameter, `client`, is actually the `this` reference from the `GitHubClient`
-method. `makeApiCall` is going to define a [nested
-function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Functions#Nested_functions_and_closures) to launch an
-asynchronous HTTP request. Were `makeApiCall` a member of `GitHubClient`,
-[inside the nested handler, `this` would not refer to the `GitHubClient`
-object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Functions#Lexical_this).
+Note that `makeApiCall` is *not* a member of `GitHubClient`, and that its
+first parameter, `client`, is actually the `this` reference from the
+`GitHubClient` method. `makeApiCall` is going to define a [nested
+function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Functions#Nested_functions_and_closures)
+to launch an asynchronous HTTP request. Were `makeApiCall` a member of
+`GitHubClient`, [`this` would not refer to the `GitHubClient` object inside
+the nested
+handler](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Functions#Lexical_this).
 This can prove very confusing, especially to people with experience in
 object-oriented languages. Translating `this` to `client` in this way
 sidesteps the problem, and having `makeApiCall` private to the module keeps
@@ -127,7 +137,7 @@ the `GitHubClient` interface narrow.
 
 ## Selecting HTTP vs. HTTPS
 
-Let's import the [`http`](https://nodejs.org/api/http.html) and
+Import the [`http`](https://nodejs.org/api/http.html) and
 [`https`](https://nodejs.org/api/https.html) modules from the Node.js standard
 library:
 
@@ -137,13 +147,14 @@ var https = require('https');
 ```
 
 Both have a `request` function that accepts the same set of HTTP options that
-we will build using a helper function. So as the first step in implementing
-`fileNewIssue`, let's select the correct library depending on whether the code
-is running under test or in production:
+you will build using a helper function. Add the following to the
+`GitHubClient` constructor to select the correct library depending on whether
+the code is running under test or in production:
 
 ```js
-function makeApiCall(client, metadata, repository) {
-  var requestFactory = (client.protocol === 'https:') ? https : http;
+function GitHubClient(config) {
+  // ...
+  this.requestFactory = (this.baseurl.protocol === 'https:') ? https : http;
 };
 ```
 
@@ -151,8 +162,8 @@ function makeApiCall(client, metadata, repository) {
 
 The `metadata` argument to `makeApiCall` will contain information from the
 message that received the reaction from which to build the GitHub issue. It
-will contain two properties: `title:`, constructed by the `Middleware` class,
-and `url:`, which will be the permalink for the message.
+will contain two properties: `title:` (constructed by the `Middleware` class)
+and `url:` (which will be the permalink for the message).
 
 The `repository` argument is name of the repository to which to post the
 issue. This should be just the last component of the repository's GitHub URL
@@ -160,13 +171,12 @@ after the user or organization name specified by `Config.githubUser`. For
 example, for `{{ site.repos[0].url }}`, this would be `{{ site.repos[0].url |
 split:"/" | last }}`.
 
-We'll use the `metadata` object to create the [issue creation API method
+You'll use the `metadata` object to create the [issue creation API method
 parameters](https://developer.github.com/v3/issues/#create-an-issue) as a JSON
 object, encoded as a string in the request body:
 
 ```js
-  var requestFactory = (this.protocol === 'https:') ? https : http,
-      paramsStr = JSON.stringify({
+  var paramsStr = JSON.stringify({
         title: metadata.title,
         body: metadata.url
       });
@@ -174,8 +184,9 @@ object, encoded as a string in the request body:
 
 ## Building the HTTP options
 
-The HTTP request is straightforward to build, if a little cumbersome. So let's
-introduce a helper function:
+The HTTP request is straightforward to build, if a little cumbersome, since it
+contains so many parameters. To make the process less cumbersome, introduce a
+helper function:
 
 ```js
 function getHttpOptions(client, repository, paramsStr) {
@@ -200,32 +211,33 @@ function getHttpOptions(client, repository, paramsStr) {
 
 A few things to note here:
 
-- We assign `port: baseurl.port`. When `port:` is undefined, the request uses
-  the default port for HTTP (80) or HTTPS(443). In our tests, we will launch a
-  local HTTP server with a dynamically-assigned port. We'll assign this
+- You should assign `port: baseurl.port`. When `port:` is undefined, the
+  request uses the default port for HTTP (80) or HTTPS(443). In the tests, you
+  will launch a local HTTP server with a dynamically assigned port. You'll
+  assign this
   server's URL, including its port value, to the `githubApiBaseUrl` property
   of the `Config` object used to create the `GitHubClient` instance under
   test. In `getHttpOptions`, that dynamic port value will then propagate to
   this options object.
-- We [specify the GitHub API version in the `Accept`
-  header](https://developer.github.com/v3/#current-version)
-- Unlike with the Slack API, we [pass the GitHub API token in the
+- You [specify the GitHub API version in the `Accept`
+  header](https://developer.github.com/v3/#current-version).
+- Unlike with the Slack API, you [pass the GitHub API token in the
   `Authorization` header](https://developer.github.com/v3/#authentication).
   This token comes from the `HUBOT_GITHUB_TOKEN` environment variable,
   accessible via
   [`process.env`](https://nodejs.org/api/process.html#process_process_env).
-- Unlike with the Slack API, we assign the `Content-Type` and `Content-Length`
-  since the parameters (encoded as `paramsStr`) will appear in the request
-  body as JSON.
-- We calculate `Content-Length` using
+- Unlike with the Slack API, you must assign the `Content-Type` and
+  `Content-Length` because the parameters (encoded as `paramsStr`) will appear
+  in the request body as JSON.
+- You calculate `Content-Length` using
   [`Buffer.byteLength`](https://nodejs.org/api/buffer.html#buffer_class_method_buffer_bytelength_string_encoding)
   rather than relying on `paramsStr.length`, which may be smaller than the
   actual byte length due to multibyte characters.
-- [GitHub requires the `User-Agent` header](https://developer.github.com/v3/#user-agent-required)
-  which we've set to [the name and version of the
+- [GitHub requires the `User-Agent` header](https://developer.github.com/v3/#user-agent-required),
+  which you've set to [the name and version of the
   program](http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.43).
 
-To import `packageInfo` properties that we use in the `User-Agent` definition,
+To import the `packageInfo` properties used in the `User-Agent` definition,
 add the following `require` statement to the top of the file:
 
 ```js
@@ -248,21 +260,20 @@ the example code:
 
 [`Promises`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
 represent asynchronous operations that will either _resolve_ to a value or be
-_rejected_ with an error. This abstraction works especially for HTTP requests,
-which are common asynchronous operations. For background, please see the
-[`SlackClient` section on
+_rejected_ with an error. This abstraction works especially well for HTTP
+requests, which are common asynchronous operations. For background, please see
+the [`SlackClient` section on
 `Promises`]({{ site.baseurl }}/components/slack-client/#promises),
 as well as
-[`Promise` gotcha #0]({{ site.baseurl }}/components/slack-client/#promises-gotcha-0)
+[Promise gotcha #0]({{ site.baseurl }}/components/slack-client/#promises-gotcha-0)
 and
-[`Promise` gotcha #1]({{ site.baseurl }}/components/slack-client/#promises-gotcha-1).
+[Promise gotcha #1]({{ site.baseurl }}/components/slack-client/#promises-gotcha-1).
 
-Let's start fleshing out the rest of `makeApiCall` by defining a `Promise`:
+Start fleshing out `makeApiCall` by defining a `Promise`:
 
 ```js
 function makeApiCall(client, metadata, repository) {
-  var requestFactory = (client.protocol === 'https:') ? https : http,
-      paramsStr = JSON.stringify({
+  var paramsStr = JSON.stringify({
         title: metadata.title,
         body: metadata.url
       });
@@ -275,14 +286,14 @@ function makeApiCall(client, metadata, repository) {
 
 To recap from the `SlackClient` chapter, `resolve` and `reject` are callback
 functions that the `Promise` should call when the operation succeeds or fails.
-We can pass the result of a successful operation to `resolve`, and an
+You can pass the result of a successful operation to `resolve`, and an
 [`Error`](https://nodejs.org/api/errors.html) or similar object to `reject`.
-Now let's make our request:
+Now, make your request:
 
 ```js
   return new Promise(function(resolve, reject) {
     var httpOptions = getHttpOptions(client, repository, paramsStr),
-        req = requestFactory.request(httpOptions, function(res) {
+        req = client.requestFactory.request(httpOptions, function(res) {
           handleResponse(res, resolve, reject);
         });
 
@@ -296,7 +307,7 @@ Now let's make our request:
 
 This brings the `httpOptions` and `requestFactory` pieces together to make the
 actual HTTP request, delegating `resolve` and `reject` to `handleResponse`
-(which we'll fill in next). Also note:
+(which you'll fill in next). Also note that:
 
 - `req` is a
   [http.ClientRequest](https://nodejs.org/api/http.html#http_class_http_clientrequest),
@@ -304,22 +315,22 @@ actual HTTP request, delegating `resolve` and `reject` to `handleResponse`
   [`WritableStream` interface](https://nodejs.org/api/stream.html#stream_class_stream_writable),
   itself derived from
   [`EventEmitter`](https://nodejs.org/api/events.html#events_class_events_eventemitter).
-- We've set a timeout, passed from `Config.githubTimeout`, to limit how long
+- You've set a timeout, passed from `Config.githubTimeout`, to limit how long
   to wait before canceling the request.
-- We've set an error handler in case the program fails to send the request,
-  and pass an `Error` to `reject` to complete the operation.
-- We finally send the request with `req.end`, passing `paramsStr` as the body
-  of the request.
+- You've also set an error handler in case the program fails to send the
+  request, and pass an `Error` to `reject` to complete the operation.
+- You'll finally send the request with `req.end`, passing `paramsStr` as the
+  body of the request.
 
-Also, take this opportunity to read [`Promise` gotcha #0: not calling
+Please take this opportunity to review [Promise gotcha #0: not calling
 `resolve` or `reject`]({{ site.baseurl
 }}/components/slack-client/#promises-gotcha-0) from the `SlackClient` chapter
-before moving on.
+before moving on to the next section.
 
 ## Delegating to `handleResponse`
 
-All that's left now is to implement the `handleResponse` delegate. Let's start
-by adding this to our module:
+All that's left now is to implement the `handleResponse` delegate. Start by
+adding this to your module:
 
 ```js
 function handleResponse(res, resolve, reject) {
@@ -339,14 +350,15 @@ The `res` parameter is an instance of
 [http.ServerResponse](https://nodejs.org/api/http.html#http_class_http_serverresponse), also a `WritableStream`.
 The
 [`setEncoding` method](https://nodejs.org/api/stream.html#stream_readable_setencoding_encoding)
-comes from `WritableStream` ensures each chunk of the JSON payload is passed as a UTF-8 string to the
-[`'data'` event](https://nodejs.org/api/stream.html#stream_event_data).
-The `'data'` event handler builds up our `result` string a piece at a time.
+comes from `WritableStream` and ensures that each chunk of the JSON payload is
+passed as a UTF-8 string to the [`'data'`
+event](https://nodejs.org/api/stream.html#stream_event_data). The `'data'`
+event handler builds up the `result` string one piece at a time.
 
 ## Handling the completed HTTP response
 
-The `'end'` event happens when we've finished receiving the entire server
-response. This is the last piece we need to finish the `GitHubClient`:
+The `'end'` event happens once you've finished receiving the entire server
+response. This is the last piece you need to finish the `GitHubClient`:
 
 ```js
   res.on('end', function() {
@@ -365,21 +377,21 @@ response. This is the last piece we need to finish the `GitHubClient`:
 ```
 A few things to notice about this handler:
 
-- We _only_ accept [200 class HTTP status
+- It _only_ accepts [200 class HTTP status
   codes](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.2).
-- If the status code isn't in the 200 class, we call `reject` with an `Error`
-  that contains the unparsed body of the request.
-- We have to call
+- If the status code isn't in the 200 class, you'll call `reject` with an
+  `Error` that contains the unparsed body of the request.
+- You have to call
   [`JSON.parse()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/parse)
   on the body. If successful, the `Promise` for the HTTP request will resolve
   to the `html_url` value from the response.
 - If the status code was not in the 200 class, or if the response failed to
-  parse, we reject the `Promise` with an error containing the body of the
+  parse, you reject the `Promise` with an error containing the body of the
   request.
 
 ## Preparing to test the API interaction
 
-Now for the moment of truth! First add the following to the top of the
+And now for the moment of truth! First, add the following to the top of the
 `exercise/test/github-client-test.js` file:
 
 ```js
@@ -420,8 +432,8 @@ file an issue` test with the following assertion:
 ```
 
 Let's examine what's going on here. The `fileNewIssue` call takes `metadata`
-and `repository` as arguments, and resolves to `ISSUE_URL`. Since it's likely
-we'll want to use the same sample data through our test suite, let's add the
+and `repository` as arguments, and resolves to `ISSUE_URL`. Because it's
+likely you'll want to use the same sample data through the test suite, add the
 following constants and the `metadata` factory function to
 `exercise/test/helpers/index.js`:
 
@@ -450,8 +462,8 @@ Remember that `metadata` is returning a fresh copy of the data for each test
 so that any changes made by one test do not accidentally influence any other
 tests.
 
-Using the `helpers` module implies that we need to add the following to the
-top of our test file:
+Using the `helpers` module implies that you need to add the following to the
+top of the test file:
 
 ```js
 var helpers = require('./helpers');
@@ -461,12 +473,13 @@ var helpers = require('./helpers');
 
 Also notice that the test assertion starts with `return` and ends with
 `.should.become(helpers.ISSUE_URL)`. This assertion is _returning a
-`Promise`_. This is a combination of two features:
+`Promise`_ and is a combination of two features:
 
-- The Mocha framework [will detect returned Promises and wait for them to
-  become resolved or rejected](https://mochajs.org/#working-with-promises).
-- The Chai-as-Promised extension of the Chai assertion library provides
-  [expect/should-style assertions](https://www.npmjs.com/package/chai-as-promised#should-expect-interface).
+- The Mocha framework's [ability to detect returned Promises and wait for them
+  to become resolved or rejected](https://mochajs.org/#working-with-promises).
+- The ability of the Chai-as-Promised extension (of the Chai assertion
+  library) to provide [expect/should-style
+  assertions](https://www.npmjs.com/package/chai-as-promised#should-expect-interface).
 
 To enable these features, add the following lines to the top of the test file:
 
@@ -480,7 +493,7 @@ chai.use(chaiAsPromised);
 
 # Defining `githubClient`
 
-Now we can instantiate our `GitHubClient` instance:
+You should now be able to instantiate a `GitHubClient` instance:
 
 ```js
 describe('GitHubClient', function() {
@@ -501,14 +514,14 @@ describe('GitHubClient', function() {
 
 A few things are happening here:
 
-- As mentioned earlier, we define `config.githubApiBaseUrl` so the
-  `GitHubClient` will send requests to `http://localhost/repos/`, not
+- As mentioned earlier, you've defined `config.githubApiBaseUrl` so the
+  `GitHubClient` will send requests to `http://localhost/repos/`, *not*
   `https://api.github.com/repos/`.
 - The `GitHubClient` state affecting its behavior (`config.githubApiBaseUrl`)
-  is constant across every test. Consequently, we only create one instance in
+  is constant across every test. Consequently, you only create one instance in
   the `before` block, rather than one per test in `beforeEach`.
 
-At this point, let's run our test:
+At this point, run your test:
 
 ```sh
 $ npm test -- --grep '^GitHubClient '
@@ -543,13 +556,13 @@ Message:
 npm ERR! Test failed.  See above for more details.
 ```
 
-This is what we _want_ to see at this point, because we haven't launched a
+This is what you _want_ to see at this point because you haven't launched a
 `localhost` HTTP server yet.
 
 ## Broken `Promises`
 
 Before moving on to the next section, remove the `return` keyword from the
-test assertion, then run the test to see what happens:
+test assertion and run the test to see what happens:
 
 ```sh
 $ npm test -- --grep '^GitHubClient '
@@ -570,15 +583,15 @@ $ npm test -- --grep '^GitHubClient '
 [14:45:58] Finished 'test' after 106 ms
 ```
 
-In this case, what happened is that **we forgot to `return` the new Promise**.
-Please review [`Promise` gotcha #1: not returning the
-`Promise`]({{ site.baseurl }}/components/slack-client/#promises-gotcha-1) from
-the `SlackClient` chapter for more background. Restore the missing `return`
-statement and run the test again to ensure it fails before moving on.
+In this case, what happened is that you **forgot** to `return` the new
+`Promise`. Please review [Promise gotcha #1: not returning the `Promise`]({{
+site.baseurl }}/components/slack-client/#promises-gotcha-1) from the
+`SlackClient` chapter for more background. Restore the missing `return`
+statement and run the test again to ensure that it fails before moving on.
 
 ## Testing the error case
 
-Before fixing the test, let's actually copy it and make a new test out of it:
+Before you fix the test, copy it and make a new test out of it:
 
 ```js
   it('should fail to make a request if the server is down', function() {
@@ -587,21 +600,23 @@ Before fixing the test, let's actually copy it and make a new test out of it:
   });
 ```
 
-Run the tests and make sure that this one passes. Now we can remain confident
-that if the real GitHub API server is down, our `GitHubClient` will report the
-error instead of silently failing.
+Run the tests to make sure this one passes. If it does, you can remain
+confident that, if the real GitHub API server is down, your `GitHubClient`
+will report the error instead of silently failing.
 
 ## Updating the `ApiStubServer` to handle POST requests and check HTTP headers
 
-Now for the fun part: updating [the `ApiStubServer` that we implemented in the
-`SlackClient`
+Now for the fun part: updating [the `ApiStubServer` that you implemented in
+the `SlackClient`
 chapter]({{ site.baseurl }}/components/slack-client/#api-stub-server)! Please
 review that section for background on the features and implementation details.
 
-At the moment, that server does most of what we need, but only handles HTTP
-GET requests and doesn't check HTTP headers. The first thing we will do is
-refactor our checks into a new function `compareParamsAndRespond`, so the
-server implementation now looks like this:
+At the moment, that server does most of what you need it to, but it only
+handles HTTP GET requests and doesn't check HTTP headers.
+
+The first thing you will do is refactor the checks into a new function
+`compareParamsAndRespond`. The server implementation should now look like
+this:
 
 ```js
 function ApiStubServer() {
@@ -641,11 +656,11 @@ function compareParamsAndRespond(res, responseData, actualParams) {
 ```
 
 Run `npm test` (_not_ `npm test -- --grep '^GitHubClient '`) to make sure all
-the tests still pass. We haven't changed the behavior of the `ApiStubServer`.
-However, with `compareParamsAndRespond` extracted, we can better share that
+the tests still pass. You haven't changed the behavior of the `ApiStubServer`.
+However, with `compareParamsAndRespond` extracted, you can better share that
 code between the `GET` case needed by `SlackClient` and the `POST` case needed
-by `GitHubClient`. We'll first put this new structure in place within the
-`http.Server` callback within the `ApiStubServer` constructor:
+by `GitHubClient`. Put this new structure in place within the `http.Server`
+callback within the `ApiStubServer` constructor:
 
 ```js
   this.server = new http.Server(function(req, res) {
@@ -672,10 +687,11 @@ by `GitHubClient`. We'll first put this new structure in place within the
 ```
 
 `comparePostParamsAndRespond`, defined below, needs to get the request
-paramters from the JSON object encoded in the body. Since `req` implements the
-[`WritableStream` interface](https://nodejs.org/api/stream.html#stream_class_stream_writable),
-unlike the `GET` example, we have to piece together the body before parsing
-the JSON object and calling `compareParamsAndRespond`.
+parameters from the JSON object encoded in the body. Since `req` implements
+the [`WritableStream`
+interface](https://nodejs.org/api/stream.html#stream_class_stream_writable),
+unlike the `GET` example, you'll have to piece together the body before
+parsing the JSON object and calling `compareParamsAndRespond`.
 
 ```js
 function comparePostParamsAndRespond(req, res, responseData) {
@@ -703,19 +719,19 @@ Run `npm test` again to make sure everything passes.
 ## Testing the helper?
 
 While this test "helper" is getting complex enough to warrant its own tests,
-we're testing it using the actual application. If we were to reuse this in
-other applications, we would want to make a well-tested npm out of it. Or
-perhaps we would just use an existing library like
+you're testing it using the actual application. If you were to reuse this in
+other applications, you'd want to make a well-tested npm out of it.
+Alternatively, you could use an existing library like
 [`nock`](https://www.npmjs.com/package/nock).
 
-The reason we roll our own here is to provide a bit of insight into how to
-write basic HTTP testing servers using the Node.js standard library. However,
-retrofitting another package into the existing tests would be an excellent
-exercise.
+The reason this tutorial rolls its own is to provide a bit of insight into how
+to write basic HTTP testing servers using the Node.js standard library.
+However, retrofitting another package into the existing tests would be an
+excellent exercise.
 
 ## Launching the `ApiStubServer`
 
-To make use of our newly-updated `ApiStubServer`, first `require` its module:
+To make use of your newly updated `ApiStubServer`, first `require` its module:
 
 ```js
 var ApiStubServer = require('./helpers/api-stub-server');
@@ -749,8 +765,8 @@ finished running, and clear its state after every test case:
   });
 ```
 
-Since our interaction with the GitHub API is very limited, we can write a
-`setResponse` function that is more focused that that appearing in the
+Because the interaction with the GitHub API is limited, you can write a
+`setResponse` function that is more focused than that appearing in the
 `SlackClient` test.
 
 ```js
@@ -768,8 +784,8 @@ Since our interaction with the GitHub API is very limited, we can write a
   };
 ```
 
-Now add the following line at the beginning of the `should successfully file
-an issue` test:
+Add the following line at the beginning of the `should successfully file an
+issue` test:
 
 ```js
     createServer(201, { 'html_url': helpers.ISSUE_URL });
@@ -812,10 +828,9 @@ Message:
 npm ERR! Test failed.  See above for more details.
 ```
 
-Whoops! Now that we've actually launched a working server, our test for the
-error case now fails. To rectify this, we can create `Config` and
-`GitHubClient` instances local to this one test to simulate an unreachable
-server:
+Whoops! Now that you've launched a working server, the test for the error case
+fails. To rectify this, create `Config` and `GitHubClient` instances local to
+this one test to simulate an unreachable server:
 
 ```js
   it('should fail to make a request if the server is down', function() {
@@ -829,7 +844,7 @@ server:
   });
 ```
 
-Now confirm that our tests both pass:
+Confirm that both tests pass:
 
 ```sh
 $ npm test -- --grep '^GitHubClient '
@@ -853,7 +868,7 @@ $ npm test -- --grep '^GitHubClient '
 
 ## Testing an error response from the server
 
-For our next test, let's simulate an error from the GitHub server:
+For your next test, simulate an error from the GitHub server:
 
 ```js
   it('should receive an error when filing an issue', function() {
@@ -865,17 +880,18 @@ For our next test, let's simulate an error from the GitHub server:
   });
 ```
 
-We're again checking the result using `rejectedWith`, but the error comes from
-the server's [500 class
+Once again, you're checking the result using `rejectedWith`, but the error
+comes from the server's [500 class
 response](http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.5).
-Our error message contains the full payload returned from the server.
+The error message contains the full payload returned from the server.
 
 ## Sanity testing the selection of the base API URL
 
-In all the excitement, we've forgotten to test one small yet critical piece of
-behavior: parsing `GitHubClient.API_BASE_URL` when `Config.githubApiBaseUrl`
-is undefined. Sure, it's trivial, but it's also very easy to test and our
-application won't work at all if we happen to break this behavior.
+In all the excitement, you've forgotten to test one small (yet critical) piece
+of behavior: parsing `GitHubClient.API_BASE_URL` when
+`Config.githubApiBaseUrl` is undefined. It's trivial, but it's also easy to
+test, and the application won't work at all if anyone happens to break this
+behavior.
 
 To start, add the following to the `require` statements at the top:
 
@@ -883,8 +899,8 @@ To start, add the following to the `require` statements at the top:
 var url = require('url');
 ```
 
-Now let's add two test cases near the top of our fixture, before `it should
-successfully file an issue` test case:
+Now add two test cases near the top of the fixture (before the `it should
+successfully file an issue` test case):
 
 ```js
   describe('API base URL', function() {
@@ -928,13 +944,14 @@ $ npm test -- --grep '^GitHubClient '
 [12:17:55] Finished 'test' after 140 ms
 ```
 
-Now that you're all finished, compare your solutions to the code in
+Now that you're finished, compare your solutions to the code in
 [`solutions/03-github-client/lib/github-client.js`]({{ site.baseurl }}/solutions/03-github-client/lib/github-client.js)
 and
 [`solutions/03-github-client/test/github-client-test.js`]({{ site.baseurl }}/solutions/03-github-client/test/github-client-test.js).
 
-You may wish to `git commit` your work to your local repo at this point. After
-doing so, try copying the `github-client.js` file from
-`solutions/03-github-client/lib` into `exercises/lib` to see if it passes the
-test you wrote. Then run `git reset --hard HEAD` and copy the test files
-instead to see if your implementation passes.
+At this point, `git commit` your work to your local repo. After you do, copy
+the `github-client.js` file from `solutions/03-github-client/lib` into
+`exercises/lib` to see if it passes the test you wrote. Then run `git reset
+--hard HEAD` and copy the test files instead to see if your implementation
+passes. If a test case fails, review the section of this chapter pertaining to
+the failing test case, then try to update your code to make the test pass.

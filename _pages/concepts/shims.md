@@ -1,11 +1,11 @@
 ---
 title: Shims
 ---
-A "shim" is a very lightweight function, adapter or facade class. One
-application is to standardize access to an object to avoid redundant arguments
-at multiple call sites. For example, the [`Log` class]({{ site.baseurl
-}}/components/log) from this exercise provides consistent `console.log`
-parameters.
+A _shim_ is a very lightweight function, adapter, or facade class. One
+application for a shim is standardizing access to an object to avoid redundant
+arguments at multiple call sites. For example, the
+[`Log` class]({{ site.baseurl }}/components/log) from this exercise provides
+consistent `console.log` parameters.
 
 ## Shims as a refactoring aid
 

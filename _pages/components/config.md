@@ -1,19 +1,18 @@
 ---
 title: Config class
 ---
-The first object we'll develop is the `Config` class. You can find it in the
-[`exercise/lib/config.js`]({{ site.baseurl }}/exercise/lib/config.js) file.
-The purpose of the `Config` class is to read the configuration file
+The first object we'll develop is the `Config` class. You can find this class
+in the [`exercise/lib/config.js`]({{ site.baseurl }}/exercise/lib/config.js)
+file. The purpose of the `Config` class is to read the configuration file
 and validate the contents. The example configuration file is
 [`exercise/config/slack-github-issues.json`]({{ site.baseurl }}/exercise/config/slack-github-issues.json).
 
 If you're completely unfamiliar with unit testing, or unfamiliar with
 [Mocha](https://mochajs.org/) and [Chai](http://chaijs.com/), the `Config`
 class is a great object to get you acquainted. If you're looking for more of a
-challenge, move on to the next chapter.
-
-If you've skipped to this chapter, you can establish the starting state of the
-`exercise/` files for this chapter by running:
+challenge, move on to the next chapter. And if you've skipped ahead to this
+chapter, you can establish the starting state of the `exercise/` files for
+this chapter by running:
 
 ```sh
 $ ./go set-config
@@ -95,8 +94,8 @@ can preclude security issues]({{ site.baseurl }}/concepts/valid-by-contract/).
 Once validation succeeds, `Config` then assigns every property from the
 `config` object to itself. The
 [`hasOwnProperty`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/hasOwnProperty)
-check ensures only properties defined by the configuration file itself are
-copied.
+check ensures that the only properties copied into the `Config` are those defined by the configuration file itself, excluding those inherited from
+[`Object`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object#Object_instances_and_Object_prototype_object).
 
 Let's take a look at the starting implementation for `validate`. It makes sure
 that all of the fields required by the schema are present, and doesn't contain
@@ -141,8 +140,8 @@ describe('Config', function() {
 });
 ```
 
-The first thing we want to do is to make sure that the `Config` constructor
-builds a valid object without errors. We'll also need to import the Chai
+The first thing you want to do is to make sure that the `Config` constructor
+builds a valid object without errors. You'll also need to import the Chai
 assetion framework. Update the top of the file to reflect the following
 `require` statements:
 
@@ -153,17 +152,17 @@ var expect = chai.expect;
 ```
 
 Then add an implementation to the `'should validate a valid configuration'`
-test.  Pass an empty data object into the `Config` constructor, and verify
+test.  Pass an empty data object into the `Config` constructor and verify
 that the new `Config` object contains the same data as the original JSON
 object.
 
 The most expedient comparison is to use
 [`JSON.stringify`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify)
 on both objects and to compare the result. It's a blunt instrument, but for
-our small case, it gets the job done. In this test, we'll use the `expect`
+this small case, it gets the job done. In this test, you'll use the `expect`
 form of [Chai BDD-style assertions](http://chaijs.com/api/bdd/).
 
-The test should look something like:
+The test should look something like this:
 
 ```js
   it('should validate a valid configuration', function() {
@@ -176,9 +175,9 @@ The test should look something like:
   });
 ```
 
-Good tests fail when they should, so at this point, verify that the test
-fails by running `npm test`. To limit the output to just the `Config` tests,
-run it as `npm test -- --grep '^Config '`:
+Good tests fail when they should. At this point, verify that the test fails by
+running `npm test`. To limit the output to just the `Config` tests, run it as
+`npm test -- --grep '^Config '`:
 
 ```sh
 $ npm test -- --grep '^Config '
@@ -530,7 +529,10 @@ function checkRequiredTopLevelFields(config, errors) {
 [`Object.keys`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/keys)
 return an array of an object's own properties that we can iterate over via
 [`Array.forEach`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/forEach).
-Run the tests to make sure they all still pass.
+This is an alternative to the
+[`hasOwnProperty()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/hasOwnProperty)
+approach used in the constructor. Run the tests to make sure they all still
+pass.
 
 We can now switch the `forEach` function body into two separate pipeline
 functions:
@@ -566,7 +568,7 @@ function filterMissingFields(object, requiredFields) {
 }
 ```
 
-We can now use this utility function to update `checkRequiredTopLevelFields`
+You can now use this utility function to update `checkRequiredTopLevelFields`
 to look like:
 
 ```js
@@ -692,13 +694,14 @@ $ npm test -- --grep '^Config '
 [18:00:58] Finished 'test' after 73 ms
 ```
 
-Now that you're all finished, compare your solutions to the code in
+Now that you're finished, compare your solutions to the code in
 [`solutions/00-config/lib/config.js`]({{ site.baseurl }}/solutions/00-config/lib/config.js)
 and
 [`solutions/00-config/test/config-test.js`]({{ site.baseurl }}/solutions/00-config/test/config-test.js).
 
-You may wish to `git commit` your work to your local repo at this point. After
-doing so, try copying the `config.js` file from `solutions/00-config/lib` into
-`exercises/lib` to see if it passes the test you wrote. Then run `git reset
---hard HEAD` and copy the test files instead to see if your implementation
-passes.
+At this point, `git commit` your work to your local repo. After you do, copy
+the `config.js` file from `solutions/00-config/lib` into `exercises/lib` to
+see if it passes the test you wrote. Then run `git reset --hard HEAD` and copy
+the test files instead to see if your implementation passes. If a test case
+fails, review the section of this chapter pertaining to the failing test case,
+then try to update your code to make the test pass.

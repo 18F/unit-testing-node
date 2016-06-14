@@ -1,13 +1,13 @@
 ---
 title: Testing system integration
 ---
-At this point, we've exhaustively tested all of our application's behavior and
-validated that all of the components work together as expected. All that's
-left is to test that we can launch a Hubot process with our script installed,
-and that startup behavior is as expected.
+At this point, you've exhaustively tested all of your application's behavior
+and validated that all of the components work together as expected. All that's
+left is to test that you can launch a Hubot process with your script
+installed, and that startup behavior is as expected.
 
-If you've skipped to this chapter, you can establish the starting state of the
-`exercise/` files for this chapter by running:
+If you've skipped ahead to this chapter, you can establish the starting state
+of the `exercise/` files for this chapter by running:
 
 ```sh
 $ ./go set-system
@@ -15,20 +15,20 @@ $ ./go set-system
 
 ## What to expect
 
-A full system test would require us to launch a Hubot instance that loads our
+A full system test would require us to launch a Hubot instance that loads the
 script and initiates a [Slack Real Time Messaging
 API](https://api.slack.com/rtm) session. However, at the time of writing,
 writing a Real Time Messaging API emulator would be a project in itself.
-(_Hmm..._) Consequently, writing a fully automated system test is not
-practical within a reasonable time frame.
+(_Hmm..._) So writing a fully automated system test is not practical within
+our time frame.
 
 That said, the coverage provided by the [integration
-test]({{ site.baseurl }}/testing-component-integration/) should provide a
+test]({{ site.baseurl }}/testing-component-integration/) provides a
 reasonable amount of confidence in the overall behavior of the application.
-All we really need is a way to check that an actual Hubot process can
-successfully load our script.
+All we need is a way to check that an actual Hubot process can successfully
+load the script.
 
-We will learn to:
+You will learn to:
 
 - write a Node.js script to run a Hubot process as part of a "smoke test"
 - examine the process's standard output to validate both success and error log
@@ -38,26 +38,26 @@ We will learn to:
 
 ## What to include in a smoke test
 
-A "smoke test" is any test or test suite that runs reasonably quickly to
-validate that the core behavior of an application is working. The idea comes
-from turning on an engine or other machine to see whether it runs and whether
-any smoke comes out of it. If it runs, and no smoke comes out, there may be
-problems, but no _huge_ problems. If smoke does come out, something is
-seriously, dangerously wrong.
+A "smoke test" is any test or test suite that quickly validates that the core
+behavior of an application is working. The name comes from turning on an
+engine or other machine to see whether it runs and whether any smoke comes out
+of it. If it runs, and no smoke comes out, there may be problems, but they're
+probably not huge. If smoke _does_ come out, something is seriously,
+dangerously wrong.
 
-Since our system test will not interact with any simulated Slack or GitHub
+Since your system test will not interact with any simulated Slack or GitHub
 servers, we'll call it a smoke test because that's all it'll be. It'll check
 that Hubot can load `exercise/scripts/slack-github-issues` and:
 
-- read the default configuration, `exercise/config/slack-github-issues.json`,
-  and successfully register the application;
-- read the `exercise/test/helpers/test-config.json` configuration file when
+- Read the default configuration, `exercise/config/slack-github-issues.json`,
+  and successfully register the application
+- Read the `exercise/test/helpers/test-config.json` configuration file when
   specified via the `HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH` environment
-  variable and successfully register the application; and
-- read the `exercise/test/helpers/test-config-invalid.json` configuration file
+  variable and successfully register the application
+- Read the `exercise/test/helpers/test-config-invalid.json` configuration file
   specified via the `HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH` environment
   variable and fail to register the application due to a configuration
-  validation error.
+  validation error
 
 ## Starting to write `exercise/test/smoke-test.js`
 
@@ -77,21 +77,21 @@ var SUCCESS_MESSAGE = scriptName + ': registered receiveMiddleware';
 var FAILURE_MESSAGE = scriptName + ': receiveMiddleware registration failed: ';
 ```
 
-Some of this should look very familar by now. However, notice that we're
-pulling in the [`exec` function from the `child_process` standard library
+Some of this should look very familar by now. However, notice that the test
+imports the [`exec` function from the `child_process` standard library
 package](https://nodejs.org/api/child_process.html#child_process_child_process_exec_command_options_callback).
-As you may expect, this is what we will use to execute our Hubot instance.
+As you may expect, this is what you will use to execute our Hubot instance.
 Plus, since `npm test` adds the `node_modules/.bin` directory from the
 repository to the `PATH` environment variable, invoking the `hubot` program
 will be straightforward.
 
-We use `rootDir` to build up the constants used to match log messages. We
-will also use `rootDir` to set the working directory of the `hubot` process
-because `hubot` expects there to be a `scripts` directory present. Otherwise,
-when we invoke `npm test`, the working directory will not necessarily be the
+The test uses `rootDir` to build up the constants used to match log messages.
+You'll also use `rootDir` to set the working directory of the `hubot` process
+because `hubot` expects there to be a `scripts` directory present.  Otherwise,
+when you invoke `npm test`, the working directory will not necessarily be the
 same as `rootDir`, causing a test failure.
 
-In fact, let's try an experiment. Try running the following commands:
+In fact, here's an experiment. Try running the following commands:
  
 ```sh
 $ PATH=$PATH:node_modules/.bin hubot -t
@@ -109,12 +109,12 @@ $ cd ..
 The `-t` option tells hubot to only check that its configuration won't fail at
 startup; otherwise `hubot` would start an interactive session.
 
-As you can see, in the root directory of our repository, `hubot` didn't find
-any scripts to load. In our `exercise` directory, however`, it found our
+As you can see, in the root directory of your repository, `hubot` didn't find
+any scripts to load. In your `exercise` directory, however`, it found your
 application and loaded it successfully. (Don't forget to `cd ..` to return to
 the root directory of the repository!)
 
-Note that we're using
+Note that the test uses
 [`path.join`](https://nodejs.org/api/path.html#path_path_join_path1_path2)
 to ensure that `scriptName` is portable across operating systems.
 
@@ -136,15 +136,14 @@ describe('Smoke test', function() {
 ```
 
 Notice that all of the test cases use a `done` callback. This is because
-`exec` is asynchronous, and we'll need to pass to the `done` callback along to
-it. In the end, this will make the test _easier_ to write than in we used
-[`execSync`](https://nodejs.org/api/child_process.html#child_process_child_process_execsync_command_options)
-instead.
+`exec` is asynchronous, and you'll need to pass to the `done` callback along
+to it. In the end, this will make the test _easier_ to write rather than using
+[`execSync`](https://nodejs.org/api/child_process.html#child_process_child_process_execsync_command_options).
 
 ## Working with `HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH`
 
-Since we know the `HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH` will figure
-prominently in our test cases, let's add `beforeEach` and `after` hooks:
+Since you know the `HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH` will figure
+prominently in the test cases, add `beforeEach` and `after` hooks:
 
 ```js
 describe('Smoke test', function() {
@@ -158,10 +157,11 @@ describe('Smoke test', function() {
 ```
 
 The `beforeEach` hook will make sure the variable is clear before each test
-case. The `after` hook makes sure we clear the variable from the environment
-once all our cases have finished to avoid affecting other tests suites.
+case. The `after` hook makes sure that the fixture removes the variable from
+the environment after all of the cases have finished to avoid affecting other
+test suites.
 
-Now let's set the environment variables for the cases that need it:
+Now set the environment variable for the cases that need it:
 
 ```js
   it('should register successfully using the config from ' +
@@ -176,7 +176,7 @@ Now let's set the environment variables for the cases that need it:
   });
 ```
 
-Note that we're using
+Note that you're using
 [`path.join`](https://nodejs.org/api/path.html#path_path_join_path1_path2)
 to ensure that the config paths are portable across operating systems.
 
@@ -185,12 +185,12 @@ to ensure that the config paths are portable across operating systems.
 [Well-crafted repetition across test cases can be
 helpful]({{ site.baseurl }}/concepts/repetition-in-tests/). However, multiple
 assertions that are identical across test cases can cloud the differences
-between the test cases. Encapsulating these common assertions in a new
-function can help; the wrapper function can provide the repetition signalling
-common expectations far more efficiently.
+between those test cases. Encapsulating these common assertions in a new
+function can help; the wrapper function can more efficiently provide the
+repetition that signals common expectations.
 
-Combining this idea with the notion of a callback to `exec` that can validate
-the result, and we can begin writing the `checkHubot` harness function:
+By combining this idea with the notion of a callback to `exec` that can
+validate the result, you can begin writing the `checkHubot` harness function:
 
 ```js
 describe('Smoke test', function() {
@@ -204,10 +204,11 @@ describe('Smoke test', function() {
   };
 ```
 
-As mentioned earlier, `npm test` will set our `PATH` environment variable such
-that `exec` can find our `hubot` installation. We pass the `-t` option so
-`hubot` only checks its configuration and exits rather than starting an
-interactive session. The working directory is set to `rootDir`, and
+As mentioned earlier, `npm test` will set the `PATH` environment variable such
+that `exec` can find your `hubot` installation. The `checkHubot` helper
+function passes the `-t` option so `hubot` only checks its configuration and
+exits rather than starting an interactive session. The working directory is
+set to `rootDir`, and
 [`exec`](https://nodejs.org/api/child_process.html#child_process_child_process_exec_command_options_callback)
 will pass the outputs of the finished process to the callback.
 
@@ -215,7 +216,7 @@ The `done` argument will be the `done` callback passed by Mocha into each test
 fixture. `validateOutput` will be a callback defined by each test case to
 validate the standard output string from the `hubot` process.
 
-Let's fill in the structure of our callback to `exec`:
+Fill in the structure of the callback to `exec` as follows:
 
 ```js
     exec('hubot -t', { cwd: rootDir }, function(error, stdout, stderr) {
@@ -229,14 +230,14 @@ Let's fill in the structure of our callback to `exec`:
     });
 ```
 
-That's the basic outline. However, we still need to add the common assertions
-mentioned earlier. For every test case, we expect that:
+That's the basic outline. However, you still need to add the common assertions
+mentioned earlier. For every test case, you should expect that:
 
-- `hubot` will exit normally, meaning `error` should be `null`
-- `hubot` will not print anything to standard error
-- the last line of output should be "`OK`"
+- `hubot` will exit normally, meaning `error` should be `null`.
+- `hubot` will not print anything to standard error.
+- The last line of output should be "`OK`".
 
-With that in mind, let's update the content of the `try` block to:
+With that in mind, update the content of the `try` block to:
 
 ```js
         expect(error).to.be.null;
@@ -296,9 +297,11 @@ $ npm test -- --grep '^Smoke test '
 [20:55:14] Finished 'test' after 2.5 s
 ```
 
-Now that you're all finished, compare your solutions to the code in
+Now that you're finished, compare your solutions to the code in
 [`solutions/07-system/test/smoke-test.js`]({{ site.baseurl }}/solutions/07-system/test/smoke-test.js).
 
-You may wish to `git commit` your work to your local repo at this point. After
-doing so, try copying the `smoke-test.js` file from `solutions/07-system/test`
-into `exercises/test` to see if your implementation passes.
+At this point, `git commit` your work to your local repo. After you do, copy
+the `smoke-test.js` file from `solutions/07-system/test` into `exercises/test`
+to see if your implementation passes. If a test case fails, review the section
+of this chapter pertaining to the failing test case, then try to update your
+code to make the test pass.

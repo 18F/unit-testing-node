@@ -1,16 +1,15 @@
 ---
 title: Middleware class
 ---
-The `Middleware` class is where all of the pieces we've built up so far get
-integrated. It is the figurative brain and heart of the application. The name
-refers to its role in implementing a piece of [Hubot receive
+The `Middleware` class is the figurative heart and brain of the
+application—it's where all of the pieces you've built up so far [come
+together](https://www.youtube.com/watch?v=uSM5MpKSnqE). The name `Middleware`
+refers to the class's role in implementing a piece of [Hubot receive
 middleware](https://hubot.github.com/docs/scripting/#middleware). You can find
-it in the
-[`exercise/lib/middleware.js`]({{ site.baseurl }}/exercise/lib/middleware.js)
-file.
+it in the [`exercise/lib/middleware.js`]({{ site.baseurl }}/exercise/lib/middleware.js) file.
 
-If you've skipped to this chapter, you can establish the starting state of the
-`exercise/` files for this chapter by running:
+If you've skipped ahead to this chapter, you can establish the starting state
+of the `exercise/` files for this chapter by running:
 
 ```sh
 $ ./go set-middleware
@@ -18,44 +17,45 @@ $ ./go set-middleware
 
 ## What to expect
 
-Thanks to the work we've done encapsulating configuration validation in the
-`Config` class, rule matching logic in the `Rule` class, and API calls to
-Slack and GitHub in the `SlackClient` and `GitHubClient` classes, `Middleware`
-can focus squarely on the core application logic.
+Thanks to the work you've done encapsulating configuration validation in the
+`Config` class, rule-matching logic in the `Rule` class, and API calls to
+Slack and GitHub in the `SlackClient` and `GitHubClient` classes, the
+`Middleware` class can focus solely on the core application logic.
 
-We also don't need to test all possible corner and error cases for those other
-components, since they have been thoroughly tested in isolation. In fact, we
-don't need to run any HTTP servers in the `Middleware` test, because we can
-use [test
-doubles](http://googletesting.blogspot.com/2013/07/testing-on-toilet-know-your-test-doubles.html)
-to simulate their behavior. This will make the `Middleware` tests easier to
-write, to maintain, and to understand.
+Because you've already thoroughly tested them in isolation, you don't need to
+test all possible corner and error cases for the aforementioned classes. In
+fact, you don't need to run any HTTP servers in the `Middleware` test because
+you can simulate their behavior using [test
+doubles](http://googletesting.blogspot.com/2013/07/testing-on-toilet-know-your-test-doubles.html).
+This will make the `Middleware` tests easier to write, maintain, and understand.
 
-In short, we will learn to:
+In short, this chapter will teach you how to:
 
-- build our core application object using [composition rather than
+- Build your core application object using [composition rather than
   inheritance]({{ site.baseurl }}/concepts/object-composition-vs-inheritance)
-- write more controllable, maintainable, readable tests using test doubles and
+- Write more controllable, maintainable, readable tests using test doubles and
   a technique known as [dependency
   injection]({{ site.baseurl }}/concepts/dependency-injection)
-- use the [`sinon` library](http://sinonjs.org/) to create
+- Use the [`sinon` library](http://sinonjs.org/) to create
   [test doubles](http://googletesting.blogspot.com/2013/07/testing-on-toilet-know-your-test-doubles.html)
-- learn how to use `Promises` with mocha and chai
+- Use `Promises` with mocha and chai
 
 ## <a name="core-algorithm"></a>The core algorithm
 
-`Middleware` implements the core algorithm of the application:
+`Middleware` implements the core algorithm of the application—a process that
+includes the following steps:
 
-- Match an incoming `reaction_added` message against the rules.
-- If a match is found, get a list of all of the reactions to the message.
-- If there is no "success" reaction (defined in the configuration), file a
-  GitHub issue.
-- Add a "success" reaction to the message.
-- Post the link to the GitHub issue in the channel containing the message.
+- It compares an incoming `reaction_added` message to the existing rules.
+- If a match is found, it gets a list of all of the reactions to the message.
+- If there is no "success" reaction (defined in the configuration), it will
+  file a GitHub issue.
+- It will add a "success" reaction to the message.
+- Finally, it will post the link to the GitHub issue in the channel containing
+  the message.
 
-Thanks to the other classes we've written, `Middleware` is not concerned with
+Thanks to the other classes you've written, `Middleware` is not concerned with
 the details handled by those classes. This makes the `Middleware` class itself
-easier to implement, to understand, and especially easier to test.
+easier to implement, understand, and test.
 
 ## Starting to build `Middleware`
 
@@ -80,36 +80,35 @@ Middleware.prototype.execute = function(/* context, next, done */) {
 ```
 
 There are two very important things to notice about the constructor. First,
-the `rules`, `successReaction`, `slackClient`, `githubClient`, and `logger`
-objects become properties of the `Middleware` object. Rather than directly
-implement configuration validation, rule matching, HTTP request behavior, and
-logging, we delegate handling of those detailed operations to each respective
-object.
+the `config.rules`, `config.successReaction`, `slackClient`, `githubClient`,
+and `logger` objects become properties of the `Middleware` object. Rather than
+directly implementing configuration validation, rule matching, HTTP request
+behavior, and logging, the `Middleware` class delegates handling of those
+detailed operations to each respective object.
 
-Neither does `Middleware` inherit any behavior from other objects. Every
-dependency on behavior not implemented directly by `Middleware` itself is made
-explicit by a method call on a collaborating object. This is an illustration of
-[object composition]({{ site.baseurl }}/concepts/object-composition-vs-inheritance),
-one of the core design principles that leads to more readable, more maintable,
-more testable code.
+Neither does `Middleware` inherit behaviors from other objects. Every
+dependency on behavior *not* implemented directly by `Middleware` itself is
+made explicit by a method call on a collaborating object. This is an
+illustration of [object composition]({{ site.baseurl }}/concepts/object-composition-vs-inheritance),
+one of the core design principles that leads to more readable, maintable,
+testable code.
 
-The second thing to notice is that the `Middleware` object is not creating
+The second thing to notice is that the `Middleware` object doesn't create
 these collaborating objects itself. Rather, these _dependencies_ are
-_injected_ into the object by the code creating the `Middleware` object. The
-finished application will configure the `Middleware` to use real `Config`,
-`SlackClient`, and `GitHubClient` objects. However, our tests can use
-alternate implementations of `SlackClient` and `GitHubClient` in particular to
-exercise `Middleware` behavior without making actual Slack and GitHub API
-calls. [Dependency injection]({{ site.baseurl }}/concepts/dependency-injection)
-relies upon object composition to make it even easier to write focused,
-targeted, isolated, stable, readable, maintainable, valuable automated tests.
+_injected_ into the object by the code creating the `Middleware` object—hence
+the name "[dependency injection]({{ site.baseurl }}/concepts/dependency-injection)".
+The finished application will configure the `Middleware` to use real `Config`,
+`SlackClient`, and `GitHubClient` objects. However, your tests can use
+alternative implementations of `SlackClient` and `GitHubClient`, in
+particular, to exercise `Middleware` behavior without making actual Slack and
+GitHub API calls.
 
 ## Creating `Rule` objects from `config.rules`
 
-The first thing we need to do is promote the flat JSON objects from
-`config.rules` to full-fledged `Rule` objects. The `Config` object has already
-ensured that `config.rules` contains valid `Rule` specifications, so all we
-have to do is map each specification to a behavior-rich object:
+First promote the flat JSON objects from `config.rules` to full-fledged `Rule`
+objects. The `Config` object has already ensured that `config.rules` contains
+valid `Rule` specifications, so all you have to do is map each specification
+to a behavior-rich object:
 
 ```js
 var Rule = require('./rule');
@@ -122,32 +121,49 @@ function Middleware(config, slackClient, githubClient, logger) {
   });
 ```
 
-In contrast to our injected dependencies, our `Rule` objects are small,
-straightforward, and do not rely on outside resources such as files, servers,
-or timers. Should this somehow ever change, we may wish to extract the `Rule`
-instantiation into a factory object. For the time being, however, it's
-completely OK for `Middleware` to instantiate these objects directly, as
-opposed to `slackClient`, `githubClient`, or `logger`.
+In contrast to the injected dependencies, the `Rule` objects are small,
+straightforward, and not reliant on outside resources such as files, servers,
+or timers. Should this somehow ever change, you may wish to extract the `Rule`
+instantiation into a factory object. For the time being, though, it's
+completely OK for `Middleware` to instantiate these objects directly (unlike
+`slackClient`, `githubClient`, or `logger`, which do depend on outside
+resources).
 
 ## Understanding the `execute(context, next, done)` function signature
 
-The `Middleware` object implements the [Hubot receive middleware
+In the context of web application frameworks, "middleware" refers to a class or package implementing an
+interface that allows injection of new behavior into the framework used to
+implement a larger program.  The framework implements behaviors common to an
+entire class of applications, so that developers can focus on supplying
+application-specific behavior at well-defined points. _Middleware_ is
+analogous to terms such as _plugin_, _hook_, or _extension_, but usually
+refers to request processing performed before or after the core application
+logic.
+
+For our application, [Hubot](https://hubot.github.com/) is the framework, and
+the `Middleware` object implements the [receive middleware
 specification](https://hubot.github.com/docs/scripting/#middleware), which
-defines the following arguments:
+defines an `execute()` function accepting the following arguments:
 
-- **context**: for [receive
+- **`context`**: for [receive
   middleware](https://hubot.github.com/docs/scripting/#receive-middleware-api),
-  this contains a `response` property that itself contains the incoming
-  `message` and a `reply` method to send a response message to the user
-- **next**: a callback function that runs the next piece of middleware; must
-  be called with **done** as an argument, or a function that eventually calls
-  **done**
-- **done**: a callback function taking no arguments that signals completion of
-  middleware processing; typically passed as the sole argument to **next**,
-  but a middleware function can call it to abort further processing
+  this contains a `response` property that contains the incoming `message`, as
+  well as a `reply` method that sends a response message to the user
+- **`next`**: a callback function that runs the next piece of receive
+  middleware; it must be called with **`done`** as an argument, or a function
+  that eventually calls **`done`**
+- **`done`**: a callback function taking no arguments that signals completion
+  of receive middleware processing; typically passed as the sole argument to
+  **`next`**, but a receive middleware function can call it to abort further
+  processing
 
-The first thing we will do is uncomment the arguments and pick apart the parts
-of `context` that we need into separate variables:
+Technically speaking, the `Middleware` class abuses the middleware concept, as
+it _is_ the core application from our perspective. However, it is more complex
+than a typical script, and implementing it as middleware seemed easier than
+extending the `robot` interface presented to Hubot scripts.
+
+At this point, you will need to uncomment the arguments and pick apart into
+separate variables the various parts of `context` that you need:
 
 ```js
 Middleware.prototype.execute = function(context, next, done) {
@@ -160,7 +176,7 @@ Middleware.prototype.execute = function(context, next, done) {
 
 The `message` variable holds the raw JSON object representing the
 [`reaction_added` message](https://api.slack.com/events/reaction_added). These
-messages will look like this:
+messages look like this:
 
 ```json
 {
@@ -176,21 +192,21 @@ messages will look like this:
 }
 ```
 
-Note that, per the API documentation the `item` member can also be a `file` or
-a `file_comment`. Our implementation will not handle those types, though the
-actual application may eventually add support for them.
+Note that, per the API documentation, the `item` member can also be a `file`
+or a `file_comment`. Your implementation will not handle those types, though
+the actual application may eventually add support for them.
 
-The message receiving the message is uniquely identified by the channel ID
-(`channel`) and timestamp (`ts`). This is why we added those parameters to our
-`SlackClient` methods that implement the
+The conversation message receiving the `reaction_added` message is uniquely
+identified by the channel ID (`channel`) and timestamp (`ts`). This is why you
+added those parameters to the `SlackClient` methods that implement the
 [`reactions.get`](https://api.slack.com/methods/reactions.get) and
 [`reactions.add`](https://api.slack.com/methods/reactions.add) Slack API
 calls.
 
 ## Finding the matching `Rule` for an incoming `reaction_added` message
 
-We need to iterate through our array of `Rule` objects to find the `Rule` that
-matches the incoming message. Let's import the `SlackClient` library and give
+You need to iterate through the array of `Rule` objects to find the `Rule`
+that matches the incoming message. Import the `SlackClient` library and give
 this behavior its own method:
 
 ```js
@@ -210,13 +226,13 @@ Middleware.prototype.findMatchingRule = function(message) {
 };
 ```
 
-The first thing we do is assign `this.slackClient` to a new variable, since
-[`this` will refer to a different object inside the
+Then, assign `this.slackClient` to a new variable, since [`this` will refer to
+a different object inside the
 callback](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Functions#Lexical_this).
 
-Looking closely, we can see that there's also a new member to add to
+Looking closely, you can see that there's also a new member to add to
 `SlackClient`. Inside
-[`exercise/lib/slack-client.js`]({{ site.baseurl }}/exercise/lib/slack-client.js)
+[`exercise/lib/slack-client.js`]({{ site.baseurl }}/exercise/lib/slack-client.js),
 add the following just below the constructor:
 
 ```js
@@ -225,28 +241,30 @@ add the following just below the constructor:
 SlackClient.REACTION_ADDED = 'reaction_added';
 ```
 This keeps with the theme of adding all Slack-related information and behavior
-encapsulated within the `SlackClient` class. Of course, the most correct thing
-would be to `require('slack-client')` and get the value that way. However, given
-this is the only piece of information we need, we can [minimize
-dependencies]({{ site.baseurl }}/concepts/minimizing-dependencies/) by
-assigning this one constant value ourselves.
+encapsulated within the `SlackClient` class. Of course, the most technically
+correct thing to do would be to `require('slack-client')` and get the value
+that way. However, because the `reaction_added` message label is the
+only piece of information you need, you can
+[minimize dependencies]({{ site.baseurl }}/concepts/minimizing-dependencies/)
+by assigning this one constant value yourself.
 
-We wrap `this.rules.find` in a conditional to ensure that we call `Rule.match`
-with a valid message. This could theoretically be part of the `Rule.match`
-behavior itself. However, since the result of this check would remain the same
-across all `Rule` objects for any message, it makes sense to implement it here.
+Finally, wrap `this.rules.find` in a conditional to ensure that you call
+`Rule.match` with a valid message. This could theoretically be part of the
+`Rule.match` behavior itself. However, since the result of this check would
+remain the same across all `Rule` objects for any message, it makes sense to
+implement it here.
 
 ## Testing `findMatchingRule`
 
-Another benefit of writing this method first is that we can test its behavior
-thoroughly and directly without calling `execute`. Since `execute` will be the
-single function responsible for the entire application, it makes sense to
-implement and test this step in isolation. [This will give us confidence that
-all the corner cases are accounted for, without an exponential explosion in
-the number of test
+Another benefit of writing this method first is that doing so will allow you
+to test its behavior thoroughly and directly without calling `execute`.
+Because `execute` will be the single function responsible for the entire
+application, it makes sense to implement and test this step in isolation.
+[This will give you confidence that all the corner cases are accounted for,
+without an exponential explosion in the number of test
 cases](http://googletesting.blogspot.com/2008/02/in-movie-amadeus-austrian-emperor.html).
 
-Let's look at the first empty test case in
+Look first at the first empty test case in
 [`exercise/test/middleware-test.js`]({{ site.baseurl }}/exercise/test/middleware-test.js):
 
 ```js
@@ -257,11 +275,11 @@ describe('Middleware', function() {
   });
 ```
 
-The first thing we need is to instantiate a `Middleware` instance in our test
-fixture. We'll also instantiate `Config`, `SlackClient`, `GitHubClient`, and
+At this step, you need to instantiate a `Middleware` instance in the test
+fixture. You'll also instantiate `Config`, `SlackClient`, `GitHubClient`, and
 `Logger` objects. Add all of the necessary `require` statements, configure the
-chai assertions, and then create `config`, `slackClient`, `githubClient`,
-`logger`, and `middleware`:
+chai assertions, and then create the `config`, `slackClient`, `githubClient`,
+`logger`, and `middleware` fixture variables:
 
 ```js
 var Middleware = require('../lib/middleware');
@@ -289,27 +307,27 @@ describe('Middleware', function() {
   });
 ```
 
-Notice that we're instantiating `logger` using the `console` object. It
+Notice that you're instantiating `logger` using the `console` object. It
 contains `info` and `error` methods just like the `robot.logger` that the real
-application will use. As we'll see later, we shoudn't actually invoke any of
-the `console` methods. If it happens by accident, we'll see the unexpected
-output printed within the test results.
+application will use. As you'll see later, it shouldn't invoke any of the
+`console` methods. If it happens by accident, you'll see the unexpected output
+printed within the test results.
 
 ## Introducing the `sinon` test double library
 
-Notice that we leave the robotSlackClient argument to the `SlackClient`
-constructor undefined. Since `SlackClient` is already thoroughly tested, we
-can emulate its behavior without defining all (or any) of its dependencies by
-using a
-[test double](http://googletesting.blogspot.com/2013/07/testing-on-toilet-know-your-test-doubles.html).
-We'll now introduce the [`sinon` library](http://sinonjs.org/) to create a
-test doubles for `SlackClient`.
+You may have noticed that you didn't define the `robotSlackClient` argument to
+the `SlackClient` constructor. Since `SlackClient` has already been thoroughly
+tested, you can emulate its behavior without defining all (or any) of its
+dependencies by using a [test
+double](http://googletesting.blogspot.com/2013/07/testing-on-toilet-know-your-test-doubles.html).
+You'll now introduce the [Sinon library](http://sinonjs.org/) to create a
+test double for `SlackClient`.
 
-`sinon` is a library that can create stub, fake, and mock objects for you.
-Though we wrote our own
+Sinon is a library that you can use to create stub, fake, and mock objects.
+Though you wrote your own
 [`SlackClientImplStub`]({{ site.baseurl }}/exercises/test/helpers/slack-client-impl-stub.js)
-when testing the `Rule` class, we will need more objects and more behavior
-when testing `Middleware`. As a result, we'll use `sinon` to create a double
+when testing the `Rule` class, you'll need more objects and more behavior for
+testing `Middleware`. Because of this, you'll use `sinon` to create a double
 for `SlackClient` in this test, rather than extracting `SlackClientImplStub`
 into `test/helpers`.
 
@@ -338,17 +356,18 @@ following to set up and tear down the test double for the
     });
 ```
 
-Here we create a [stub](http://sinonjs.org/docs/#stubs) for the
-`getChannelName` method of the `slackClient` object. We can control what the
-stub returns when it's called via `returns`. There are many other features of
-sinon stubs, and you are welcome to experiment with other methods beyond
-what's covered in this chapter.
+Here, create a [stub](http://sinonjs.org/docs/#stubs) for the `getChannelName`
+method of the `slackClient` object. Using the `returns` method, you can
+control what the stub returns when it's called. There are many other features
+of Sinon stubs; you're welcome to explore the [Sinon
+documentation](http://sinonjs.org/docs/) and experiment with other methods
+beyond what's covered in this chapter.
 
 ## `reaction_added` test data
 
-The final thing we need is a `reaction_added` message instance. Now that we're
-familiar with the pattern of adding test data to our `test/helpers` package,
-let's add the following to `exercise/test/helpers/index.js`:
+The final thing you need is a `reaction_added` message instance. Now that
+you're familiar with the pattern of adding test data to the `test/helpers`
+package, add the following to `exercise/test/helpers/index.js`:
 
 ```js
 var SlackClient = require('../../lib/slack-client');
@@ -378,7 +397,7 @@ exports = module.exports = {
 
 ## The `findMatchingRule` test suite
 
-With this helper data in place, we can now implement our first test:
+With this helper data in place, you can now implement the first test:
 
 ```js
     it('should find the rule matching the message', function() {
@@ -415,7 +434,7 @@ contains:
 Since `message` contains `reaction: "evergreen_tree"`, but the
 `getChannelName` stub will return a name that doesn't match the first rule,
 `findMatchingRule` should return the final rule. Run `npm test -- -grep '
-findMatchingRule '` and you should see:
+findMatchingRule '` and you should see the following:
 
 ```sh
 $ npm test -- --grep ' findMatchingRule '
@@ -438,11 +457,11 @@ $ npm test -- --grep ' findMatchingRule '
 [13:51:23] Finished 'test' after 138 ms
 ```
 
-We have demonstrated that `findMatchingRule` _is_ calling `match` on every
-`Rule` by testing for a match on the final rule. Consequently, while we
-_could_ test that every value is returned, doing so is of dubious benefit.
-What we should care about more is covering all of the cases where a message
-matches _none_ of the rules:
+You have demonstrated that `findMatchingRule` _is_ calling `match` on every
+`Rule` by testing for a match on the last member of `config.rules`.
+Consequently, while you _could_ test to make sure that every value is
+returned, doing so is of dubious benefit. Instead, you should focus on
+covering all of the cases where a message matches _none_ of the rules:
 
 ```js
     it('should ignore a message if it is undefined', function() {
@@ -461,8 +480,8 @@ matches _none_ of the rules:
     });
 ```
 
-Copy and paste these tests into your file, and fill in the tests yourself.
-Use the implementation of `findMatchingRule` to understand what parts of
+Copy and paste these tests into your file and fill in the tests yourself.
+Use the implementation of `findMatchingRule` to understand what parts of the
 `message` you must change to exercise every condition. All of the assertions
 should be of the form `expect(...).to.be.undefined` since `findMatchingRule`
 should return either a valid `Rule` object or `undefined` if no rule matches.
@@ -473,8 +492,8 @@ moving on to the next section.
 ## Starting to build the `execute` test fixture
 
 Now that `findMatchingRule` is in place, let's return to `execute` and begin
-to test it. As a base case, we want to make sure that `execute` calls
-`next(done)` and returns if no rule matches:
+to test it. As a base case, make sure that `execute` calls `next(done)` and
+returns if no rule matches:
 
 ```js
 Middleware.prototype.execute = function(context, next, done) {
@@ -489,8 +508,8 @@ Middleware.prototype.execute = function(context, next, done) {
 };
 ```
 
-The first thing we need to do is simulate the `context` object, the `next`
-callback, and the `done` callback (called `hubotDone` in our fixture):
+The first thing you need to do is simulate the `context` object, the `next`
+callback, and the `done` callback (called `hubotDone` in the fixture):
 
 ```js
   describe('execute', function() {
@@ -511,18 +530,19 @@ callback, and the `done` callback (called `hubotDone` in our fixture):
 The `context.response.reply` and `next` objects defined above are [sinon
 spies](http://sinonjs.org/docs/#spies). Spies are similar to stubs, but are
 more limited in that they cannot be programmed to return values or throw
-errors. Since both of these methods are called without any action taken on
+errors. Because both of these methods are called without any action taken on
 their return values, spies are sufficient to validate the `Middleware`
 behavior under test.
 
 ## Creating a full-featured incoming test message
 
-Note that we're defining a new test helper method, `fullReactionAddedMessage`.
-While the existing `reactionAddedMessage` contains the JSON returned from the
-[`reaction_added` API message](https://api.slack.com/events/reaction_added),
+It's worth pointing out that you're in the process of defining a new test
+helper method, `fullReactionAddedMessage`. While the existing
+`reactionAddedMessage` contains the JSON returned from the [`reaction_added`
+API message](https://api.slack.com/events/reaction_added),
 [hubot-slack](https://www.npmjs.com/package/hubot-slack) package will wrap
-this raw message with other objects. Consequently, let's add the following to
-the `exercise/test/helpers/index.js` file:
+this raw message with other objects. Consequently, add the following to the
+`exercise/test/helpers/index.js` file:
 
 ```js
 var Hubot = require('hubot');
@@ -546,10 +566,11 @@ exports = module.exports = {
 ```
 
 The `reactionAddedMessage` defined above will become the `rawMessage` property
-of the object returned by `fullReactionAddedMessage`. We don't necessarily
+of the object returned by `fullReactionAddedMessage`. You don't necessarily
 need to use actual `Hubot` and `SlackBot` objects to test our `Middleware`
-behavior. However, using them provides the security that if an upgrade to
-either package changes the interfaces we depend on, our tests will notify us.
+behavior. However, using them will provide you the security that if an upgrade
+to either package changes the interfaces we depend on, you tests will notify
+you.
 
 ## Testing the "no matching rule" case
 
@@ -564,25 +585,25 @@ parse a message and file an issue` case:
     });
 ```
 
-Deleting `context.response.message.rawMessage` works because we know that
-`execute` passes this value to `findMatchingRule`, and `findMatchingRule` will
-return `undefined` if its `message` argument is `undefined`. Run the test via
-`npm test -- --grep ' execute '` and ensure it passes.
+Deleting `context.response.message.rawMessage` works because `execute` passes
+this value to `findMatchingRule`, and `findMatchingRule` will return
+`undefined` if its `message` argument is `undefined`. Run the test via `npm
+test -- --grep ' execute '` and make sure that it passes.
 
-We will add at least one more assertion to this rule as we implement the rest
-of `execute`.
+Next you'll add more assertions to this rule as you implement the rest of
+`execute`.
 
 ## Sketching out the rest of `execute` via `Promise` chaining
 
 If `execute` finds a matching rule, it needs to launch a series of
-asynchronous operations in a specific sequence. As introduced in the
+asynchronous operations in a specific sequence. As you learned in the
 `SlackClient` chapter,
 [`Promises`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
 represent asynchronous operations that will either _resolve_ to a value or be
-_rejected_ with an error. A series of `Promise` objects may be chained
-together to execute asynchronous operations in a way that resembles a series
-of synchronous function calls. Plus, a single error handler can catch errors
-arising from any link in the `Promise` chain.
+_rejected_ with an error. You can chain a series of `Promise` objects together
+to execute asynchronous operations in a way that resembles a series of
+synchronous function calls. In addition, a single error handler can catch
+errors arising from any link in the `Promise` chain.
 
 Therefore, if `execute` finds a matching rule, it will return a `Promise` that
 represents a `Promise` chain handling the various Slack and GitHub API calls.
@@ -599,16 +620,16 @@ statement at the end of `execute` with this:
     .then(handleSuccess(finish), handleFailure(finish));
 ```
 
-Notice that each of these steps corresponds to the remainder of the [core
-algorithm](#core-algorithm). If any of the `Promises` in the chain before
-`handleSuccess` are rejected, the `handleFailure` case will report the
-error. There are two pieces of data here that we've yet to define:
+Note that each of these steps corresponds to the remainder of the [core
+algorithm](#core-algorithm). If any `Promise` in the chain before
+`handleSuccess` is rejected, the `handleFailure` case will report the error.
+There are two pieces of data here that you have yet to define:
 
 - **`msgId`**: a unique identifier computed for the incoming message
 - **`finish`**: a callback that gets called by both `handleSuccess` and
   `handleFailure`
 
-We'll define a function private to the module like so:
+Define a function private to the module like so:
 
 ```js
 function messageId(message) {
@@ -616,7 +637,7 @@ function messageId(message) {
 }
 ```
 
-Now we'll add a `msgId` variable to `execute`, and call it _after_
+Now add a `msgId` variable to `execute`, and call it _after_
 `findMatchingRule`, since this new function expects `message` to be defined:
 
 ```js
@@ -657,18 +678,18 @@ function getReactions(middleware, msgId, message) {
 }
 ```
 
-However, notice that we specified a `msgId` argument that we currently are not
+However, note that you specified a `msgId` argument that you're currently not
 using. Remember that this program will run as a Hubot plugin, and that Hubot
-runs as a long-lived service, so our plugin will run indefinitely. Also, our
+runs as a long-lived service, so the plugin will run indefinitely. Also, the
 plugin may handle multiple incoming messages at once, making multiple
 concurrent requests to Slack and GitHub in the process.
 
 Though it's not core to the overall correct functioning of the program, these
 considerations make logging a critical component of operational monitoring and
-debugging. We will use `msgId` as a prefix for log messages describing the
+debugging. You'll use `msgId` as a prefix for log messages describing the
 progress and outcome of the requests made during processing of the message.
 
-Here is the fully fleshed out version of `getReactions`:
+Here is the fully fleshed-out version of `getReactions`:
 
 ```js
 function getReactions(middleware, msgId, message) {
@@ -690,12 +711,12 @@ function getReactions(middleware, msgId, message) {
 }
 ```
 
-We use the `slackClient` to get our team's Slack domain name, the channel
-name, and the list of all reactions to the message. We define a special
+You use the `slackClient` to get your team's Slack domain name, the channel
+name, and the list of all reactions to the message. You must define a special
 `reject` handler here to add some more information to the error message
 returned when `githubClient.getReactions` fails. The only `slackClient` method
-used here that  we haven't yet implemented is `getTeamDomain`. This method is
-very straightforward; let's implement it now in `exercise/lib/slack-client.js`:
+used here that you haven't yet implemented is `getTeamDomain`. This method is
+very straightforward; implement it now in `exercise/lib/slack-client.js`:
 
 ```js
 SlackClient.prototype.getTeamDomain = function() {
@@ -703,21 +724,20 @@ SlackClient.prototype.getTeamDomain = function() {
 };
 ```
 
-With all this information in hand, we compute the `permalink` pertaining to
-the message. Though the `slackClient.getReactions` response will include this
-`permalink`, it's very handy to include it in the log message announcing API
-call.
+With all this information in hand, you can compute the `permalink` pertaining
+to the message. Though the `slackClient.getReactions` response will include
+this `permalink`, it's very handy to include it in the log message announcing
+API call.
 
 ## `fileGitHubIssue`
 
 Recall that `slackClient.getReactions` will return a `Promise` that will
 resolve to a [`reactions.get` API
-response](https://api.slack.com/methods/reactions.get). The way that `Promise`
-chains work is that the function passed as the first argument to
-[`.then()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then))
-will be called with the resolved value. In that light, `fileGitHubIssue` is a
-_factory function_ that returns a new function called a
-[closure](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Closures),
+response](https://api.slack.com/methods/reactions.get). `Promise` chains work
+by using the resolved value to call the function passed as the first argument
+to [`.then()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then)).
+In that light, `fileGitHubIssue` is a _factory function_ that returns a new
+function called a [closure](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Closures),
 which can access the arguments to `fileGitHubIssue`. This closure will also
 take a `message` argument passed in from `slackClient.getReactions`:
 
@@ -742,23 +762,21 @@ function fileGitHubIssue(middleware, msgId, githubRepository) {
 }
 ```
 
-Notice the final line in particular, where we _return the `Promise` created by
+Notice the final line, which _returns the `Promise` created by
 `githubClient.fileNewIssue`_. In fact, the `Promise` isn't created when
 `fileGitHubIssue` is called; it is created when _the closure returned by
 `fileGitHubIssue` is called, which then calls `githubClient.fileNewIssue`_.
 
-This would be a good time to review [`Promise` gotcha #1: not returning the
-`Promise`]{{ site.baseurl }}/components/slack-client/#promises-gotcha-1)
-from the `SlackClient` chapter. If we return a `Promise` directly from
-`fileGitHubIssue`, it will get created too early. If we don't explicitly
-_return_ the `Promise`, it will execute, but it won't become integrated
-into the `Promise` chain built by `execute`.
+This is a good time for you to review [Promise gotcha #1: not returning the
+`Promise`]{{ site.baseurl }}/components/slack-client/#promises-gotcha-1) from
+the `SlackClient` chapter. If you return a `Promise` directly from
+`fileGitHubIssue`, it will get created too early. If you don't explicitly
+_return_ the `Promise`, it will execute, but it won't become integrated into
+the `Promise` chain built by `execute`.
 
-We define a special `reject` handler here to add some more information to the
-error message returned when `githubClient.fileNewIssue` fails.
-
-Also notice that there is another `Middleware` method that we have yet to
-define, `parseMetadata`.
+The `reject` handler adds some more information to the error message returned
+when `githubClient.fileNewIssue` fails. Also, please note that there is
+another `Middleware` method—`parseMetadata`—that you have yet to define.
 
 ## Extracting `githubClient.fileNewIssue` information with `parseMetadata`
 
@@ -775,8 +793,9 @@ function makeApiCall(client, metadata, repository) {
       });
 ```
 
-We're now at the point in `Middleware` processing where we can compute this
-information and make the GitHub call. Define the `parseMetadata` method thus:
+You're now at the point in `Middleware` processing where you can compute this
+information and make the GitHub call. Define the `parseMetadata` method as
+follows:
 
 ```js
 Middleware.prototype.parseMetadata = function(message) {
@@ -796,16 +815,16 @@ The `message` argument is [the result of the `slackClient.getReactions`
 call](https://api.slack.com/methods/reactions.get), passed through by
 `fileGitHubIssue`. The resulting issue title will contain the channel and the
 date the message was entered. The issue body will be just the permalink URL
-for the message. We limit the information in this way to avoid leaking any
-user details, or any sensitive content contained in the message. This
-information is more than enough for a repository maintainer to find the tagged
-message and triage the issue.
+for the message. Limiting the information in this way avoids leaking any user
+details or other sensitive content contained in the message. This information
+is more than enough for a repository maintainer to find the tagged message and
+triage the issue.
 
 ## Testing `parseMetadata`
 
 Since this is a lightweight, stateless method, let's break from the `Promise`
 chain to write a small test to ensure `parseMetadata` behaves as expected.
-Since it makes use of `slackClient`, we'll need to set up a test stub as we
+Since it makes use of `slackClient`, you'll need to set up a test stub as you
 did with `findMatchingRule`:
 
 ```js
@@ -822,11 +841,11 @@ did with `findMatchingRule`:
     });
 ```
 
-Before writing the test, remember that we already have two handy bits of data
-in `test/helpers/index.js` from when we wrote tests for `SlackClient` and
-`GitHubClient`. We'll reuse `helpers.messageWithReactions` and
-`helpers.metadata` for our new test for `parseMetadata`. First, let's add a
-`permalink` property to `messageWithReactions.message`, since that is key to
+Before writing the test, remember that you already have two handy bits of data
+in `test/helpers/index.js` from when you wrote tests for `SlackClient` and
+`GitHubClient`. You'll reuse `helpers.messageWithReactions` and
+`helpers.metadata` for the new test for `parseMetadata`. First, add a
+`permalink` property to `messageWithReactions.message`, since it's key to
 producing the expected `metadata`:
 
 ```js
@@ -846,7 +865,7 @@ producing the expected `metadata`:
   },
 ```
 
-Now we write the single test needed to validate `parseMetadata`:
+Now write the single test needed to validate `parseMetadata`:
 
 ```js
     it('should parse GitHub request metadata from a message', function() {
@@ -860,8 +879,8 @@ Now we write the single test needed to validate `parseMetadata`:
 
 Notice the use of the [`deep.property` chai
 assertion](http://chaijs.com/api/bdd/#property) to inspect the
-`getChannelName.args` array. This gives us more helpful error messages should
-`getChannelName.args[0]` not exist.
+`getChannelName.args` array. This will provide more helpful error messages
+in the case that `getChannelName.args[0]` doesn't exist.
 
 Run `npm test -- --grep '^Middleware '` and ensure the test passes before
 moving on.
@@ -895,25 +914,25 @@ function addSuccessReaction(middleware, msgId, message) {
 }
 ```
 
-The closure takes as an argument the `issueUrl` produced when the `Promise` by
-`githubClient.fileNewIssue` resolves successfully. If the entire operation
-succeeds, `execute` will post `issueUrl` in the channel containing the message
-as a response to the user who added the reaction.
+The closure takes as an argument the `issueUrl` that's produced when the
+`Promise` by `githubClient.fileNewIssue` resolves successfully. If the entire
+operation succeeds, `execute` will post `issueUrl` as a response to the user
+who added the reaction (in the channel containing the message).
 
-Inside the closure, first we set up the success and error handlers for the
-`slackClient.addSuccessReaction` call at the end. This final call will return
-a `Promise` that has its own success and error handlers. These handlers will
-execute before the next `Promise` in the chain created by `execute`.
+Inside the closure, you should first set up the success and error handlers for
+the `slackClient.addSuccessReaction` call at the end. This final call will
+return a `Promise` that has its own success and error handlers that will
+will execute before the next `Promise` in the chain created by `execute`.
 
-The success handler, `resolve`, passes through the `issueUrl` by [producing a
-new `Promise` that resolves to the
+`resolve`, the success handler, passes through the `issueUrl` by [producing a
+new `Promise` that resolves to the `issueUrl`
 value](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/resolve).
-The failure handler, `reject`, creates a new
+`reject`, the failure handler, creates a new
 [`Error`](https://nodejs.org/api/errors.html) value used to [produce a new
 `Promise` that is rejected with the
 error](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/reject).
 
-Again, this can't be repeated enough: [always make sure to `return` the
+Again, this can't be repeated enough: [Always make sure to `return` the
 `Promise` from every
 function!]({{ site.baseurl }}/components/slack-client/#promises-gotcha-1)
 
@@ -938,21 +957,21 @@ function handleFailure(middleware, githubRepository, finish) {
 }
 ```
 
-Recall from our definition of `execute` that `finish` is a tiny function that
-calls `next(done)` to signal to Hubot that this middleware's processing is
-finished. At the moment, the value we're passing in will be ignored. We'll
-update `finish` to rectify this shortly.
+Recall from the previously discussed definition of `execute` that `finish` is
+a tiny function that calls `next(done)` to signal to Hubot that a given
+middleware's processing is finished. At the moment, the value you're passing
+in will be ignored (though you'll update `finish` shortly to rectify this).
 
 Note that the `Promises` returned here have no bearing on the `next(done)`
 call at all, or on Hubot generally. When deployed, the resolved or rejected
-values will be discarded. In our tests, however, they enables us to use
+values will be discarded. In your tests, however, they enables you to use
 [chai-as-promised assertions](https://www.npmjs.com/package/chai-as-promised)
 to validate the outcome of `execute` in each test case.
 
 ## Preparing the `execute` fixture for thorough tests
 
-We're just about ready to get some tests around this new behavior. First let's
-update our `execute` test fixture:
+You're just about ready to get some tests around this new behavior. First,
+update your `execute` test fixture:
 
 ```js
   describe('execute', function() {
@@ -984,45 +1003,44 @@ update our `execute` test fixture:
     });
 ```
 
-_Note:_ `slackClient.getTeamDomain` returns a _lowercased_ "18f" to match
+*Note:* `slackClient.getTeamDomain` returns a _lowercased_ "18f" to match
 `helpers.PERMALINK`.
 
-The most notable update here is that we are stubbing the `slackClient`,
+The most notable update here is that you're stubbing the `slackClient`,
 `githubClient`, and `logger` objects. Though the sinon documentation generally
-recommends against this, we control all of these interfaces, as they are
-defined within our own application. The risk of these objects evolving in
-unexpected ways is managably tiny.
+recommends against this, you control all of these interfaces, which are
+defined within your own application. Because of this, the risk of these
+objects evolving in unexpected ways is manageably tiny.
 
-As for why we use stubs rather than full blown mock objects, read the [Mocks
-vs. stubs chapter of the Concepts
-guide]({{ site.baseurl }}/concepts/mocks-vs-stubs/).
+As for why you should use stubs rather than full-blown mock objects, read the
+[Mocks vs. stubs chapter of the Concepts guide]({{ site.baseurl }}/concepts/mocks-vs-stubs/).
 
 Bear in mind that the `slackClient.getReactions`, `githubClient.fileNewIssue`,
-and `slackClient.addSuccessReaction` responses we set in `beforeEach`
-correspond to the "happy path" which produces a new GitHub issue. In each
-individual test case that veers from this happy path, we will override one of
-these default values.
+and `slackClient.addSuccessReaction` responses you set in `beforeEach`
+correspond to the "happy path," which produces a new GitHub issue. In each
+test case that veers from this happy path, you will override one of these
+default values.
 
-While these tests will appear a bit more complex than previous tests, there
-are two things to keep in mind. One, our `Middleware` class integrates all of
-the behaviors we've developed in isolation prior to this point. Naturally
-there will be more objects working in collaboration, and more behavior to
-model and verify.
+These tests appear to be a bit more complex than previous tests, and there are
+two related points to keep in mind. One, your `Middleware` class integrates
+all of the behaviors you've developed in isolation prior to this point.
+Naturally, there will be more objects working in collaboration, along with
+more behavior to model and verify.
 
 Second, by designing the `Middleware` class for [dependency
-injection]({{ site.baseurl }}/concepts/dependency-injection), we are able to
+injection]({{ site.baseurl }}/concepts/dependency-injection), you're able to
 exercise the core `execute` logic using lightweight, controllable [test
 doubles](http://googletesting.blogspot.com/2013/07/testing-on-toilet-know-your-test-doubles.html).
-This makes our set up and tear down less cumbersome, makes corner cases easier
+This makes your setup and tear down less cumbersome, makes corner cases easier
 to exercise, and makes expected outcomes easier to validate. Plus, as systems
 grow larger, isolating system components via dependency injection and test
 doubles can make the test suite run exponentially faster.
 
 ## Testing the happy path
 
-We're at the point where we can test the "happy path" through `execute`,
+You're now at the point where you can test the "happy path" through `execute`,
 successfully filing an issue and adding the success reaction to the message.
-Let's examine our empty test case:
+Let's examine the empty test case:
 
 ```js
     it('should receive a message and file an issue', function(done) {
@@ -1030,20 +1048,21 @@ Let's examine our empty test case:
     });
 ```
 
-Recall that `execute` will return a `Promise`, and that we've used
+Recall that `execute` will return a `Promise`, and recall too that you've used
 [chai-as-promised](https://www.npmjs.com/package/chai-as-promised) assertions
-such as `should.become` and `should.be.rejectedWith` in our `SlackClient` and
-`GitHubClient` tests. In those tests, we actually returned the expressions
-containing those assertions, which evaluated to `Promises`, because
-[mocha supports this style of asynchronous
-notification](https://mochajs.org/#working-with-promises). Consequently, there
-was no need to rely upon [mocha's `done` callback
+such as `should.become` and `should.be.rejectedWith` in your `SlackClient` and
+`GitHubClient` tests. In those tests, you actually returned the expressions
+containing those assertions (which evaluated to `Promises`) because [mocha
+supports this style of asynchronous
+notification](https://mochajs.org/#working-with-promises). Consequently, you
+had no need to rely upon [mocha's `done` callback
 support](https://mochajs.org/#asynchronous-code).
 
-In this test, however, we're actually defining `done` because we need to
+In this test, however, you're actually defining `done` because you need to
 validate other behaviors after the `Promise` has resolved. [chai-as-promised
-allows us to create a `Promise` chain to eventualy call
-`done`](https://www.npmjs.com/package/chai-as-promised#working-with-non-promisefriendly-test-runners) using the format:
+allows you to create a `Promise` chain to eventually call
+`done`](https://www.npmjs.com/package/chai-as-promised#working-with-non-promisefriendly-test-runners)
+using the format:
 
 ```js
     it('should do something asynchronous', function(done) {
@@ -1053,7 +1072,7 @@ allows us to create a `Promise` chain to eventualy call
     });
 ```
 
-So for our happy-path test, let's write:
+For your happy-path test, write the following:
 
 ```js
     it('should receive a message and file an issue', function(done) {
@@ -1064,14 +1083,14 @@ So for our happy-path test, let's write:
     });
 ```
 
-Note that when we validated `next.calledWith(hubotDone).should.be.true` in
-`should ignore messages that do not match`, we were able to do so directly.
-This because in that case, `execute` returned `undefined` instead of a
-`Promise`. In this case, since there was asynchronous work to be done,
+Note that when you validated `next.calledWith(hubotDone).should.be.true` in
+`should ignore messages that do not match`, you were able to do so directly.
+This was because, in that case, `execute` returned `undefined` instead of a
+`Promise`. In this case, because there is asynchronous work to be done,
 `execute` returns a `Promise`, so we need to perform this check after the
 `Promise` resolves.
 
-Finally, let's verify that our new test passes:
+Finally, verify that your new test passes:
 
 ```sh
 $ npm test -- --grep ' execute '
@@ -1094,7 +1113,7 @@ $ npm test -- --grep ' execute '
 [10:04:04] Finished 'test' after 547 ms
 ```
 
-Success! However, there are actually a couple details that our test _isn't_
+Success! However, there are actually a couple details that your test _isn't_
 testing for right now:
 
 - `Middleware` should call `context.response.reply` to reply to the user who
@@ -1116,7 +1135,7 @@ Let's handle the `context.response.reply` piece first by adding this assertion:
       }).should.notify(done);
 ```
 
-Our test should fail with:
+Your test should fail with the following:
 
 ```sh
 $ npm test -- --grep ' execute '
@@ -1161,7 +1180,7 @@ Message:
 npm ERR! Test failed.  See above for more details.
 ```
 
-Recall that our current `finish` function is defined in the body of `execute`
+Recall that your current `finish` function is defined in the body of `execute`
 as:
 
 ```js
@@ -1170,7 +1189,7 @@ as:
   };
 ```
 
-Yet we're already passing it an argument from both `handleSuccess` and
+Yet you're already passing it an argument from both `handleSuccess` and
 `handleFailure`. Let's first update `finish` inline to report the success or
 error message to the user:
 
@@ -1181,9 +1200,9 @@ error message to the user:
   };
 ```
 
-Run the tests again, and this should pass. While it's passing, let's take the
-opportunity to create a factory function for `finish` like we did with all the
-others.
+Run the tests again, and this should pass. While it's passing, take the
+opportunity to create a factory function for `finish` as you did with all the
+others:
 
 ```js
 function handleFinish(response, next, done) {
@@ -1194,7 +1213,7 @@ function handleFinish(response, next, done) {
 }
 ```
 
-Then replace the existing `finish` assignment with:
+Then replace the existing `finish` assignment with this:
 
 ```js
   finish = handleFinish(response, next, done);
@@ -1203,24 +1222,24 @@ Then replace the existing `finish` assignment with:
 ## Refactoring
 
 Run the test to make sure it still passes. This an example of
-[refactoring](https://en.wikipedia.org/wiki/Code_refactoring), improving the
-structure of existing code to improve readability and to accommodate new
+[refactoring](https://en.wikipedia.org/wiki/Code_refactoring), or improving
+the structure of existing code to improve readability and accommodate new
 features. Having a solid suite of high-quality automated tests is critical to
-making refactoring a regular habit. This in turn allows development to
-continue at a sustained high pace, rather than slowing down due to fear of
-breaking existing behavior. A good suite of tests will tell you when something
-is wrong, and will encourage designs that are easier to change in the long
-term.
+making refactoring a regular habit. This, in turn, allows development to
+continue at a sustained high pace, rather than requiring it to slow down due
+to the fear of breaking existing behavior. A good suite of tests will tell you
+when something is wrong, and will encourage designs that are easier to change
+in the long term.
 
 ## Validating logging behavior
 
 Even though all the other test assertions serve to validate the application's
-behavior, it's important to ensure that our logging behavior is in good shape.
-In production, we will rely upon the logs to tell when the application is
-behaving normally or experiencing an error. We should ensure that we'll get
-the information we expect from our log messages.
+behavior, it's important to ensure that your logging behavior is in good
+shape. In production, you will rely upon the logs to tell when the application
+is behaving normally or experiencing an error. You should ensure that you'll
+get the information you expect from your log messages.
 
-Let's start by adding another assertion to our test:
+Start by adding another assertion to your test:
 
 ```js
       middleware.execute(context, next, hubotDone)
@@ -1234,7 +1253,7 @@ Let's start by adding another assertion to our test:
       }).should.notify(done);
 ```
 
-Now we're gonna cheat a little. Let's just run the test and take a look at the
+Now you're going to cheat a little. Just run the test and take a look at the
 output:
 
 ```sh
@@ -1293,18 +1312,18 @@ Message:
 npm ERR! Test failed.  See above for more details.
 ```
 
-We're seeing a few things we expect:
+You're seeing a few things you should've expected:
 
-- each call has the message ID as the first argument
-- the first two calls include the message permalink
-- the last call includes `config.successReaction`
+- Each call has the message ID as the first argument.
+- The first two calls include the message permalink.
+- The last call includes `config.successReaction`.
 
-However, we're missing:
+However, you're also missing a few things:
 
-- a call for when the message matches a rule
-- a call for when the entire operation succeeds
+- A call for when the message matches a rule
+- A call for when the entire operation succeeds
 
-Since we'll expect the message ID at the beginning of every log message, let's
+Since you'll expect the message ID at the beginning of every log message,
 write a helper function to generate the expected log arguments:
 
 ```js
@@ -1329,7 +1348,7 @@ exports = module.exports = {
   }
 ```
 
-Now let's update our test to read:
+Now update your test to read:
 
 ```js
         var matchingRule = new Rule(helpers.baseConfig().rules[2]);
@@ -1344,7 +1363,7 @@ Now let's update our test to read:
         ]);
 ```
 
-Run the test, and make sure it fails. Then go back to `Middleware` and add or
+Run the test and make sure it fails. Then go back to `Middleware` and add or
 update the necessary calls to `logger.info` to get the test to pass. Note that
 the last call will require passing `logger` and the message ID as arguments to
 `handleFinish`.
@@ -1353,15 +1372,15 @@ Make sure the test passes before continuing to the next section.
 
 ## Prevent filing multiple issues _while_ filing an issue
 
-So we've now tested a complete path through our core algorithm. However,
-there's a couple of corner cases we've yet to cover. The first is ensuring
-that when `execute` has begun to file an issue, that it doesn't allow another
+You've now tested a complete path through your core algorithm. However,
+you still have a few corner cases to cover. The first is ensuring that when
+`execute` has begun to file an issue, it doesn't allow another
 `reaction_added` event for the same message.
 
-Since we have a successful happy path test case in hand, let's copy parts of
-it and adapt it for this new requirement. If processing for a particular
-message is already underway, a subsequent call for the same message should
-return `undefined`:
+Because you already have a successful happy path test case in hand, you can
+copy parts of it and adapt it for this new requirement. If processing for a
+particular message is already underway, a subsequent call for the same message
+should return `undefined`:
 
 ```js
     it('should not file another issue for the same message when ' +
@@ -1380,13 +1399,13 @@ return `undefined`:
     });
 ```
 
-There's no need to check all of the same assertions as before; we've already
+There's no need to check all of the same assertions as before; you've already
 got a thorough test for the success case. Repeating the same assertions time
 and again in different tests that exercise the same code paths is clutter that
 reduces the utility of the suite.
 
-However, we do want to validate an "already in progress" log message. Let's
-run the test and make sure it fails:
+However, you do want to validate an "already in progress" log message. Run the
+test and make sure it fails:
 
 ```sh
 $ npm test -- --grep ' execute '
@@ -1426,11 +1445,11 @@ Message:
 npm ERR! Test failed.  See above for more details.
 ```
 
-So in order to get this test to pass, we need to keep a note of the messages
-that we're in the middle of processing. We're already computing message ID
-values, so that's a start.
+In order to get this test to pass, you need to keep a note of the messages
+that are in the middle of processing. You're already computing message ID
+values—a good start.
 
-It turns out that we can add a new object in the `Middleware` constructor:
+It turns out that you can add a new object in the `Middleware` constructor:
 
 ```js
 function Middleware(config, slackClient, githubClient, logger) {
@@ -1450,12 +1469,12 @@ and add the message ID as a property inside `execute`:
   this.inProgress[msgId] = true;
 ```
 
-Note that this isn't thread-safe; in other languages we would need to protect
+Note that this isn't thread-safe; in other languages you'd need to protect
 this object with a [mutex](https://en.wikipedia.org/wiki/Mutual_exclusion).
 However, since [Node.js uses a single-threaded event loop
-model](https://nodejs.org/en/about/), no mutexes are necessary here.
+model](https://nodejs.org/en/about/), you don't need to use any mutexes here.
 
-Run the test again, and you should see this:
+Run the test again. You should see the following:
 
 ```sh
 $ npm test -- --grep ' execute '
@@ -1495,15 +1514,15 @@ Message:
 npm ERR! Test failed.  See above for more details.
 ```
 
-This doesn't make much sense. We can add `console.log` statements to our tests
-and _see_ that the "already in progress" value is a member of
+This doesn't make much sense. You can add `console.log` statements to your
+tests and _see_ that the "already in progress" value is a member of
 `logger.info.args`. What gives?
 
 It turns out that the standard [`contains`
 assertion](http://chaijs.com/api/bdd/#include) has difficulty comparing
-elements of an array that are themselves arrays. We need the [`chai-things`
-assertion library](http://chaijs.com/plugins/chai-things). First add the
-`require` statement and `chai.use` call at the top of the file:
+elements of an array that are themselves arrays. In this case, you need to use
+the [`chai-things` assertion library](http://chaijs.com/plugins/chai-things).
+First add the `require` statement and `chai.use` call at the top of the file:
 
 ```js
 var chaiThings = require('chai-things');
@@ -1525,13 +1544,13 @@ Now run the test and ensure it passes.
 
 ## Cleaning up message-in-progress IDs
 
-We have to be careful to remove the in-progress message IDs after we've
-finished processing a message or errored out. Especially if the first attempt
-errored out, since we may be able to successfully process the message in the
-future.
+You have to be careful to remove the in-progress message IDs after you've
+finished processing a message or errored out. This is especially true if your
+first attempt errored out, since you may be able to successfully process the
+message in the future.
 
-To cover this case, we'll make one last change to this test case. We'll make
-one more `middleware.execute` call _inside the callback_, and move the
+To cover this case, make one last change to this test case. Start by making
+one more `middleware.execute` call _inside the callback_, and then move the
 `should.notify(done)` clause to the end of this new expression:
 
 ```js
@@ -1592,8 +1611,8 @@ npm ERR! Test failed.  See above for more details.
 
 Fixing this will require removing the message ID from `middleware.inProgress`
 once processing is complete. The right place for this is in the function
-returned by `handleFinish`. Let's update `handleFinish` to pass in the
-`Middleware` object instead of just `logger`, then delete the message ID:
+returned by `handleFinish`. Update `handleFinish` to pass in the `Middleware`
+object instead of just `logger`, and then delete the message ID:
 
 ```js
 function handleFinish(messageId, middleware, response, next, done) {
@@ -1606,8 +1625,8 @@ function handleFinish(messageId, middleware, response, next, done) {
 }
 ```
 
-Again, no need for any mutexes when we delete the message ID, since the
-processing model is single-threaded. In other languages, you would need to
+Again, there's no need for any mutexes when you delete the message ID, since
+the processing model is single-threaded. In other languages, you would need to
 wrap this statement in a mutex-protected block.
 
 Now update the `handleFinish` call in `execute` to pass in the `Middleware`
@@ -1617,17 +1636,17 @@ object:
   finish = handleFinish(msgId, this, response, next, done);
 ```
 
-Run the test again, and confirm that it passes.
+Run the test again and confirm that it passes.
 
 ## Prevent filing multiple issues _after_ filing the first issue
 
-The next case we'll cover is to prevent filing another issue for the same
-message after an issue for the message already exists. We accomplish this by
-adding the `config.successReaction` emoji to the message after we've
+The next case you'll cover is how to prevent filing another issue for the same
+message after an issue for the message already exists. You'll accomplish this
+by adding the `config.successReaction` emoji to the message after you've
 successfully filed an issue. The code needs to abort processing once it
 detects the presence of this reaction.
 
-Let's start building our our test case first:
+Start this step by building our your test case:
 
 ```js
     it('should not file another issue for the same message when ' +
@@ -1653,22 +1672,22 @@ Let's start building our our test case first:
     });
 ```
 
-While or `slackClient.getReaction` call returns the message with the
-`config.successReaction`, we still set the `githubClient.fileNewIssue` and
+While your `slackClient.getReaction` call returns the message with the
+`config.successReaction`, you must still set the `githubClient.fileNewIssue` and
 `slackClient.addSuccessReaction` stubs to respond as if
-`config.successReaction` wasn't present. We want the code under test to follow
-through with a successful result before we add the feature to short-circuit
-the process. After we do so, we have assertions within the callback to ensure
-that `githubClient.fileNewIssue` and `slackClient.addSuccessReaction` were not
-called.
+`config.successReaction` wasn't present. You want the code under test to follow
+through with a successful result before you add the feature to short circuit
+the process. After you do so, you'll have assertions within the callback to
+ensure that `githubClient.fileNewIssue` and `slackClient.addSuccessReaction`
+aren't called.
 
-Also, we want to log the fact that the message already has a GitHub issue as
-an _info_ message, not an _error_. We don't want to spam every user who adds
-another instance of the emoji, hence we check that we don't call
+You also want to log as an _info_ message (not an _error_) the fact that the
+message already has a GitHub issue. You don't want to spam every user who adds
+another instance of the emoji, hence, you need to check that you don't call
 `context.response.reply`.
 
-Run the test, and it should fail by producing a "successful" result, when we
-expected a short-circuit to resolve to `undefined`:
+Run the test—it should fail by producing a "successful" result when you
+expected a short circuit to resolve to `undefined`:
 
 ```sh
 $ npm test -- --grep ' execute '
@@ -1710,8 +1729,8 @@ Message:
 npm ERR! Test failed.  See above for more details.
 ```
 
-Now let's update the code to get the test to pass. First, let's write a
-utility function to detect when the success reaction is present in a message:
+Now update the code to get the test to pass. First, write a utility function
+to detect when the success reaction is present in a message:
 
 ```js
 function alreadyProcessed(message, successReaction) {
@@ -1722,7 +1741,7 @@ function alreadyProcessed(message, successReaction) {
 ```
 
 Now inject this into `fileGitHubIssue`, again being mindful of
-[`Promise` gotcha #1: not returning the
+[Promise gotcha #1: not returning the
 `Promise`]{{ site.baseurl }}/components/slack-client/#promises-gotcha-1):
 
 ```js
@@ -1735,13 +1754,13 @@ function fileGitHubIssue(middleware, msgId, githubRepository) {
     }
 ```
 
-Note that we're only passing a string to `Promise.reject`, not an `Error`.
-This is because we want to short-circuit the operation, but not because of an
-abnormal condition. This will be of consequence when we add tests for the
-error cases shortly.
+Note that you're only passing a string (instead of an `Error` object) to
+`Promise.reject`. You're doing this because you want to short circuit the
+operation for a reason other than the presence of an abnormal condition. This
+will be of consequence shortly when you add tests for the error cases.
 
-Finally, let's update the function returned from `handleFinish` to avoid
-posting any `already filed` messages:
+Finally, update the function returned from `handleFinish` to avoid posting any
+`already filed` messages:
 
 ```js
 function handleFinish(messageId, middleware, response, next, done) {
@@ -1752,15 +1771,15 @@ function handleFinish(messageId, middleware, response, next, done) {
     }
 ```
 
-At this point, run the test again, and ensure it passes before moving on to
-the next section.
+Now run the test again and ensure that it passes before moving on to the next
+section.
 
 ## Testing error cases
 
-Now it's time to give the "unhappy paths" their due. In the first case, we
+It's time now to give the "unhappy paths" their due. In the first case, you
 want to validate the behavior when an incoming message matches a rule, but
-getting its reactions fails. This is going to look very similar to the case we
-just wrote in the previous section:
+getting the messages's reactions fails. This will look very similar to the
+case you just wrote in the previous section:
 
 ```js
     it('should receive a message but fail to get reactions', function(done) {
@@ -1786,15 +1805,15 @@ just wrote in the previous section:
     });
 ```
 
-Note that we're now checking `logger.error.args`, not `logger.info.args`.
-Also, since we're validating a result that contains an `Error` object, we have
-to be more deliberate with the `context.response.reply` assertion. This is
-because no two `Error` objects are equal to one another, so we can't create a
-`new Error` as an assertion argument. We have to check the `message` field of
-each Error explicitly. For both stubs, `args[0]` is the argument list for the
-first call to the stub.
+Note that you're now checking `logger.error.args`, not `logger.info.args`.
+What's more, since you're validating a result that contains an `Error` object,
+you have to be more deliberate with the `context.response.reply` assertion.
+This is because no two `Error` objects are equal to one another, so you can't
+create a `new Error` as an assertion argument. Rather, you have to check the
+`message` field of each Error explicitly. For both stubs, `args[0]` is the
+argument list for the first call to the stub.
 
-Now let's run the test to see what shakes out:
+Run the test to see what shakes out:
 
 ```sh
 $ npm test -- --grep ' execute '
@@ -1834,15 +1853,17 @@ Message:
 npm ERR! Test failed.  See above for more details.
 ```
 
-If you look closely, _it's the next to last assertion that's failing_.
-Everything else is already working as expected: `githubClient.fileNewIssue` is
-returning a rejected `Promise`, and consequently, `middleware.execute`
-resolves to that rejected value, and doesn't call
-`slackClient.addSuccessReaction`. The only issue here is that `logger.error`
-is empty.
+If you look closely, _it's the next to last assertion that's failing_:
+`logger.error` is turning up empty when we check for `helpers.MESSAGE_ID` as
+element `[0][0]`.  Everything else is already working as expected:
+`githubClient.fileNewIssue` is returning a rejected `Promise`, and
+consequently, `middleware.execute` resolves to that rejected value and
+doesn't call `slackClient.addSuccessReaction`. The only issue here is that
+`logger.error` is empty.
 
-All we have to do to get the test to pass is update the function returned by
-`handleFinish` to differentiate between `Error` messages and other types:
+All you need to do to get the test to pass is update the function returned by
+`handleFinish` to differentiate between `Error` messages and other types of
+messages:
 
 ```js
 function handleFinish(messageId, middleware, response, next, done) {
@@ -1862,11 +1883,11 @@ function handleFinish(messageId, middleware, response, next, done) {
 }
 ```
 
-Notice that in the `message instanceof Error` case, we explicitly log the
+In the `message instanceof Error` case, you explicitly log the
 `message.message` field. This is because logging the actual `Error` object
-will include the class name in the output, which we don't need or want.
+will include the class name in the output, which you don't need or want.
 
-Run the tests, and verify that the new test passes. Then, add this next
+Run the tests and verify that the new test passes. Then, add this next
 test, which validates the behavior when the request to file a GitHub issue
 fails. It is nearly identical to the previous one except that
 `githubClient.fileNewIssue` produces the failure (notice
@@ -1897,14 +1918,14 @@ fails. It is nearly identical to the previous one except that
 ```
 
 Even though the last few assertions look identical to those in the previous
-test, they are actually validating different code paths and values for
+test, they're actually validating different code paths and values for
 `errorMessage`. Hence, contrary to earlier advice against repeating
-assertions, in this case it makes sense since they only appear to be the same,
-but actually aren't.
+assertions, in this case the repetition makes sense since the assertions only
+appear to be the same, but actually aren't.
 
-However, it's still prudent to extract these assertions into a helper
-function, so that we can easily see their common purpose across test cases.
-Let's call this helper function `checkErrorResponse`:
+That said, it's still prudent to extract these assertions into a helper
+function, so you can easily see their common purpose across test cases.  Call
+this helper function `checkErrorResponse`:
 
 ```js
   describe('execute', function() {
@@ -1927,11 +1948,11 @@ function like so:
         checkErrorResponse(errorMessage);
 ```
 
-Run the test, and verify that the new test passes. Then, add this test, which
+Run the new test and verify that the it passes. Then, add this test, which
 validates the behavior when the GitHub issue request succeeds but adding the
 success reaction to the message fails. It is nearly identical to the previous
-one except that `slackClient.addSuccessReaction` produces the failure (notice
-`calledOnce.should.be.true`):
+test, except that `slackClient.addSuccessReaction` produces the failure
+(notice `calledOnce.should.be.true`):
 
 ```js
     it('should file an issue but fail to add a reaction', function(done) {
@@ -1954,26 +1975,26 @@ one except that `slackClient.addSuccessReaction` produces the failure (notice
 
 ## <a name="interface-boundary"></a>Preventing `Errors` from escaping the application interface boundary
 
-We've done a good job ensuring our `execute` function handles `Errors` by
-calling `reject` handlers in each `Promise`. Should any code that `Middleware`
-depends upon throw an `Error`, the `handleFailure` error handler function will
-convert it into a rejected `Promise`. `handleFailure` will then log any
-`Errors` before calling `next(done)`.
+You've done a good job ensuring that your `execute` function handles `Errors`
+by calling `reject` handlers in each `Promise`. Should any code that
+`Middleware` depends upon throw an `Error`, the `handleFailure` error handler
+function will convert it into a rejected `Promise`. `handleFailure` will then
+log any `Errors` before calling `next(done)`.
 
-However, at the moment, we can never be completely positive that an `Error`
+However, at the moment, you can't be completely positive that an `Error`
 will never escape our `execute` function. Changes in the application or its
 dependencies may eventually cause `Errors` outside of the `Promise` chain and
-its failure handler. If that happens, we'll pollute the log with a nasty stack
-trace, and `next(done)` won't get called.
+its failure handler. If that happens, you'll pollute the log with a nasty
+stack trace, and `next(done)` won't get called.
 
-Allowing an error from our application to cross an interface boundary is a bad
-habit. Since `Middleware.execute` will serve as the touchpoint between Hubot
-and our application, we would do well to prevent it from allowing any errors
-to escape.
+Allowing an error from your application to cross an interface boundary is a
+bad habit. Since `Middleware.execute` will serve as the touchpoint between
+Hubot and your application, you'd do well to prevent it from allowing any
+errors to escape.
 
-There is a straightforward fix to this, however. Push the entire `execute`
-implementation into another function, `doExecute`, and wrap it in a
-[`try...catch`
+Fortunately, there's a straightforward fix to this situation. Push the entire
+`execute` implementation into another function called `doExecute` and wrap it
+in a [`try...catch`
 block](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/try...catch):
 
 ```js
@@ -1990,9 +2011,9 @@ function doExecute(middleware, context, next, done) {
 }
 ```
 
-Make this change, and run the tests to ensure they all still pass. Then add
-the following test case, which sets the expectation that `execute` will log
-unhandled errors and send them as a reply to the user.
+Make this change and run the tests to ensure that they all still pass. Then
+add the following test case, which sets the expectation that `execute` will
+log unhandled errors and send them as a reply to the user:
 
 ```js
     it('should catch and log unanticipated errors', function() {
@@ -2008,12 +2029,12 @@ unhandled errors and send them as a reply to the user.
 ```
 
 The error message will include a copy of the incoming message that triggered
-the error. This is arguably a lot more helpful than a stack trace, at least
-for people trying to report the error. The developer can then try to reproduce
-the error by writing a test using the same input.
+the error. This is arguably a lot more helpful than a stack trace—at least,
+that is, for people trying to report the error. The developer can then try to
+reproduce the error by writing a test using the same input.
 
 Run the test and make sure it fails. Then update the `execute` function to
-appear thus:
+appear as follows:
 
 ```js
 Middleware.prototype.execute = function(context, next, done) {
@@ -2072,13 +2093,14 @@ $ npm test -- --grep '^Middleware '
 [19:16:07] Finished 'test' after 683 ms
 ```
 
-Now that you're all finished, compare your solutions to the code in
+Now that you're finished, compare your solutions to the code in
 [`solutions/05-middleware/lib/middleware.js`]({{ site.baseurl }}/solutions/05-middleware/lib/middleware.js)
 and
 [`solutions/05-middleware/test/middleware-test.js`]({{ site.baseurl }}/solutions/05-middleware/test/middleware-test.js).
 
-You may wish to `git commit` your work to your local repo at this point. After
-doing so, try copying the `middleware.js` file from
-`solutions/05-middleware/lib` into `exercises/lib` to see if it passes the
-test you wrote. Then run `git reset --hard HEAD` and copy the test files
-instead to see if your implementation passes.
+At this point, `git commit` your work to your local repo. After you do, copy
+the `middleware.js` file from `solutions/05-middleware/lib` into
+`exercises/lib` to see if it passes the test you wrote. Then run `git reset
+--hard HEAD` and copy the test files instead to see if your implementation
+passes. If a test case fails, review the section of this chapter pertaining to
+the failing test case, then try to update your code to make the test pass.

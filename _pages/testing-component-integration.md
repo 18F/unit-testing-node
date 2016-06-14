@@ -1,13 +1,13 @@
 ---
 title: Testing component integration
 ---
-Now that we've completed all of the application-specific components, and
+Now that you've completed all of the application-specific components, and
 implemented the core `Middleware` functionality, it's time to plug
-`Middleware` into `Hubot`. We'll do this by creating the "script" that defines
-the entry point of our application.
+`Middleware` into `Hubot`. You'll do this by creating the Hubot "script" that
+defines the entry point of your application.
 
-If you've skipped to this chapter, you can establish the starting state of the
-`exercise/` files for this chapter by running:
+If you've skipped ahead to this chapter, you can establish the starting state
+of the `exercise/` files for this chapter by running:
 
 ```sh
 $ ./go set-integration
@@ -15,34 +15,34 @@ $ ./go set-integration
 
 ## What to expect
 
-Since we've exhaustively tested every corner of our application logic using
-small, fast, isolated tests, we only need to validate a few high-level
-integration cases. The setup will be more complex, and the test cases may not
-run as fast, but we will not need nearly as many. Should any of these tests
-fail, it may indicate a misunderstanding of the system boundary. This
-misunderstanding may also signal a gap in our component level coverage that we
-need to fill.
+Since you've exhaustively tested every corner of your application logic using
+small, fast, isolated tests, you only need to validate a few high-level
+integration cases. The setup for this will be more complex, and the test cases
+may not run as fast, but you will not need nearly as many. A failure of any of
+these tests may indicate a misunderstanding of the system boundary. This
+misunderstanding may also signal a gap in your component-level coverage that
+you'll need to fill.
 
-In short, we will learn to:
+In short, in this tutorial, you'll learn to do the following:
 
-- integrate our application components to implement the [Hubot receive
+- Integrate your application components to implement the [Hubot receive
   middleware](https://hubot.github.com/docs/scripting/#middleware) interface
-- use the [hubot-test-helper](https://www.npmjs.com/package/hubot-test-helper)
+- Use the [hubot-test-helper](https://www.npmjs.com/package/hubot-test-helper)
   package to simulate user interaction
-- use a helper class to programmatically validate expected log messages
-- launch a local HTTP test server to exercise components that access external
-  APIs without actually depending on external services
-- write a temporary configuration file to pass test-specific values to the
+- Use a helper class to programmatically validate expected log messages
+- Launch a local HTTP test server to exercise components that access external
+  APIs without depending on external services
+- Write a temporary configuration file to pass test-specific values to the
   code under test
-- [monkey patch](https://en.wikipedia.org/wiki/Monkey_patch) an existing
+- [Monkey patch](https://en.wikipedia.org/wiki/Monkey_patch) an existing
   package to add missing behavior
-- validate high-level success and error cases that exercise all the core
+- Validate high-level success and error cases that exercise all the core
   application components rather than using test doubles for any of them
 
 ## Writing the main script
 
-Open a new file called `exercise/scripts/slack-github-issues.js` Start it with
-this preamble, with fields inspired by the [Hubot documentation
+Open a new file called `exercise/scripts/slack-github-issues.js`, and start it
+with this preamble, with fields inspired by the [Hubot documentation
 guidelines](https://hubot.github.com/docs/scripting/#documenting-scripts):
 
 ```js
@@ -55,8 +55,8 @@ guidelines](https://hubot.github.com/docs/scripting/#documenting-scripts):
 'use strict';
 ```
 
-Now we'll add `require` statements for all of our application components
-(except `Rule`, which is created directly by `Middleware`):
+Now add `require` statements for all of the application components (except
+`Rule`, which is created by `Middleware`):
 
 ```js
 var Config = require('../lib/config');
@@ -67,8 +67,8 @@ var Middleware = require('../lib/middleware');
 ```
 
 The basic interface required to plug into Hubot is a function that takes a
-Hubot instance as its only argument. Let's wire our core application
-components together and register the `Middleware`:
+Hubot instance as its only argument. Wire your core application components
+together and register the `Middleware`:
 
 ```js
 module.exports = function(robot) {
@@ -87,17 +87,18 @@ module.exports = function(robot) {
 };
 ```
 
-Recall that we are conforming to the [Hubot receive
+Recall that you're conforming to the [Hubot receive
 middleware](https://hubot.github.com/docs/scripting/#middleware) interface,
-which takes a function as its argument, not an object. This is why we create a
-closure that contains the `impl` object.
+which takes a function (not an object) as its argument. This is why you must
+create a closure that contains the `impl` object.
 
-Believe it or not, as far as the main script goes, we're done. That's it.
+Believe it or not, as far as the main script goes, you're done. That's it!
 Nothing more to it. (For now.)
 
 ## Integration testing using `hubot-test-helper`
 
-Open the `exercise/test/integration-test.js` file, which should look like:
+Open the `exercise/test/integration-test.js` file, which should look like
+this:
 
 ```js
 'use strict';
@@ -108,11 +109,11 @@ describe('Integration test', function() {
 });
 ```
 
-The first thing we're going to do is `require` the
+The first thing you're going to do is `require` the
 [hubot-test-helper package](https://www.npmjs.com/package/hubot-test-helper).
-This package simulates a "room" in which a Hubot instance is responding to
-messages. Import it and create an instantiation for the entire test by adding
-the following declarations to the file:
+This package simulates a Hubot "room" in which a Hubot instance is responding
+to messages. Import it and create an instantiation for the entire test by
+adding the following declarations to the file:
 
 ```js
 var Helper = require('hubot-test-helper');
@@ -133,8 +134,8 @@ describe('Integration test', function() {
 
 ## Introducing `LogHelper`
 
-Even though we aren't really testing anything yet, let's run the test to see
-what happens:
+Even though you aren't really testing anything yet, run the test to see what
+happens:
 
 ```sh
 $ npm test -- --grep '^Integration test '
@@ -158,9 +159,9 @@ $ npm test -- --grep '^Integration test '
 [19:28:42] Finished 'test' after 574 ms
 ```
 
-Notice the noisy log message in the middle of the test output. While we can
-see that our script is getting loaded, it'd be better to check the log message
-programmatically and keep the test output clean. Let's introduce a new
+Notice the noisy log message in the middle of the test output. While you can
+see that your script is getting loaded, it would be better to check the log
+message programmatically and keep the test output clean. Let's introduce a new
 lightweight helper, `LogHelper`, in a new
 `exercise/test/helpers/log-helper.js` file:
 
@@ -196,13 +197,13 @@ LogHelper.prototype.capture = function(callback) {
 
 When you pass a function to `LogHelper.capture`, it will capture all standard
 output and standard error messages in its `messages` member. It joins all of
-the arguments so each call is represented by a single string, which we can
+the arguments so each call is represented by a single string, which you can
 then programmatically validate. Should a test assertion within `callback`
 fail, the `finally` block restores the standard output and error streams
-before propagating the failure. This way we can examine the expected log
+before propagating the failure. This way, you can examine the expected log
 output without swallowing the output from the test framework itself.
 
-Let's update our test fixture to now look like:
+Update your test fixture to look like this:
 
 ```js
 var Helper = require('hubot-test-helper');
@@ -220,8 +221,8 @@ describe('Integration test', function() {
   });
 ```
 
-We can now implement the test case to ensure the script loads successfully to
-begin with. First, we need to add the following before our fixture:
+You can now implement the test case to ensure the script loads successfully to
+begin with. First, add the following before the fixture:
 
 ```js
 var chai = require('chai');
@@ -229,7 +230,7 @@ var chai = require('chai');
 chai.should();
 ```
 
-Then write the case so it fails at first:
+Then write the case so that it fails at first:
 
 ```js
   it('should successfully load the application script', function() {
@@ -237,7 +238,7 @@ Then write the case so it fails at first:
   });
 ```
 
-Run the test and you should see something like:
+Run the test and you should see something like the following:
 
 ```sh
 $ npm test -- --grep '^Integration test '
@@ -283,12 +284,13 @@ npm ERR! Test failed.  See above for more details.
 
 ## Filtering log messages
 
-Before we update our test to pass, notice that the timestamp component will
-change with every test run. Also notice that there's a bit of boilerplate:
-both the `18f-unit-testing-node` prefix and the newline at the end.
+Before you update the test to make it pass, notice that the timestamp
+component will change with every test run. Also notice that there's a bit of
+boilerplate—both the `18f-unit-testing-node` prefix and the newline at the
+end.
 
-Rather than hardcode all of this into our test data, let's write a `LogHelper`
-function to strip out the boilerplate. First let's import the prefix from our
+Rather than hardcode all of this into the test data, write a `LogHelper`
+function to strip out the boilerplate. To start, import the prefix from the
 `Logger` class:
 
 ```js
@@ -315,16 +317,16 @@ LogHelper.prototype.filteredMessages = function() {
 This function uses a [RegExp](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp)
 to strip out the timestamp and capture the remaining content. If the message
 doesn't match, or doesn't contain `LOGGER_PREFIX` as expected, the full
-message is returned. Otherwise we return just the material content of the
+message is returned. Otherwise, you return just the material content of the
 message, prefixed with the log level.
 
-Change the test assertion to read:
+Change the test assertion to read as follows:
 
 ```js
     logHelper.filteredMessages().should.eql([]);
 ```
 
-Run the tests again, and now you should see:
+Run the tests again, and now you should see this:
 
 ```sh
 $ npm test -- --grep '^Integration test '
@@ -369,17 +371,17 @@ npm ERR! Test failed.  See above for more details.
 ```
 
 Much better! Add this string to your test assertion and confirm it passes
-before moving on.
+before moving on to the next section.
 
 ## Launching the test server and writing the configuration
 
-We also need to launch an `ApiStubServer` instance. We can use one instance
-to stub out both Slack and GitHub API requests. However, we also need to
-create a new configuration file so that our `SlackClient` and `GitHubClient`
+You also need to launch an `ApiStubServer` instance. You can use one instance
+to stub out both Slack and GitHub API requests. However, you also need to
+create a new configuration file so that the `SlackClient` and `GitHubClient`
 instances can find it.
 
-First, let's just add the servers to our fixture. Start by adding the
-necessary `require` statement:
+First, add the servers to the fixture. Start by adding the necessary `require`
+statement:
 
 ```js
 var ApiStubServer = require('./helpers/api-stub-server.js');
@@ -405,15 +407,15 @@ describe('Integration test', function() {
   });
 ```
 
-This is pretty standard setup by now, following the pattern of our
-`SlackClient` and `GitHubClient` tests. Now let's prepare the configuration.
-Start by importing our test helpers package:
+This setup should seem pretty standard by now, and it follows the pattern of
+the `SlackClient` and `GitHubClient` tests. Now, prepare the configuration.
+Start by importing the test helpers package:
 
 ```js
 var helpers = require('./helpers');
 ```
 
-Now add a `config` variable to the fixture, using `helpers.baseConfig()` as a
+Add a `config` variable to the fixture, using `helpers.baseConfig()` as a
 starting point before setting its `slackApiBaseUrl` and `githubApiBaseUrl`
 properties:
 
@@ -431,10 +433,10 @@ describe('Integration test', function() {
   });
 ```
 
-Now we need to write out the configuration file and set the
-`HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH` environment variable. We're going to
+Next, write out the configuration file and set the
+`HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH` environment variable. You're going to
 use the [temp npm package](https://www.npmjs.com/package/temp) to help create
-and clean up the file. First import both it, the [file system
+and clean up the file. First import this package, the [file system
 package](https://nodejs.org/api/fs.html) from the standard library, and the
 script name like so:
 
@@ -444,8 +446,8 @@ var fs = require('fs');
 var scriptName = require('../package.json').name;
 ```
 
-Add a `done` callback to the `before` callback, then add a call to `temp.open`
-like so:
+Add a `done` callback to the `before` callback, and then add a call to
+`temp.open` like so:
 
 ```js
   before(function(done) {
@@ -471,9 +473,9 @@ like so:
   });
 ```
 
-Here we pass along any errors that occur to Mocha by passing them to the
+Here, you pass along to Mocha any errors that occur by passing them to the
 `done` callback, then set `HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH` and call
-`done` upon success. To clean up the file and the environment variable, we add
+`done` upon success. To clean up the file and the environment variable, add
 a `done` callback to the `after` hook and remove the file like so:
 
 ```js
@@ -488,7 +490,7 @@ a `done` callback to the `after` hook and remove the file like so:
   });
 ```
 
-Now let's add a utility function to the fixture to produce default values for
+Now add a utility function to the fixture to produce default values for
 `apiStubServer.urlsToResponses`. Start by declaring the function variable at
 the top of the fixture, then calling it in the `beforeEach` hook:
 
@@ -507,8 +509,8 @@ describe('Integration test', function() {
   });
 ```
 
-Then a little further down, define it thus, borrowing values from our
-`SlackClient` and `GitHubClient` tests:
+A little further down, define it thus, borrowing values from the `SlackClient`
+and `GitHubClient` tests:
 
 ```js
   apiServerDefaults = function() {
@@ -548,7 +550,7 @@ Then a little further down, define it thus, borrowing values from our
   };
 ```
 
-## Quick fixup
+## Quick fix up
 
 Let's stop and run our tests again to make sure they still pass:
 
@@ -594,7 +596,7 @@ Message:
 npm ERR! Test failed.  See above for more details.
 ```
 
-Whoops! Now that we've defined the `HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH`
+Whoops! Now that you've defined the `HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH`
 environment variable to point to a temp file, `Config` is no longer reading
 from the default config path. This is an easy fix:
 
@@ -612,14 +614,15 @@ Run the test and make sure it passes before moving on.
 
 ## Testing a configuration error
 
-There is an issue with our script as written. As we learned from the
-[`Config` class chapter]({{ site.baseurl }}/components/config/), the `Config`
-constructor may throw an [`Error`](https://nodejs.org/api/errors.html) if the
-config file is missing or invalid. Allowing an error from our application to
-cross an interface boundary is a bad habit.
+There's an issue with your script as it's currently written. As you learned
+from the [`Config` class chapter]({{ site.baseurl }}/components/config/), the
+`Config` constructor may throw an
+[`Error`](https://nodejs.org/api/errors.html) if the config file is missing or
+invalid. Allowing an error from your application to cross an interface
+boundary is a bad habit.
 
-Let's see why by writing a test that will fail because the config file isn't
-valid. First let's write the following to a new test helper file,
+Let's see why by writing a test that will fail due to an invalid config file.
+Write the following to a new test helper file,
 `exercise/test/helpers/test-config-invalid.json`:
 
 ```json
@@ -631,9 +634,10 @@ valid. First let's write the following to a new test helper file,
 }
 ```
 
-This file if valid except that it's missing the `rules` field. Then add the
-[`path` module](https://nodejs.org/api/path.html) from the standard library to
-the test file:
+This file is valid except that it's missing the `rules` field. After you've
+written this new test configuration helper file, add the [`path`
+module](https://nodejs.org/api/path.html) from the standard library to the
+test fixture file:
 
 ```js
 var path = require('path');
@@ -682,8 +686,8 @@ $ npm test -- --grep '^Integration '
 npm ERR! Test failed.  See above for more details.
 ```
 
-Ugh, that's a lot of gunk to dump into a log file. Surely we can do better.
-First let's update our script to wrap our behavior in a [`try...catch`
+Ugh, that's a lot of gunk to dump into a log file—surely you can do better!
+Update the script to wrap your behavior in a [`try...catch`
 block](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/try...catch):
 
 ```js
@@ -735,8 +739,8 @@ $ npm test -- --grep '^Integration test '
 [11:25:38] Finished 'test' after
 ```
 
-This is progress, but we'd like to see an error message explaining the
-problem. Add the following to the `catch` block of the script:
+This is progress, but it would be better to see an error message explaining
+the problem. Add the following to the `catch` block of the script:
 
 ```js
   } catch (err) {
@@ -773,9 +777,9 @@ $ npm test -- --grep '^Integration '
 ```
 
 That message looks right, keeps the logs clean, and might be of more use than
-a stack trace to someone trying to diagnose a problem. Now let's update the
-test to check these messages programmatically and keep them out of the test
-runner output:
+a stack trace to someone trying to diagnose a problem. With that squared away,
+update the test to check these messages programmatically and keep them out of
+the test runner output:
 
 ```js
   it('should not register if the config file is invalid', function() {
@@ -801,9 +805,9 @@ runner output:
 ```
 
 Note that `logHelper.filteredMessages()` cuts off the error message after
-`Invalid configuration` because it contains a newline character. Let's add one
-more assertion to check that the raw log message reports the expected
-validation error:
+`Invalid configuration` because it contains a newline character. Add one more
+assertion to check that the raw log message reports the expected validation
+error:
 
 ```js
       logHelper.messages[logHelper.messages.length - 1].should.have.string(
@@ -812,15 +816,15 @@ validation error:
 
 ## Monkey patching the `hubot-test-helper` framework
 
-There's another thing we need to prepare to write our test cases, and it's
-somewhat shady. It turns out that the `hubot-test-helper` does not know about
+There's another thing you need to prepare to write your test cases, and it's
+somewhat shady. As it turns out, the `hubot-test-helper` does not know about
 `reaction_added` messages. The `room.user` member is defined entirely in the
 `Room` constructor, precluding the possibility of adding a new function
-prototype. So we will dynamically add that behavior onto the `room` object, a
+prototype. You'll dynamically add that behavior onto the `room` object—a
 technique known as "[monkey
 patching](https://en.wikipedia.org/wiki/Monkey_patch)".
 
-Again, let's add a new helper to our fixture, first by declaring the function
+Again, add a new helper to the fixture, first by declaring the function
 variable:
 
 ```js
@@ -860,26 +864,26 @@ Then define the function thus:
 
 This function is based on the implementation of `Room.receive` found in
 `node_modules/hubot-test-helper/src/index.coffee`. Yet another benefit of open
-source is being able to see the code you depend on for hints regarding how to
-extend its behavior. As always, remain mindful of [`Promise` gotcha #1: not
-returning the `Promise`](#promises-gotcha-1).
+source is being able to see the code you depend on for hints on how to extend
+its behavior. As always, remain mindful of [Promise gotcha #1: not returning
+the `Promise`](#promises-gotcha-1).
 
 Though monkey patching is not ideal, in this test, it gets the job done quite
-effectively. Also, `reaction_added` message support hasn't completely
-propagated to the offical Slack and Hubot npm packages at the time of writing.
+effectively. In addition, `reaction_added` message support hasn't completely
+propagated to the official Slack and Hubot npm packages at the time of writing.
 [Writing this application would've been extremely difficult without being able
 to fork the original
 packages]({{ site.baseurl }}/concepts/forking-and-contributing-upstream). At
 the same time, writing this test would've been more difficult without the
-ability to monkey patch the existing test helper. (Writing a new one would've
-been possible, but a bit more work.)
+ability to monkey patch the existing test helper. (Writing a new one would
+have been possible, but would have required a bit more work.)
 
 ## Sending a reaction message
 
-We're finally ready to implement our `should create a GitHub issue given a
-valid reaction` test case. Since `room.user.react` returns a `Promise`, we'll
+You're finally ready to implement the `should create a GitHub issue given a
+valid reaction` test case. Since `room.user.react` returns a `Promise`, you'll
 use [chai-as-promised](https://www.npmjs.com/package/chai-as-promised) to
-validate our test cases. The first thing to do is add the requisite `require`
+validate your test cases. The first thing to do is add the requisite `require`
 and setup statements:
 
 ```js
@@ -890,9 +894,9 @@ chai.should();
 chai.use(chaiAsPromised);
 ```
 
-Now set up an empty test case, using the [`.should.notify(done)`
-syntax](https://www.npmjs.com/package/chai-as-promised#working-with-non-promisefriendly-test-runners)
-that will allow us to make assertions after the `Promise` resolves:
+Now set up an empty test case using the [`.should.notify(done)`
+syntax](https://www.npmjs.com/package/chai-as-promised#working-with-non-promisefriendly-test-runners),
+which will allow you to make assertions after the `Promise` resolves:
 
 ```js
   it('should create a GitHub issue given a valid reaction', function(done) {
@@ -902,7 +906,7 @@ that will allow us to make assertions after the `Promise` resolves:
   });
 ```
 
-Now let's try running the test as-is to see what happens:
+Try running the test as is to see what happens:
 
 ```sh
 $ npm test -- --grep '^Integration '
@@ -939,24 +943,24 @@ $ npm test -- --grep '^Integration '
 
 ## Appreciating the invention of dependency injection
 
-So it _passed_... Or did it? The stack trace shows all our code getting
+So it _passed_ ... or did it? The stack trace shows all the code getting
 executed until it tries to call `SlackClient.getChannelName`.
 
 Of course! This function depends on `SlackClient.client`, which gets
-initialized with `robot.adapter.client` in our
-`exercise/scripts/slack-github-issues.js` script. Only problem is, the
+initialized with `robot.adapter.client` in the
+`exercise/scripts/slack-github-issues.js` script. The only problem is, the
 `MockRobot` inside the hubot-test-helper doesn't have such a member, so
 `SlackClient.client` remains `undefined`.
 
-This is why we use [dependency
-injection]({{ site.baseurl }}/concepts/dependency-injection/), folks. If the
-hubot-test-helper permitted us to pass in a robot object, we could decorate it
-with whatever we needed before instantiating our middleware. Since it creates
-its own `MockRobot` instance directly, we have to resort to less elegant
-measures.
+This is why you use [dependency
+injection]({{ site.baseurl }}/concepts/dependency-injection/). If the
+hubot-test-helper permitted you to pass in a robot object, you could decorate
+it with whatever you needed before instantiating your middleware. Since it
+creates its own `MockRobot` instance directly, we have to resort to less
+elegant measures.
 
-Fortunately, this being JavaScript, we do have a measure available to us. It
-isn't pretty, though. First, let's update our
+Fortunately, this being JavaScript, you do have an effective measure available
+to you. It isn't pretty, though. First, update the
 `exercise/scripts/slack-github-issues.js` script to the following:
 
 ```js
@@ -986,8 +990,9 @@ module.exports = function(robot) {
 };
 ```
 
-What we're doing is making the `impl` object a property of the `middleware`
-function itself. That allows us to do this in our top-level `beforeEach` hook:
+What you're doing is making the `impl` object a property of the `middleware`
+function itself. That will allow you to do this in the top-level `beforeEach`
+hook:
 
 ```js
     patchReactMethodOntoRoom(room);
@@ -1000,8 +1005,8 @@ function itself. That allows us to do this in our top-level `beforeEach` hook:
     apiStubServer.urlsToResponses = apiServerDefaults();
 ```
 
-We're reaching all the way into the receive middleware stack and all the way
-into our `Middleware` and `SlackClient` implementations to make this patch.
+You're reaching all the way into the receive middleware stack and all the way
+into your `Middleware` and `SlackClient` implementations to make this patch.
 Ugly, but effective.
 
 ## Capturing log messages in the presence of `Promises`
@@ -1034,14 +1039,15 @@ $ npm test -- --grep '^Integration '
 [17:21:16] Finished 'test' after
 ```
 
-Now it looks like the test and the code is doing exactly what it should. All
-we have to do is add the proper scaffolding and assertions to clean up the
-test frameworks output and validate the behavior programmatically.
+Now it looks like the test and the code are doing exactly what they should be
+doing. All you have to do is add the proper scaffolding and assertions to
+clean up the test framework's output and validate the behavior
+programmatically.
 
-The first thing to do is to capture the logs from the `room.user.react` event.
-The problem is, `room.user.react` returns a `Promise`, and the `LogHelper`
-isn't currently set up to handle this. It's an easy fix, however. First,
-refactor `LogHelper.capture` to this:
+What you'll need to do now is capture the logs from the `room.user.react`
+event. The problem is, `room.user.react` returns a `Promise`, and the
+`LogHelper` isn't currently set up to handle this. There's an easy way around
+that, however. First, refactor `LogHelper.capture` to this:
 
 ```js
 LogHelper.prototype.beginCapture = function() {
@@ -1065,8 +1071,8 @@ LogHelper.prototype.capture = function(callback) {
 };
 ```
 
-Then add these two functions, remembering to watch out for [`Promise` gotcha
-#1: not returning the `Promise`](#promises-gotcha-1):
+Then add these two functions, remembering to watch out for [Promise
+gotcha #1: not returning the `Promise`](#promises-gotcha-1):
 
 ```js
 LogHelper.prototype.endCaptureResolve = function() {
@@ -1088,8 +1094,9 @@ LogHelper.prototype.endCaptureReject = function() {
 };
 ```
 
-We still need the other `logHelper.capture` call because
-`scriptHelper.createRoom` may raise an error. Now update the test case to make suse of the `logHelper`:
+You still need the other `logHelper.capture` call because
+`scriptHelper.createRoom` may raise an error. Update the test case to make use
+of the `logHelper`:
 
 ```js
   it('should create a GitHub issue given a valid reaction', function(done) {
@@ -1101,14 +1108,14 @@ We still need the other `logHelper.capture` call because
   });
 ```
 
-Run the test to make sure they still pass, and that the log output is properly
+Run the tests to make sure they still pass and that the log output is properly
 captured.
 
 ## Writing the test assertions
 
-Finally. With all this infrastructure in place, we're ready to write some
-honest to goodness test assertions. First, let's check the messages posted to
-the `room` object during the course of the application flow:
+Finally: With all this infrastructure in place, you're ready to write some
+honest-to-goodness test assertions. Check the messages posted to the `room`
+object during the course of the application flow:
 
 ```js
       .then(function() {
@@ -1121,8 +1128,8 @@ the `room` object during the course of the application flow:
 Run the test and make sure it passes. Change one of the messages in the
 assertion, and make sure the test fails.
 
-Now let's figure out how to validate the log messages. Let's start with an
-empty assertion:
+Once you've done that, figure out how to validate the log messages. Start with
+an empty assertion:
 
 ```js
     it('should create a GitHub issue', function() {
@@ -1135,7 +1142,7 @@ empty assertion:
     });
 ```
 
-Run the test to see what we're in for:
+Run the test to see what you're in for:
 
 ```sh
 $ npm test -- --grep '^Integration '
@@ -1184,9 +1191,8 @@ Message:
 npm ERR! Test failed.  See above for more details.
 ```
 
-Lots of repetitive stuff there. Let's start by creating a helper variable for
-those first two messages, which are identical across the two tests we have so
-far:
+Lots of repetitive stuff there. Create a helper variable for those first two
+messages, which are identical across the two tests you have so far:
 
 ```js
 describe('Integration test', function() {
@@ -1226,10 +1232,10 @@ describe('Integration test', function() {
   });
 ```
 
-Run the tests, and the first two messages should now match. Of the messages
-that remain, all are of the form `INFO helpers.MESSAGE_ID: ...`. Let's make
-another helper function to wrap a series of messages with this prefix, so the
-test case can focus on the unique content of each message. We'll also define
+Run the tests; the first two messages should now match. Of the messages that
+remain, all are of the form `INFO helpers.MESSAGE_ID: ...`. Let's make another
+helper function to wrap a series of messages with this prefix so the test case
+can focus on the unique content of each message. You'll also define
 `matchingRule` to avoid repeating it in every test that needs it:
 
 ```js
@@ -1271,12 +1277,12 @@ describe('Integration test', function() {
   });
 ```
 
-Run the tests again, and ensure they all pass.
+Run the tests again and make sure they all pass.
 
 ## Testing a failure case
 
 So much for the happy path. Now let's see what happens when the operation
-fails. Let's start our new test case thus:
+fails. Start a new test case as follows:
 
 ```js
   it('should fail to create a GitHub issue', function(done) {
@@ -1289,10 +1295,10 @@ fails. Let's start our new test case thus:
   });
 ```
 
-Notice that all we're doing is configuring the GitHub endpoint of the
+Notice that all you're doing is configuring the GitHub endpoint of the
 `apiStubServer` to send a failure response. To eliminate the repetition of
-invoking the `logHelper` and `room.user.react`, let's create a new helper
-function in the top level fixture and call it `sendReaction`:
+invoking the `logHelper` and `room.user.react`, create a new helper function
+in the top level fixture and call it `sendReaction`:
 
 ```js
 describe('Integration test', function() {
@@ -1309,7 +1315,7 @@ describe('Integration test', function() {
   };
 ```
 
-As ever, we are mindful of [`Promise` gotcha #1: not returning the
+As ever, remain mindful of [Promise gotcha #1: not returning the
 `Promise`](#promises-gotcha-1). Then, in the test cases, use `sendReaction` to
 replace both the `logHelper.beginCapture` calls and the
 `.then(logHelper.endCaptureResolve(), logHelper.endCaptureReject())` clause:
@@ -1337,10 +1343,10 @@ replace both the `logHelper.beginCapture` calls and the
   });
 ```
 
-Run the test to make sure everything passes first. The previous `should create
-a GitHub issue` test case should still pass. Now let's get on with our `should
-fail to create a GitHub issue` test case. First, let's format our expected
-error reply and declare a variable to hold our expected log messages:
+Run the test to make sure everything passes. The previous `should create
+a GitHub issue` test case should still pass. Now it's time to write the
+`should fail to create a GitHub issue` test case. Format the expected error
+reply and declare a variable to hold the expected log messages:
 
 ```js
     sendReaction(helpers.REACTION).should.be.fulfilled.then(function() {
@@ -1351,7 +1357,7 @@ error reply and declare a variable to hold our expected log messages:
     }).should.notify(done);
 ```
 
-The asssertion for the room messages is pretty straightforward:
+The assertion for the room messages is pretty straightforward:
 
 ```js
       room.messages.should.eql([
@@ -1374,14 +1380,14 @@ though:
       logHelper.filteredMessages().should.eql(logMessages);
 ```
 
-Run the test, and ensure that it passes.
+Run the test and ensure that it passes.
 
 ## Testing the unknown reaction case
 
-Now it's time to test what happens when our middleware receives a reaction
+At last, it's time to test what happens when the middleware receives a reaction
 that doesn't match any configuration rules. It should silently ignore the
 message. The error responses are to verify that the middleware never attempts
-to make any API requests.
+to make any API requests:
 
 ```js
   it('should ignore a message receiving an unknown reaction', function(done) {
@@ -1399,36 +1405,37 @@ to make any API requests.
   });
 ```
 
-Run the tests, and ensure they all pass. And that's it!
+Run the tests and ensure that they all pass. And that's it!
 
 ## Preventing `Errors` from escaping the application interface boundary
 
-As mentioned in the `Middleware` chapter, [we should endeavor to prevent
+As mentioned in the `Middleware` chapter, [you should endeavor to prevent
 any `Errors` escaping our application's interface
-boundary]({{ site.baseurl }}/components/middleware/#interface-boundary). Since
-we've already written `Middleware.execute` such that any unexpected errors are
-caught and logged, we need not worry about testing it again here.
+boundary]({{ site.baseurl }}/components/middleware/#interface-boundary).
+Because you've already written `Middleware.execute` such that any unexpected
+errors are caught and logged, you don't need to worry about testing it again
+here.
 
 However, it's such an important concept that it's worth reiterating. If
 `Middleware.execute` throws any `Errors`, that could prevent other Hubot
 scripts from working normally.
 
-## Think about it
+## Reflect on your work
 
 This may have seemed like a lot of work for just a few tests, but consider a
 few points:
 
-- We now have reasonable confidence that all the code we've written works
+- You now have reasonable confidence that all the code you've written works
   together as it should, even without using test doubles for some internal
   components.
-- We have reasonable confidence that the entire script accesses the
+- You have reasonable confidence that the entire script accesses the
   environment variables, the configuration file, and the external HTTP servers
   as expected.
 - Given the amount of setup required for this test, the test is clearer for
   not having to exercise every corner case of the application.
 - Making updates to one particular class won't require as much state and setup
   as was required for this test.
-- _We didn't need all this state and setup to begin writing pieces of our
+- _You didn't need all this state and setup to begin writing pieces of your
   application and testing them exhaustively._
 
 ## Check your work
@@ -1458,11 +1465,12 @@ $ npm test -- --grep '^Integration '
 [19:23:54] Finished 'test' after
 ```
 
-Now that you're all finished, compare your solutions to the code in
+Now that you're finished, compare your solutions to the code in
 [`solutions/06-integration/scripts/slack-github-issues.js`]({{ site.baseurl }}/solutions/06-integration/scripts/slack-github-issues.js)
 [`solutions/06-integration/test/integration-test.js`]({{ site.baseurl }}/solutions/06-integration/test/integration-test.js).
 
-You may wish to `git commit` your work to your local repo at this point. After
-doing so, try copying the `integration-test.js` file from
-`solutions/06-integration/test` into `exercises/test` to see if your
-implementation passes.
+At this point, `git commit` your work to your local repo. After you do, copy
+the `integration-test.js` file from `solutions/06-integration/test` into
+`exercises/test` to see if your implementation passes. If a test case fails,
+review the section of this chapter pertaining to the failing test case, then
+try to update your code to make the test pass.
