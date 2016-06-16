@@ -788,7 +788,7 @@ Add the following line at the beginning of the `should successfully file an
 issue` test:
 
 ```js
-    createServer(201, { 'html_url': helpers.ISSUE_URL });
+    setResponse(201, { 'html_url': helpers.ISSUE_URL });
 ```
 
 Now run `npm test -- --grep '^GitHubClient '` to verify that the request
@@ -873,7 +873,7 @@ For your next test, simulate an error from the GitHub server:
 ```js
   it('should receive an error when filing an issue', function() {
     var payload = { message: 'test failure' };
-    createServer(500, payload);
+    setResponse(500, payload);
     return githubClient.fileNewIssue(helpers.metadata(), 'handbook')
       .should.be.rejectedWith(Error, 'received 500 response from GitHub ' +
         'API: ' + JSON.stringify(payload));
