@@ -746,6 +746,7 @@ function fileGitHubIssue(middleware, msgId, githubRepository) {
   return function(message) {
     var metadata,
         permalink = message.message.permalink,
+        reject,
         finish;
 
     metadata = middleware.parseMetadata(message);
@@ -949,7 +950,7 @@ function handleSuccess(finish) {
   };
 }
 
-function handleFailure(middleware, githubRepository, finish) {
+function handleFailure(finish) {
   return function(err) {
     finish(err);
     return Promise.reject(err);
