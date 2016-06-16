@@ -904,17 +904,15 @@ successfully file an issue` test case):
 
 ```js
   describe('API base URL', function() {
-    it('should parse the local server URL', function() {
-    });
+    it('should parse the local server URL');
 
-    it('should parse API_BASE_URL if config base URL undefined', function() {
-    });
+    it('should parse API_BASE_URL if config base URL undefined');
   });
 ```
 
-In the `should parse API_BASE_URL if config base URL undefined` test, create a
-new `var githubClient = new GitHubClient` instance. Then implement both tests
-by validating `url.format(githubClient.baseurl)`.
+In the `should parse API_BASE_URL if config base URL undefined` test, add a
+function that creates a new `var githubClient = new GitHubClient` instance.
+Then implement both tests by validating `url.format(githubClient.baseurl)`.
 
 ## Check your work
 

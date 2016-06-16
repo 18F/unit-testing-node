@@ -135,8 +135,7 @@ file in your favorite editor. You should see this:
 'use strict';
 
 describe('Config', function() {
-  it('should validate a valid configuration', function() {
-  });
+  it('should validate a valid configuration');
 });
 ```
 
@@ -151,10 +150,10 @@ var chai = require('chai');
 var expect = chai.expect;
 ```
 
-Then add an implementation to the `'should validate a valid configuration'`
-test.  Pass an empty data object into the `Config` constructor and verify
-that the new `Config` object contains the same data as the original JSON
-object.
+Then add function to the `'should validate a valid configuration'` case that
+implements the test. Pass an empty data object into the `Config` constructor
+and verify that the new `Config` object contains the same data as the original
+JSON object.
 
 The most expedient comparison is to use
 [`JSON.stringify`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify)

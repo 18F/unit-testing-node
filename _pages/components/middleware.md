@@ -270,8 +270,7 @@ Look first at the first empty test case in
 ```js
 describe('Middleware', function() {
   describe('findMatchingRule', function() {
-    it('should find the rule matching the message', function() {
-    });
+    it('should find the rule matching the message');
   });
 ```
 
@@ -464,20 +463,16 @@ returned, doing so is of dubious benefit. Instead, you should focus on
 covering all of the cases where a message matches _none_ of the rules:
 
 ```js
-    it('should ignore a message if it is undefined', function() {
-      // When execute() tries to pass context.response.message.rawMessage from
-      // a message that doesn't have one, the argument to findMatchingRule()
-      // will be undefined.
-    });
+    // When execute() tries to pass context.response.message.rawMessage from
+    // a message that doesn't have one, the argument to findMatchingRule()
+    // will be undefined.
+    it('should ignore a message if it is undefined');
 
-    it('should ignore a message if its type does not match', function() {
-    });
+    it('should ignore a message if its type does not match');
 
-    it('should ignore a message if its item type does not match', function() {
-    });
+    it('should ignore a message if its item type does not match');
 
-    it('should ignore messages that do not match any rule', function() {
-    });
+    it('should ignore messages that do not match any rule');
 ```
 
 Copy and paste these tests into your file and fill in the tests yourself.
@@ -1044,9 +1039,7 @@ successfully filing an issue and adding the success reaction to the message.
 Let's examine the empty test case:
 
 ```js
-    it('should receive a message and file an issue', function(done) {
-      done();
-    });
+    it('should receive a message and file an issue');
 ```
 
 Recall that `execute` will return a `Promise`, and recall too that you've used
@@ -1059,7 +1052,7 @@ notification](https://mochajs.org/#working-with-promises). Consequently, you
 had no need to rely upon [mocha's `done` callback
 support](https://mochajs.org/#asynchronous-code).
 
-In this test, however, you're actually defining `done` because you need to
+In this test, however, you'll define the `done` callback because you need to
 validate other behaviors after the `Promise` has resolved. [chai-as-promised
 allows you to create a `Promise` chain to eventually call
 `done`](https://www.npmjs.com/package/chai-as-promised#working-with-non-promisefriendly-test-runners)

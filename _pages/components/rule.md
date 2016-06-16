@@ -83,8 +83,7 @@ file in your favorite editor. You should see this:
 'use strict';
 
 describe('Rule', function() {
-  it('should contain all the fields from the configuration', function() {
-  });
+  it('should contain all the fields from the configuration');
 });
 ```
 
@@ -99,10 +98,10 @@ var chai = require('chai');
 var expect = chai.expect;
 ```
 
-Then add an implementation to the `'should contain all the fields from the
-configuration'` test. Pass a data object into the `Rule` constructor and
-verify that the new `Rule` object contains the same data as the original JSON
-object. The most expedient comparison is to use
+Then add a function to the `'should contain all the fields from the
+configuration'` case that implements the test. Pass a data object into the
+`Rule` constructor and verify that the new `Rule` object contains the same
+data as the original JSON object. The most expedient comparison is to use
 [`JSON.stringify()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify)
 on both objects and to compare the result. It's a blunt instrument, but for
 this small case, it gets the job done. In this test, you'll use the `expect`
