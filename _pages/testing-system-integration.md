@@ -123,21 +123,18 @@ Now let's add some empty test cases:
 ```js
 
 describe('Smoke test', function() {
-  it('should register successfully using the default config', function(done) {
-  });
+  it('should register successfully using the default config');
 
   it('should register successfully using the config from ' +
-     'HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH', function(done) {
-  });
+     'HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH');
 
-  it('should fail to register due to an invalid config', function(done) {
-  });
+  it('should fail to register due to an invalid config');
 });
 ```
 
-Notice that all of the test cases use a `done` callback. This is because
-`exec` is asynchronous, and you'll need to pass to the `done` callback along
-to it. In the end, this will make the test _easier_ to write rather than using
+All of the test cases will define a `done` callback. This is because `exec` is
+asynchronous, and you'll need to pass to the `done` callback along to it. In
+the end, this will make the test _easier_ to write rather than using
 [`execSync`](https://nodejs.org/api/child_process.html#child_process_child_process_execsync_command_options).
 
 ## Working with `HUBOT_SLACK_GITHUB_ISSUES_CONFIG_PATH`

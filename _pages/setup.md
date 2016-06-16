@@ -26,36 +26,37 @@ $ npm test
 
 
   Config
-    ✓ should validate a valid configuration
+    - should validate a valid configuration
 
   GitHubClient
-    ✓ should successfully file an issue
+    - should successfully file an issue
 
   Integration test
-    ✓ should successfully load the application script
+    - should successfully load the application script
 
   Logger
-    ✓ should prefix info messages with the script name
+    - should prefix info messages with the script name
 
   Middleware
     parseMetadata
-      ✓ should parse GitHub request metadata from a message
+      - should parse GitHub request metadata from a message
     findMatchingRule
-      ✓ should find the rule matching the message
+      - should find the rule matching the message
     execute
-      ✓ should successfully parse a message and file an issue
+      - should successfully parse a message and file an issue
 
   Rule
-    ✓ should contain all the fields from the configuration
+    - should contain all the fields from the configuration
 
   SlackClient
     getReactions
-      ✓ should make a successful request
+      - should make a successful request
 
 
-  9 passing (11ms)
+  0 passing (4ms)
+  9 pending
 
-[16:32:07] Finished 'test' after 62 ms
+[16:32:07] Finished 'test' after 35 ms
 Restoration of starting state successful
 ```
 
