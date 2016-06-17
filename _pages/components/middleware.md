@@ -1810,7 +1810,7 @@ case you just wrote in the previous section:
         logger.error.args.should.have.deep.property(
           '[0][0]', helpers.MESSAGE_ID);
         logger.error.args.should.have.deep.property(
-          '[0][1].message', errorMessage);
+          '[0][1]', errorMessage);
       }).should.notify(done);
     });
 ```
