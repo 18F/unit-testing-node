@@ -38,7 +38,7 @@ In short, this chapter will teach you how to:
   injection]({{ site.baseurl }}/concepts/dependency-injection)
 - Use the [`sinon` library](http://sinonjs.org/) to create
   [test doubles](http://googletesting.blogspot.com/2013/07/testing-on-toilet-know-your-test-doubles.html)
-- Use `Promises` with mocha and chai
+- Use `Promises` with Mocha and Chai
 
 ## <a name="core-algorithm"></a>The core algorithm
 
@@ -277,7 +277,7 @@ describe('Middleware', function() {
 At this step, you need to instantiate a `Middleware` instance in the test
 fixture. You'll also instantiate `Config`, `SlackClient`, `GitHubClient`, and
 `Logger` objects. Add all of the necessary `require` statements, configure the
-chai assertions, and then create the `config`, `slackClient`, `githubClient`,
+Chai assertions, and then create the `config`, `slackClient`, `githubClient`,
 `logger`, and `middleware` fixture variables:
 
 ```js
@@ -873,7 +873,7 @@ Now write the single test needed to validate `parseMetadata`:
     });
 ```
 
-Notice the use of the [`deep.property` chai
+Notice the use of the [`deep.property` Chai
 assertion](http://chaijs.com/api/bdd/#property) to inspect the
 `getChannelName.args` array. This will provide more helpful error messages
 in the case that `getChannelName.args[0]` doesn't exist.
@@ -1045,16 +1045,39 @@ Let's examine the empty test case:
 Recall that `execute` will return a `Promise`, and recall too that you've used
 [chai-as-promised](https://www.npmjs.com/package/chai-as-promised) assertions
 such as `should.become` and `should.be.rejectedWith` in your `SlackClient` and
-`GitHubClient` tests. In those tests, you actually returned the expressions
-containing those assertions (which evaluated to `Promises`) because [mocha
-supports this style of asynchronous
-notification](https://mochajs.org/#working-with-promises). Consequently, you
-had no need to rely upon [mocha's `done` callback
+`GitHubClient` tests. In those tests, you returned the expressions
+containing those assertions (which evaluated to `Promises`) because [Mocha
+supports the `Promise` style of asynchronous
+notification](https://mochajs.org/#working-with-promises).
+
+Here we need to make assertions after the `Promise` completes. All that's
+required is to chain another function at the end of the expression:
+
+```js
+    it('should do something asynchronous', function() {
+      result.should.become(...).then(function() {
+        // Other assertions...
+      });
+    });
+```
+
+For your happy-path test, write the following:
+
+```js
+    it('should receive a message and file an issue', function() {
+      middleware.execute(context, next, hubotDone)
+        .should.become(helpers.ISSUE_URL).then(function() {
+        next.calledWith(hubotDone).should.be.true;
+      });
+    });
+```
+
+Consequently, there's no need to rely upon [Mocha's `done` callback
 support](https://mochajs.org/#asynchronous-code).
 
-In this test, however, you'll define the `done` callback because you need to
-validate other behaviors after the `Promise` has resolved. [chai-as-promised
-allows you to create a `Promise` chain to eventually call
+*Side note*: In frameworks other than Mocha that _don't_ have native support
+for Promises, however, [chai-as-promised allows you to create a `Promise`
+chain to eventually call
 `done`](https://www.npmjs.com/package/chai-as-promised#working-with-non-promisefriendly-test-runners)
 using the format:
 
@@ -1064,11 +1087,7 @@ using the format:
         // Other assertions...
       }).should.notify(done);
     });
-```
 
-For your happy-path test, write the following:
-
-```js
     it('should receive a message and file an issue', function(done) {
       middleware.execute(context, next, hubotDone)
         .should.become(helpers.ISSUE_URL).then(function() {
@@ -1126,7 +1145,7 @@ Let's handle the `context.response.reply` piece first by adding this assertion:
           ['created: ' + helpers.ISSUE_URL]
         ]);
         next.calledWith(hubotDone).should.be.true;
-      }).should.notify(done);
+      });
 ```
 
 Your test should fail with the following:
@@ -1244,7 +1263,7 @@ Start by adding another assertion to your test:
         next.calledWith(hubotDone).should.be.true;
         logger.info.args.should.eql([
         ]);
-      }).should.notify(done);
+      });
 ```
 
 Now you're going to cheat a little. Just run the test and take a look at the
@@ -1405,7 +1424,7 @@ should return `undefined`:
 
       result.should.become(helpers.ISSUE_URL).then(function() {
         logger.info.args.should.contain(helpers.logArgs('already in progress'));
-      }).should.notify(done);
+      });
     });
 ```
 
@@ -1560,8 +1579,8 @@ first attempt errored out, since you may be able to successfully process the
 message in the future.
 
 To cover this case, make one last change to this test case. Start by making
-one more `middleware.execute` call _inside the callback_, and then move the
-`should.notify(done)` clause to the end of this new expression:
+one more `middleware.execute` call _inside the callback_, and return the
+result of the assertion:
 
 ```js
       result.should.become(helpers.ISSUE_URL).then(function() {
@@ -1571,9 +1590,17 @@ one more `middleware.execute` call _inside the callback_, and then move the
         // Make another call to ensure that the ID is cleaned up. Normally the
         // message will have a successReaction after the first successful
         // request, but we'll test that in another case.
+        return middleware.execute(context, next, hubotDone)
+          .should.become(helpers.ISSUE_URL);
+      });
+```
+
+Again, in frameworks other than Mocha that don't have native `Promise`
+support, this assertion will call the `done` callback instead:
+
+```js
         middleware.execute(context, next, hubotDone)
           .should.become(helpers.ISSUE_URL).should.notify(done);
-      });
 ```
 
 Note that we still need not make any additional assertions after the final
@@ -1660,7 +1687,7 @@ Start this step by building our your test case:
 
 ```js
     it('should not file another issue for the same message when ' +
-      'one is already filed ', function(done) {
+      'one is already filed ', function() {
       var message = helpers.messageWithReactions();
 
       message.message.reactions.push({
@@ -1670,15 +1697,15 @@ Start this step by building our your test case:
       });
       slackClient.getReactions.returns(Promise.resolve(message));
 
-      middleware.execute(context, next, hubotDone)
+      return middleware.execute(context, next, hubotDone)
         .should.be.rejectedWith('already processed').then(function() {
         slackClient.getReactions.calledOnce.should.be.true;
         githubClient.fileNewIssue.called.should.be.false;
         slackClient.addSuccessReaction.called.should.be.false;
         context.response.reply.called.should.be.false;
-        logger.info.args.should.include.something.that.deep.equals(
+        return logger.info.args.should.include.something.that.deep.equals(
           helpers.logArgs('already processed ' + helpers.PERMALINK));
-      }).should.notify(done);
+      });
     });
 ```
 
@@ -1792,14 +1819,14 @@ getting the messages's reactions fails. This will look very similar to the
 case you just wrote in the previous section:
 
 ```js
-    it('should receive a message but fail to get reactions', function(done) {
+    it('should receive a message but fail to get reactions', function() {
       var errorMessage = 'failed to get reactions for ' + helpers.PERMALINK +
         ': test failure';
 
       slackClient.getReactions
         .returns(Promise.reject(new Error('test failure')));
 
-      middleware.execute(context, next, hubotDone)
+      return middleware.execute(context, next, hubotDone)
         .should.be.rejectedWith(errorMessage).then(function() {
         slackClient.getReactions.calledOnce.should.be.true;
         githubClient.fileNewIssue.called.should.be.false;
@@ -1811,7 +1838,7 @@ case you just wrote in the previous section:
           '[0][0]', helpers.MESSAGE_ID);
         logger.error.args.should.have.deep.property(
           '[0][1]', errorMessage);
-      }).should.notify(done);
+      });
     });
 ```
 
@@ -1904,14 +1931,14 @@ fails. It is nearly identical to the previous one except that
 `calledOnce.should.be.true`):
 
 ```js
-    it('should get reactions but fail to file an issue', function(done) {
+    it('should get reactions but fail to file an issue', function() {
       var errorMessage = 'failed to create a GitHub issue in 18F/handbook: ' +
         'test failure';
 
       githubClient.fileNewIssue
         .returns(Promise.reject(new Error('test failure')));
 
-      middleware.execute(context, next, hubotDone)
+      return middleware.execute(context, next, hubotDone)
         .should.be.rejectedWith(errorMessage).then(function() {
         slackClient.getReactions.calledOnce.should.be.true;
         githubClient.fileNewIssue.calledOnce.should.be.true;
@@ -1923,7 +1950,7 @@ fails. It is nearly identical to the previous one except that
           '[0][0]', helpers.MESSAGE_ID);
         logger.error.args.should.have.deep.property(
           '[0][1]', errorMessage);
-      }).should.notify(done);
+      });
     });
 ```
 
@@ -1965,7 +1992,7 @@ test, except that `slackClient.addSuccessReaction` produces the failure
 (notice `calledOnce.should.be.true`):
 
 ```js
-    it('should file an issue but fail to add a reaction', function(done) {
+    it('should file an issue but fail to add a reaction', function() {
       var errorMessage = 'created ' + helpers.ISSUE_URL +
         ' but failed to add ' + helpers.baseConfig().successReaction +
         ': test failure';
@@ -1973,13 +2000,13 @@ test, except that `slackClient.addSuccessReaction` produces the failure
       slackClient.addSuccessReaction
         .returns(Promise.reject(new Error('test failure')));
 
-      middleware.execute(context, next, hubotDone)
+      return middleware.execute(context, next, hubotDone)
         .should.be.rejectedWith(errorMessage).then(function() {
         slackClient.getReactions.calledOnce.should.be.true;
         githubClient.fileNewIssue.calledOnce.should.be.true;
         slackClient.addSuccessReaction.calledOnce.should.be.true;
         checkErrorResponse(errorMessage);
-      }).should.notify(done);
+      });
     });
 ```
 
