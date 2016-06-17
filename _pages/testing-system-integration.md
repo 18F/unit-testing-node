@@ -110,7 +110,7 @@ The `-t` option tells hubot to only check that its configuration won't fail at
 startup; otherwise `hubot` would start an interactive session.
 
 As you can see, in the root directory of your repository, `hubot` didn't find
-any scripts to load. In your `exercise` directory, however`, it found your
+any scripts to load. In your `exercise` directory, however, it found your
 application and loaded it successfully. (Don't forget to `cd ..` to return to
 the root directory of the repository!)
 

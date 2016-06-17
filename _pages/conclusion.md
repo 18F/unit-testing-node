@@ -1,11 +1,21 @@
 ---
 title: Conclusion
 ---
-Bear in mind that this exercise came about _after_ the
-[settlement phase]({{ site.baseurl }}/concepts/exploration-vision-and-settlement/)
-of the original program. Only in hindsight is it possible to outline the
-development process in a linear fashion. In reality, [the
-initial outline of the entire application](https://github.com/18F/hubot-slack-github-issues/tree/work-in-progress)
+We hope you've enjoyed this end-to-end automated testing tutorial. You've
+been exposed to a lot of information, ideas, and techniques, and it will take
+time to assimilate and master them all. Still, your journey has begun, and you
+are welcome to dip back into this tutorial as often as needed to refresh your
+memory and practice until perfect.
+
+## The real world
+
+Of course, working through the guided examples in a tutorial bears little
+resemblance to the scattered and dirty processes that software development
+often requires. This exercise came about _after_ the [settlement
+phase]({{ site.baseurl }}/concepts/exploration-vision-and-settlement/) of the
+original program. Only in hindsight is it possible to outline the development
+process in a linear fashion. In reality, [the initial outline of the entire
+application](https://github.com/18F/hubot-slack-github-issues/tree/work-in-progress)
 emerged first. This guided the development of the individual parts, which were
 tested at every step.
 

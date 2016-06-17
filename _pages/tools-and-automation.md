@@ -53,9 +53,26 @@ projects hosted on GitHub, such as:
 - [Coveralls](https://coveralls.io/)
 - [Code Climate](https://codeclimate.com/)
 
-## Static analysis
+## Static analysis and style checkers
 
-Static analysis tools analyze source code _without_ executing it to detect
-potentially problematic and dangerous language usage. There are many bugs
-which both static analysis and automated testing could both catch—and in most
-cases redundant checks can only help.
+Static analysis and style checking tools analyze source code _without_
+executing it to detect potentially problematic and dangerous language usage.
+There are many bugs which both static analysis and automated testing could
+both catch—and in most cases redundant checks can only help. In fact, some
+static analysis warnings may highlight opportunities to refactor code and add
+tests, such those for duplicated code, long functions or classes, or security
+issues.
+
+Here are some examples of static analysis and style checking tools for various
+languages. The [Code Climate](https://codeclimate.com/engines) and [Hound
+CI](https://houndci.com/) platforms have many tools that you can apply using
+GitHub commit hooks.
+
+- JavaScript: [ESLint](http://eslint.org/); configured for this tutorial,
+  which you can run via `npm run lint`
+- Ruby: [RuboCop](http://rubocop.readthedocs.io/en/latest/)
+- Python: [Pylint](https://www.pylint.org/)
+- Go: [gofmt](https://golang.org/cmd/gofmt/) and [go
+  vet](https://golang.org/cmd/vet/), which are part of the standard
+  distribution; [golint](https://github.com/golang/lint); also see the [gofmt
+  blog post](https://blog.golang.org/go-fmt-your-code)
