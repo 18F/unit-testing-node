@@ -7,6 +7,18 @@ time to assimilate and master them all. Still, your journey has begun, and you
 are welcome to dip back into this tutorial as often as needed to refresh your
 memory and practice until perfect.
 
+Here are some other references that may be of value in the wars to come:
+
+- [Working Effectively with Legacy
+Code](https://www.amazon.com/Working-Effectively-Legacy-Michael-Feathers/dp/0131177052/)
+- [Refactoring](https://www.amazon.com/Refactoring-Improving-Design-Existing-Code/dp/0201485672/)
+- [Design Patterns: Elements of Reusable Object-Oriented
+  Software](https://www.amazon.com/Design-Patterns-Elements-Reusable-Object-Oriented/dp/0201633612/)
+- [Test Driven Development: By
+  Example](https://www.amazon.com/Test-Driven-Development-Kent-Beck/dp/0321146530/)
+- [Refactoring to
+  Patterns](https://www.amazon.com/Refactoring-Patterns-Joshua-Kerievsky/dp/0321213351/)
+
 ## The real world
 
 Of course, working through the guided examples in a tutorial bears little
