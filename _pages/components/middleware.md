@@ -1358,9 +1358,25 @@ Now update your test to read:
 ```
 
 Run the test and make sure it fails. Then go back to `Middleware` and add or
-update the necessary calls to `logger.info` to get the test to pass. Note that
-the last call will require passing `logger` and the message ID as arguments to
-`handleFinish`.
+update the necessary calls to `logger.info` to get the test to pass.
+Specifically, after registering the in-progress `msgId` in `execute`, add this
+line:
+
+```js
+  this.logger.info(msgId, 'matches rule:', rule);
+```
+
+Then in the function returned by `handleFinish`, add this line to log the
+final message:
+
+```js
+  middleware.logger.info(messageId, message);
+```
+
+Note that this last call will require passing the `Middleware` object and the
+message ID as arguments to `handleFinish`. You'll need to update the
+`handleFinish` parameter list, and add the extra arguments to the
+`handleFinish` call in `execute`.
 
 Make sure the test passes before continuing to the next section.
 
@@ -1457,7 +1473,7 @@ and add the message ID as a property inside `execute`:
 ```js
   msgId = messageId(message);
   if (this.inProgress[msgId]) {
-    log(msgId + ': already in progress');
+    this.logger(msgId, 'already in progress');
     return next(done);
   }
   this.inProgress[msgId] = true;
@@ -1794,7 +1810,7 @@ case you just wrote in the previous section:
         logger.error.args.should.have.deep.property(
           '[0][0]', helpers.MESSAGE_ID);
         logger.error.args.should.have.deep.property(
-          '[0][1].message', errorMessage);
+          '[0][1]', errorMessage);
       }).should.notify(done);
     });
 ```
